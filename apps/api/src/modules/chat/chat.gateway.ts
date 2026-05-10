@@ -36,6 +36,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   ) {}
 
   async afterInit(server: Server) {
+    // Redis adapter is required for multi-instance scaling in prod.
+    // Skipped in dev to avoid noisy warnings — chat works fine on a single node.
+    // To enable in prod, set REDIS_URL and ensure SOCKET_REDIS_ADAPTER=true.
+    if (process.env.SOCKET_REDIS_ADAPTER !== 'true') return
     try {
       const url = this.config.get<string>('REDIS_URL') ?? 'redis://localhost:6379/0'
       const pub = new Redis(url)
@@ -43,7 +47,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       server.adapter(createAdapter(pub, sub))
       this.logger.log('Socket.IO Redis adapter attached')
     } catch (err) {
-      this.logger.warn(`Redis adapter unavailable; running single-node only: ${String(err)}`)
+      this.logger.warn(`Redis adapter init failed: ${String(err)}`)
     }
   }
 
