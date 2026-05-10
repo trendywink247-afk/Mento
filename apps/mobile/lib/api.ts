@@ -1,7 +1,6 @@
 import Constants from 'expo-constants'
-import * as SecureStore from 'expo-secure-store'
-import { Platform } from 'react-native'
 import { ApiClient } from '@mento/api-client'
+import { authStorage } from './auth-storage'
 
 const baseUrl =
   process.env.EXPO_PUBLIC_API_URL ??
@@ -14,20 +13,9 @@ export function getApiClient(): ApiClient {
   if (_client) return _client
   _client = new ApiClient({
     baseUrl,
-    getAccessToken: async () => {
-      // SecureStore is unavailable on web; fall back to in-memory/localStorage.
-      if (Platform.OS === 'web') {
-        if (typeof window === 'undefined') return null
-        return window.localStorage.getItem('mento.access')
-      }
-      return SecureStore.getItemAsync('mento.access')
-    },
+    getAccessToken: () => authStorage.getAccessToken(),
     onUnauthorized: () => {
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        window.localStorage.removeItem('mento.access')
-        return
-      }
-      void SecureStore.deleteItemAsync('mento.access')
+      void authStorage.clear()
     },
   })
   return _client

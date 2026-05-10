@@ -9,7 +9,6 @@ export function getApiClient(): ApiClient {
   _client = new ApiClient({
     baseUrl,
     getAccessToken: () => {
-      // Phase 1: read from auth context / cookie.
       if (typeof window === 'undefined') return null
       return window.localStorage.getItem('mento.access') ?? null
     },

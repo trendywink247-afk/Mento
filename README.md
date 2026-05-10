@@ -51,8 +51,12 @@ pnpm dev
 
 Local URLs:
 - API:    http://localhost:4000
-- Web:    http://localhost:3000
+- Web:    http://localhost:3030 (port 3030 to avoid conflicts with Grafana/other apps)
 - Mobile: http://localhost:8081 (Expo dev), or `pnpm --filter @mento/mobile web` for browser mobile-view
+
+Local DB ports (also non-default to avoid conflicts):
+- Postgres: localhost:5433
+- Redis:    localhost:6380
 
 ## Env
 
