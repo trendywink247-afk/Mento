@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react'
 import { getApiClient } from '@/lib/api'
 
+import type { Role } from '@mento/types'
+
 type UserRow = {
   id: string
-  displayName: string | null
+  displayHandle: string | null
   phone: string | null
-  role: 'ADMIN' | 'MENTOR' | 'ASPIRANT'
+  role: Role
 }
 
 export default function AdminAssignmentsPage() {
@@ -69,7 +71,7 @@ export default function AdminAssignmentsPage() {
             <option value="">— select mentor —</option>
             {mentors.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.displayName ?? m.phone ?? m.id.slice(0, 8)}
+                {m.displayHandle ?? m.phone ?? m.id.slice(0, 8)}
               </option>
             ))}
           </select>
@@ -84,7 +86,7 @@ export default function AdminAssignmentsPage() {
             <option value="">— select aspirant —</option>
             {aspirants.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.displayName ?? a.phone ?? a.id.slice(0, 8)}
+                {a.displayHandle ?? a.phone ?? a.id.slice(0, 8)}
               </option>
             ))}
           </select>

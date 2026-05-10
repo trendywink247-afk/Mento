@@ -32,7 +32,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="w-64 border-r bg-muted/30 p-4">
         <div className="mb-6">
           <p className="text-lg font-semibold">Mento</p>
-          <p className="text-xs text-muted-foreground">{profile?.displayName ?? 'Welcome'}</p>
+          <p className="text-xs text-muted-foreground">{profile?.displayHandle ?? 'Welcome'}</p>
           <p className="text-xs text-muted-foreground">{user?.role}</p>
         </div>
         <nav className="space-y-1 text-sm">

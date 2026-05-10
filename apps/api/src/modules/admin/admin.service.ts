@@ -24,7 +24,10 @@ export class AdminService {
       role: u.role,
       status: u.status,
       createdAt: u.createdAt.toISOString(),
-      displayName: u.profile?.displayName ?? null,
+      displayHandle: u.profile?.displayHandle ?? null,
+      avatarLetter: u.profile?.avatarLetter ?? null,
+      avatarColor: u.profile?.avatarColor ?? null,
+      hasPurpleTick: u.profile?.hasPurpleTick ?? false,
       mentorVerified: u.mentorProfile?.isVerified ?? false,
     }))
   }
@@ -45,9 +48,9 @@ export class AdminService {
         })
       }
       if (role === Role.ASPIRANT) {
-        await tx.aspirantProfile.upsert({
+        await tx.menteeProfile.upsert({
           where: { userId },
-          create: { userId, targetExam: 'UPSC_CSE', targetYear: new Date().getFullYear() + 1 },
+          create: { userId },
           update: {},
         })
       }

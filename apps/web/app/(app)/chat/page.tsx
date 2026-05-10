@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { ConversationSummary } from '@mento/types'
 import { getApiClient } from '@/lib/api'
+import { LetterAvatar } from '@/components/LetterAvatar'
 
 export default function ChatListPage() {
   const [convs, setConvs] = useState<ConversationSummary[] | null>(null)
@@ -42,12 +43,14 @@ export default function ChatListPage() {
               href={`/chat/${c.id}`}
               className="flex items-start gap-3 p-4 hover:bg-accent/50"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                {c.counterpart.displayName.charAt(0).toUpperCase()}
-              </div>
+              <LetterAvatar
+                letter={c.counterpart.avatarLetter}
+                color={c.counterpart.avatarColor}
+                hasPurpleTick={c.counterpart.hasPurpleTick}
+              />
               <div className="min-w-0 flex-1">
                 <div className="flex justify-between">
-                  <span className="font-medium">{c.counterpart.displayName}</span>
+                  <span className="font-medium">{c.counterpart.displayHandle}</span>
                   <span className="text-xs text-muted-foreground">
                     {c.lastMessageAt ? formatTime(c.lastMessageAt) : ''}
                   </span>

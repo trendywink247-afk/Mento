@@ -1,10 +1,67 @@
 // Shared types used across api, web, and mobile.
 
-export type Role = 'ADMIN' | 'MENTOR' | 'ASPIRANT'
-export type UserStatus = 'PENDING_VERIFICATION' | 'ACTIVE' | 'SUSPENDED' | 'DELETED'
+export type Role = 'ADMIN' | 'MENTOR' | 'ASPIRANT' | 'COORDINATOR'
+export type UserStatus =
+  | 'PENDING_VERIFICATION'
+  | 'ACTIVE'
+  | 'SUSPENDED'
+  | 'BANNED'
+  | 'DELETED'
 export type Platform = 'IOS' | 'ANDROID' | 'WEB'
 export type MessageType = 'TEXT' | 'IMAGE' | 'VOICE' | 'FILE' | 'SYSTEM'
 export type AssignmentStatus = 'ACTIVE' | 'PAUSED' | 'ENDED'
+
+// Letter taxonomy from spec section 1.17
+export type AvatarLetter = 'B' | 'A' | 'P' | 'M' | 'I' | 'F'
+export type AvatarColor =
+  | 'SLATE'
+  | 'AMBER'
+  | 'SKY'
+  | 'FOREST'
+  | 'PURPLE'
+  | 'GOLD'
+
+export type JourneyStage =
+  | 'ABOUT_TO_START'
+  | 'ONE_YEAR_IN'
+  | 'TWO_YEARS_IN_NO_PRELIMS'
+  | 'ONE_PRELIMS_ATTEMPT'
+  | 'MULTI_PRELIMS_NO_CLEAR'
+  | 'PRELIMS_CLEARED'
+  | 'MAINS_WRITTEN'
+  | 'INTERVIEW_ATTEMPTED'
+  | 'MULTI_INTERVIEW'
+
+export type SubscriptionTier = 'FREE' | 'BASIC' | 'PRO' | 'MAX'
+
+export type ChatRequestStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'ARCHIVED' | 'EXPIRED'
+
+export type JournalCategory =
+  | 'PERSONAL'
+  | 'PRELIMS_POLITY'
+  | 'PRELIMS_HISTORY'
+  | 'PRELIMS_GEOGRAPHY'
+  | 'PRELIMS_ECONOMY'
+  | 'PRELIMS_ENVIRONMENT'
+  | 'PRELIMS_SCI_TECH'
+  | 'PRELIMS_CSAT'
+  | 'PRELIMS_CURRENT_AFFAIRS'
+  | 'MAINS_GS1'
+  | 'MAINS_GS2'
+  | 'MAINS_GS3'
+  | 'MAINS_GS4'
+  | 'MAINS_ESSAY'
+  | 'MAINS_OPTIONAL'
+  | 'INTERVIEW'
+  | 'SHARED_WITH_MENTOR'
+
+export type SessionRequestStatus =
+  | 'PENDING'
+  | 'ACCEPTED'
+  | 'DECLINED'
+  | 'EXPIRED'
+  | 'COMPLETED'
+  | 'CANCELLED'
 
 export interface User {
   id: string
@@ -18,12 +75,23 @@ export interface User {
 
 export interface Profile {
   userId: string
-  displayName: string
-  avatarUrl: string | null
+  displayHandle: string
+  avatarLetter: AvatarLetter
+  avatarColor: AvatarColor
+  hasPurpleTick: boolean
   bio: string | null
   city: string | null
   state: string | null
   language: string
+}
+
+// Anonymized counterpart info shown in chat list / mentor profile cards.
+export interface AnonymousIdentity {
+  id: string
+  displayHandle: string
+  avatarLetter: AvatarLetter
+  avatarColor: AvatarColor
+  hasPurpleTick: boolean
 }
 
 export interface Conversation {
@@ -35,11 +103,7 @@ export interface Conversation {
 }
 
 export interface ConversationSummary extends Conversation {
-  counterpart: {
-    id: string
-    displayName: string
-    avatarUrl: string | null
-  }
+  counterpart: AnonymousIdentity
   lastMessage: {
     id: string
     type: MessageType

@@ -2,10 +2,13 @@ import ky, { type KyInstance } from 'ky'
 import type {
   AuthSession,
   AuthTokens,
+  AvatarColor,
+  AvatarLetter,
   ConversationSummary,
   Message,
   OtpRequestResponse,
   Profile,
+  Role,
   User,
 } from '@mento/types'
 
@@ -80,7 +83,7 @@ export class ApiClient {
   }
 
   admin = {
-    listUsers: (filters?: { role?: 'ADMIN' | 'MENTOR' | 'ASPIRANT'; status?: string }) =>
+    listUsers: (filters?: { role?: Role; status?: string }) =>
       this.http
         .get('admin/users', {
           searchParams: {
@@ -93,15 +96,18 @@ export class ApiClient {
             id: string
             phone: string | null
             email: string | null
-            role: 'ADMIN' | 'MENTOR' | 'ASPIRANT'
+            role: Role
             status: string
             createdAt: string
-            displayName: string | null
+            displayHandle: string | null
+            avatarLetter: AvatarLetter | null
+            avatarColor: AvatarColor | null
+            hasPurpleTick: boolean
             mentorVerified: boolean
           }>
         >(),
 
-    setUserRole: (userId: string, role: 'ADMIN' | 'MENTOR' | 'ASPIRANT') =>
+    setUserRole: (userId: string, role: Role) =>
       this.http.patch(`admin/users/${userId}/role`, { json: { role } }).json(),
 
     approveMentor: (userId: string) =>

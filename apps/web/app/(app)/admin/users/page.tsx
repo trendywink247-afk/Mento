@@ -1,16 +1,21 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import type { AvatarColor, AvatarLetter, Role } from '@mento/types'
 import { getApiClient } from '@/lib/api'
+import { LetterAvatar } from '@/components/LetterAvatar'
 
 type Row = {
   id: string
   phone: string | null
   email: string | null
-  role: 'ADMIN' | 'MENTOR' | 'ASPIRANT'
+  role: Role
   status: string
   createdAt: string
-  displayName: string | null
+  displayHandle: string | null
+  avatarLetter: AvatarLetter | null
+  avatarColor: AvatarColor | null
+  hasPurpleTick: boolean
   mentorVerified: boolean
 }
 
@@ -33,7 +38,7 @@ export default function AdminUsersPage() {
     void load()
   }, [])
 
-  async function changeRole(id: string, role: 'ADMIN' | 'MENTOR' | 'ASPIRANT') {
+  async function changeRole(id: string, role: Role) {
     setBusy(id)
     try {
       await getApiClient().admin.setUserRole(id, role)
@@ -89,8 +94,20 @@ export default function AdminUsersPage() {
               rows.map((u) => (
                 <tr key={u.id}>
                   <td className="px-4 py-3">
-                    <p className="font-medium">{u.displayName ?? '—'}</p>
-                    <p className="text-xs text-muted-foreground">{u.id.slice(0, 8)}…</p>
+                    <div className="flex items-center gap-3">
+                      {u.avatarLetter && u.avatarColor && (
+                        <LetterAvatar
+                          letter={u.avatarLetter}
+                          color={u.avatarColor}
+                          hasPurpleTick={u.hasPurpleTick}
+                          size={32}
+                        />
+                      )}
+                      <div>
+                        <p className="font-medium">{u.displayHandle ?? '—'}</p>
+                        <p className="text-xs text-muted-foreground">{u.id.slice(0, 8)}…</p>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
                     {u.phone ?? u.email ?? '—'}

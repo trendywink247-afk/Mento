@@ -11,6 +11,7 @@ import {
 import { router } from 'expo-router'
 import type { ConversationSummary } from '@mento/types'
 import { getApiClient } from '@/lib/api'
+import { LetterAvatar } from '@/components/LetterAvatar'
 
 export default function ChatList() {
   const [convs, setConvs] = useState<ConversationSummary[] | null>(null)
@@ -69,14 +70,15 @@ export default function ChatList() {
             onPress={() => router.push({ pathname: '/(tabs)/chat/[id]', params: { id: item.id } })}
             className="flex-row items-start gap-3 border-b border-gray-100 px-4 py-4 active:bg-gray-50"
           >
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-gray-200">
-              <Text className="text-base font-medium text-gray-700">
-                {item.counterpart.displayName.charAt(0).toUpperCase()}
-              </Text>
-            </View>
+            <LetterAvatar
+              letter={item.counterpart.avatarLetter}
+              color={item.counterpart.avatarColor}
+              hasPurpleTick={item.counterpart.hasPurpleTick}
+              size={44}
+            />
             <View className="flex-1">
               <View className="flex-row justify-between">
-                <Text className="text-base font-medium">{item.counterpart.displayName}</Text>
+                <Text className="text-base font-medium">{item.counterpart.displayHandle}</Text>
                 <Text className="text-xs text-muted">
                   {item.lastMessageAt ? formatTime(item.lastMessageAt) : ''}
                 </Text>

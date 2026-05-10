@@ -24,8 +24,10 @@ export class UsersService {
       profile: user.profile
         ? {
             userId: user.profile.userId,
-            displayName: user.profile.displayName,
-            avatarUrl: user.profile.avatarUrl,
+            displayHandle: user.profile.displayHandle,
+            avatarLetter: user.profile.avatarLetter,
+            avatarColor: user.profile.avatarColor,
+            hasPurpleTick: user.profile.hasPurpleTick,
             bio: user.profile.bio,
             city: user.profile.city,
             state: user.profile.state,

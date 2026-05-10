@@ -25,7 +25,12 @@ async function main() {
       role: Role.ADMIN,
       status: UserStatus.ACTIVE,
       profile: {
-        create: { displayName: 'Mento Admin' },
+        create: {
+          displayHandle: 'Mento_Admin',
+          avatarLetter: 'F',
+          avatarColor: 'GOLD',
+          hasPurpleTick: true,
+        },
       },
     },
   })

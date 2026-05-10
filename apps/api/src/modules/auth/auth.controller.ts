@@ -40,8 +40,10 @@ export class AuthController {
       profile: profile
         ? {
             userId: profile.userId,
-            displayName: profile.displayName,
-            avatarUrl: profile.avatarUrl,
+            displayHandle: profile.displayHandle,
+            avatarLetter: profile.avatarLetter,
+            avatarColor: profile.avatarColor,
+            hasPurpleTick: profile.hasPurpleTick,
             bio: profile.bio,
             city: profile.city,
             state: profile.state,

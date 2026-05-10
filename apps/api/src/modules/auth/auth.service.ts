@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { Redis } from 'ioredis'
 import { PrismaService } from '../../database/prisma.service'
 import { OtpService } from './otp.service'
+import { colorForLetter, defaultLetterForRole, generateDisplayHandle } from '../../common/anonymity'
 
 export interface IssueResult {
   accessToken: string
@@ -40,14 +41,8 @@ export class AuthService {
 
     let user = await this.prisma.user.findUnique({ where: { phone } })
     if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          phone,
-          status: UserStatus.ACTIVE,
-          role: Role.ASPIRANT,
-          profile: { create: { displayName: phoneToDefaultName(phone) } },
-        },
-      })
+      const letter = defaultLetterForRole(Role.ASPIRANT)
+      user = await this.createUserWithProfile({ phone, role: Role.ASPIRANT, letter })
     } else if (user.status === UserStatus.PENDING_VERIFICATION) {
       user = await this.prisma.user.update({
         where: { id: user.id },
@@ -135,6 +130,46 @@ export class AuthService {
     return { accessToken, refreshToken, expiresIn: this.accessTtlSec }
   }
 
+  // Unique-handle insert with retry on conflict.
+  private async createUserWithProfile(args: {
+    phone?: string
+    email?: string
+    googleSub?: string
+    role: Role
+    letter: ReturnType<typeof defaultLetterForRole>
+  }): Promise<User> {
+    const color = colorForLetter(args.letter)
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const displayHandle = generateDisplayHandle(args.letter)
+      try {
+        return await this.prisma.user.create({
+          data: {
+            phone: args.phone,
+            email: args.email,
+            googleSub: args.googleSub,
+            role: args.role,
+            status: UserStatus.ACTIVE,
+            profile: {
+              create: { displayHandle, avatarLetter: args.letter, avatarColor: color },
+            },
+          },
+        })
+      } catch (err) {
+        // Retry on unique-constraint conflict on displayHandle
+        if (
+          err &&
+          typeof err === 'object' &&
+          'code' in err &&
+          (err as { code?: string }).code === 'P2002'
+        ) {
+          continue
+        }
+        throw err
+      }
+    }
+    throw new Error('Could not allocate a unique display handle after 5 attempts')
+  }
+
   private async verifyRefresh(token: string): Promise<{ sub: string; family: string }> {
     try {
       return await this.jwt.verifyAsync(token, {
@@ -167,10 +202,6 @@ function parseTtl(input: string): number {
 async function hashRefreshToken(token: string): Promise<string> {
   // Refresh tokens are short — bcrypt cost 8 is fine and faster on hot path.
   return hash(token, 8)
-}
-
-function phoneToDefaultName(phone: string): string {
-  return `User ${phone.slice(-4)}`
 }
 
 // re-export to silence unused import lint when bcrypt.compare is added later

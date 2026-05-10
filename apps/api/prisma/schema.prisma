@@ -1,4 +1,9 @@
-// Prisma schema for Mento — MVP (auth, profiles, chat) + Phase 2 stubs.
+// Prisma schema for Mento — spec-aligned MVP.
+// Anonymity (display handles + letter avatars), Mirror self-assessment,
+// mentor verification + Aadhaar denylist, presence-gated journals + audit log,
+// 160-char chat requests, tiered subscriptions, 1:1 booking (stubbed payment),
+// moderation + ban policy with audit trail.
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,17 +13,39 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// =================== Enums ===================
+
 enum Role {
   ADMIN
   MENTOR
   ASPIRANT
+  COORDINATOR
 }
 
 enum UserStatus {
   PENDING_VERIFICATION
   ACTIVE
   SUSPENDED
+  BANNED
   DELETED
+}
+
+enum AvatarLetter {
+  B
+  A
+  P
+  M
+  I
+  F
+}
+
+enum AvatarColor {
+  SLATE
+  AMBER
+  SKY
+  FOREST
+  PURPLE
+  GOLD
 }
 
 enum AssignmentStatus {
@@ -41,68 +68,250 @@ enum Platform {
   WEB
 }
 
-model User {
-  id             String     @id @default(uuid()) @db.Uuid
-  phone          String?    @unique
-  email          String?    @unique
-  passwordHash   String?
-  role           Role       @default(ASPIRANT)
-  status         UserStatus @default(PENDING_VERIFICATION)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  deletedAt      DateTime?
+enum ChatRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  ARCHIVED
+  EXPIRED
+}
 
-  profile         Profile?
-  mentorProfile   MentorProfile?
-  aspirantProfile AspirantProfile?
-  pushTokens      PushToken[]
-  refreshTokens   RefreshToken[]
+enum JourneyStage {
+  ABOUT_TO_START
+  ONE_YEAR_IN
+  TWO_YEARS_IN_NO_PRELIMS
+  ONE_PRELIMS_ATTEMPT
+  MULTI_PRELIMS_NO_CLEAR
+  PRELIMS_CLEARED
+  MAINS_WRITTEN
+  INTERVIEW_ATTEMPTED
+  MULTI_INTERVIEW
+}
+
+enum MentorJourney {
+  PRELIMS_CLEARED
+  MAINS_ONCE
+  MAINS_MULTI
+  INTERVIEW_ONCE
+  INTERVIEW_MULTI
+  STILL_PREPARING
+  DONE_CLEARED
+  WORKING_AND_PREPARING
+  DONE_NOT_PREPARING
+  FOUNDING_MENTOR_PARTNER
+}
+
+enum JournalCategory {
+  PERSONAL
+  PRELIMS_POLITY
+  PRELIMS_HISTORY
+  PRELIMS_GEOGRAPHY
+  PRELIMS_ECONOMY
+  PRELIMS_ENVIRONMENT
+  PRELIMS_SCI_TECH
+  PRELIMS_CSAT
+  PRELIMS_CURRENT_AFFAIRS
+  MAINS_GS1
+  MAINS_GS2
+  MAINS_GS3
+  MAINS_GS4
+  MAINS_ESSAY
+  MAINS_OPTIONAL
+  INTERVIEW
+  SHARED_WITH_MENTOR
+}
+
+enum JournalEntryType {
+  MANUAL_TEXT
+  SAVED_CHAT
+  CALL_TRANSCRIPT_CHUNK
+}
+
+enum JournalAuditAction {
+  CREATE
+  EDIT
+  APPEND
+  DELETE
+  LOCK
+  UNLOCK
+}
+
+enum SubscriptionTier {
+  FREE
+  BASIC
+  PRO
+  MAX
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  EXPIRED
+}
+
+enum SessionRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  SIMULATED
+  HELD
+  CAPTURED
+  REFUNDED
+  FAILED
+}
+
+enum WalletTxnType {
+  HOLD
+  CAPTURE
+  REFUND
+  CREDIT
+  DEBIT
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED_NO_ACTION
+  REVIEWED_BANNED
+}
+
+enum ModerationAction {
+  WARN
+  BAN_ASPIRANT
+  BAN_MENTOR
+  BAN_BOTH
+}
+
+// =================== Core ===================
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  phone        String?    @unique
+  email        String?    @unique
+  googleSub    String?    @unique
+  passwordHash String?
+  role         Role       @default(ASPIRANT)
+  status       UserStatus @default(PENDING_VERIFICATION)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
+  bannedAt     DateTime?
+
+  profile            Profile?
+  mentorProfile      MentorProfile?
+  menteeProfile      MenteeProfile?
+  verification       VerificationDocument?
+  pushTokens         PushToken[]
+  refreshTokens      RefreshToken[]
+  subscriptions      Subscription[]
+  walletTransactions WalletTransaction[]
 
   conversationsAsMentor   Conversation[] @relation("MentorConversations")
   conversationsAsAspirant Conversation[] @relation("AspirantConversations")
   messagesSent            Message[]
+  chatRequestsSent        ChatRequest[]  @relation("ChatRequestsFromMentee")
+  chatRequestsReceived    ChatRequest[]  @relation("ChatRequestsToMentor")
 
   assignmentsAsMentor   MentorAspirantAssignment[] @relation("MentorAssignments")
   assignmentsAsAspirant MentorAspirantAssignment[] @relation("AspirantAssignments")
+
+  journals         Journal[]         @relation("JournalOwner")
+  journalEntries   JournalEntry[]    @relation("JournalEntryAuthor")
+  journalAuditLogs JournalAuditLog[]
+
+  sessionRequestsAsMentee SessionRequest[] @relation("SessionRequestMentee")
+  sessionRequestsAsMentor SessionRequest[] @relation("SessionRequestMentor")
+  reviewsAuthored         Review[]         @relation("ReviewAuthor")
+  reviewsReceived         Review[]         @relation("ReviewSubject")
+  reportsAuthored         MessageReport[]  @relation("ReportAuthor")
 
   @@index([role, status])
   @@index([deletedAt])
 }
 
 model Profile {
-  userId      String   @id @db.Uuid
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  displayName String
-  avatarUrl   String?
-  bio         String?
-  city        String?
-  state       String?
-  language    String   @default("en")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  userId        String       @id @db.Uuid
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayHandle String       @unique
+  avatarLetter  AvatarLetter @default(B)
+  avatarColor   AvatarColor  @default(SLATE)
+  hasPurpleTick Boolean      @default(false)
+  bio           String?
+  city          String?
+  state         String?
+  language      String       @default("en")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([displayHandle])
+  @@index([avatarLetter])
+}
+
+model MenteeProfile {
+  userId            String       @id @db.Uuid
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  journeyStage      JourneyStage @default(ABOUT_TO_START)
+  background        String?
+  knowledge         Json?
+  challenges        String[]
+  mirrorCompletedAt DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 }
 
 model MentorProfile {
-  userId          String    @id @db.Uuid
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expertise       String[]
-  yearsExperience Int       @default(0)
-  attemptCount    Int       @default(0)
-  rankAchieved    Int?
-  isVerified      Boolean   @default(false)
-  approvedAt      DateTime?
-  approvedBy      String?   @db.Uuid
+  userId             String        @id @db.Uuid
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  journeyType        MentorJourney @default(PRELIMS_CLEARED)
+  prelimsCleared     Boolean       @default(false)
+  mainsAttempts      Int           @default(0)
+  interviewAttempts  Int           @default(0)
+  attemptHistory     Json?
+  rankAchieved       Int?
+  optionalSubject    String?
+  guidanceCategories String[]
+  languages          String[]      @default([])
+  hourlyRateInr      Int           @default(400)
+  availability       Json?
+  metrics            Json?
+  isVerified         Boolean       @default(false)
+  isFoundingPartner  Boolean       @default(false)
+  approvedAt         DateTime?
+  approvedBy         String?       @db.Uuid
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   @@index([isVerified, approvedAt])
+  @@index([prelimsCleared, mainsAttempts])
 }
 
-model AspirantProfile {
-  userId           String   @id @db.Uuid
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  targetExam       String   @default("UPSC_CSE")
-  targetYear       Int      @default(0)
-  preparationStage String?
-  weakSubjects     String[]
+model VerificationDocument {
+  userId        String    @id @db.Uuid
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aadhaarUrl    String?
+  aadhaarHash   String?   @unique
+  hallTicketUrl String?
+  marksSheetUrl String?
+  bankAccount   Json?
+  submittedAt   DateTime  @default(now())
+  reviewedAt    DateTime?
+  reviewedBy    String?   @db.Uuid
+  reviewNote    String?
+
+  @@index([reviewedAt])
+}
+
+model MentorDenylist {
+  aadhaarHash String   @id
+  reason      String
+  bannedAt    DateTime @default(now())
+  bannedBy    String?  @db.Uuid
 }
 
 model MentorAspirantAssignment {
@@ -120,19 +329,50 @@ model MentorAspirantAssignment {
   @@index([mentorId])
 }
 
-model Conversation {
-  id            String    @id @default(uuid()) @db.Uuid
-  mentorId      String    @db.Uuid
-  aspirantId    String    @db.Uuid
-  mentor        User      @relation("MentorConversations", fields: [mentorId], references: [id])
-  aspirant      User      @relation("AspirantConversations", fields: [aspirantId], references: [id])
-  lastMessageAt DateTime?
-  createdAt     DateTime  @default(now())
+model ChatRequest {
+  id             String            @id @default(uuid()) @db.Uuid
+  menteeId       String            @db.Uuid
+  mentorId       String            @db.Uuid
+  mentee         User              @relation("ChatRequestsFromMentee", fields: [menteeId], references: [id])
+  mentor         User              @relation("ChatRequestsToMentor", fields: [mentorId], references: [id])
+  intro          String
+  status         ChatRequestStatus @default(PENDING)
+  conversationId String?           @db.Uuid
+  createdAt      DateTime          @default(now())
+  respondedAt    DateTime?
+  expiresAt      DateTime?
 
-  messages Message[]
+  @@index([mentorId, status])
+  @@index([menteeId, status])
+}
+
+model Conversation {
+  id               String    @id @default(uuid()) @db.Uuid
+  mentorId         String    @db.Uuid
+  aspirantId       String    @db.Uuid
+  mentor           User      @relation("MentorConversations", fields: [mentorId], references: [id])
+  aspirant         User      @relation("AspirantConversations", fields: [aspirantId], references: [id])
+  lastMessageAt    DateTime?
+  archivedByMentee Boolean   @default(false)
+  archivedByMentor Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+
+  messages      Message[]
+  sharedJournal Journal?
+  presenceState ConversationPresence?
 
   @@unique([mentorId, aspirantId])
   @@index([lastMessageAt(sort: Desc)])
+}
+
+model ConversationPresence {
+  conversationId String       @id @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  mentorActive   Boolean      @default(false)
+  menteeActive   Boolean      @default(false)
+  mentorLastSeen DateTime?
+  menteeLastSeen DateTime?
+  updatedAt      DateTime     @updatedAt
 }
 
 model Message {
@@ -148,13 +388,188 @@ model Message {
   clientMessageId String?      @db.Uuid
   deliveredAt     DateTime?
   readAt          DateTime?
+  isReported      Boolean      @default(false)
   createdAt       DateTime     @default(now())
   deletedAt       DateTime?
+
+  reports MessageReport[]
 
   @@unique([senderId, clientMessageId])
   @@index([conversationId, createdAt])
   @@index([senderId])
 }
+
+// =================== Journals ===================
+
+model Journal {
+  id                   String          @id @default(uuid()) @db.Uuid
+  ownerId              String          @db.Uuid
+  owner                User            @relation("JournalOwner", fields: [ownerId], references: [id])
+  category             JournalCategory
+  conversationId       String?         @unique @db.Uuid
+  conversation         Conversation?   @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  isShared             Boolean         @default(false)
+  isLocked             Boolean         @default(false)
+  lastActivePairSeenAt DateTime?
+  title                String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  entries  JournalEntry[]
+  auditLog JournalAuditLog[]
+
+  @@unique([ownerId, category, conversationId])
+  @@index([ownerId, category])
+}
+
+model JournalEntry {
+  id              String           @id @default(uuid()) @db.Uuid
+  journalId       String           @db.Uuid
+  journal         Journal          @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  type            JournalEntryType @default(MANUAL_TEXT)
+  authorId        String           @db.Uuid
+  author          User             @relation("JournalEntryAuthor", fields: [authorId], references: [id])
+  content         String
+  sourceMessageId String?          @db.Uuid
+  metadata        Json?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  deletedAt       DateTime?
+
+  @@index([journalId, createdAt])
+}
+
+model JournalAuditLog {
+  id        String             @id @default(uuid()) @db.Uuid
+  journalId String             @db.Uuid
+  journal   Journal            @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  userId    String             @db.Uuid
+  user      User               @relation(fields: [userId], references: [id])
+  action    JournalAuditAction
+  diff      Json?
+  timestamp DateTime           @default(now())
+
+  @@index([journalId, timestamp])
+  @@index([userId, timestamp])
+}
+
+// =================== Sessions & Wallet ===================
+
+model SessionRequest {
+  id            String               @id @default(uuid()) @db.Uuid
+  menteeId      String               @db.Uuid
+  mentorId      String               @db.Uuid
+  mentee        User                 @relation("SessionRequestMentee", fields: [menteeId], references: [id])
+  mentor        User                 @relation("SessionRequestMentor", fields: [mentorId], references: [id])
+  scheduledAt   DateTime
+  durationMin   Int                  @default(60)
+  hourlyRateInr Int                  @default(400)
+  status        SessionRequestStatus @default(PENDING)
+  paymentStatus PaymentStatus        @default(SIMULATED)
+  message       String?
+  createdAt     DateTime             @default(now())
+  respondedAt   DateTime?
+  expiresAt     DateTime?
+
+  session Session?
+
+  @@index([mentorId, status])
+  @@index([menteeId, status])
+}
+
+model Session {
+  id                String         @id @default(uuid()) @db.Uuid
+  requestId         String         @unique @db.Uuid
+  request           SessionRequest @relation(fields: [requestId], references: [id])
+  startedAt         DateTime?
+  endedAt           DateTime?
+  transcriptOptIn   Boolean        @default(false)
+  transcriptUrl     String?
+  durationActualSec Int?
+  createdAt         DateTime       @default(now())
+}
+
+model WalletTransaction {
+  id        String        @id @default(uuid()) @db.Uuid
+  userId    String        @db.Uuid
+  user      User          @relation(fields: [userId], references: [id])
+  type      WalletTxnType
+  amountInr Int
+  sessionId String?       @db.Uuid
+  reference String?
+  status    PaymentStatus @default(SIMULATED)
+  metadata  Json?
+  createdAt DateTime      @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// =================== Subscriptions ===================
+
+model Subscription {
+  id                     String             @id @default(uuid()) @db.Uuid
+  userId                 String             @db.Uuid
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier                   SubscriptionTier   @default(FREE)
+  status                 SubscriptionStatus @default(ACTIVE)
+  razorpaySubscriptionId String?            @unique
+  currentPeriodStart     DateTime           @default(now())
+  currentPeriodEnd       DateTime?
+  startedAt              DateTime           @default(now())
+  cancelledAt            DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  @@index([userId, status])
+}
+
+// =================== Reviews ===================
+
+model Review {
+  id          String   @id @default(uuid()) @db.Uuid
+  authorId    String   @db.Uuid
+  subjectId   String   @db.Uuid
+  author      User     @relation("ReviewAuthor", fields: [authorId], references: [id])
+  subject     User     @relation("ReviewSubject", fields: [subjectId], references: [id])
+  body        String
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@unique([authorId, subjectId])
+  @@index([subjectId, createdAt])
+}
+
+// =================== Safety / Moderation ===================
+
+model MessageReport {
+  id         String       @id @default(uuid()) @db.Uuid
+  messageId  String       @db.Uuid
+  message    Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  reporterId String       @db.Uuid
+  reporter   User         @relation("ReportAuthor", fields: [reporterId], references: [id])
+  reason     String
+  status     ReportStatus @default(PENDING)
+  reviewedAt DateTime?
+  reviewedBy String?      @db.Uuid
+  outcome    String?
+  createdAt  DateTime     @default(now())
+
+  @@index([status, createdAt])
+}
+
+model ModerationActionLog {
+  id                 String           @id @default(uuid()) @db.Uuid
+  targetUserId       String           @db.Uuid
+  reason             String
+  evidenceMessageIds String[]         @db.Uuid
+  action             ModerationAction
+  bannedByAdmin      String?          @db.Uuid
+  createdAt          DateTime         @default(now())
+
+  @@index([targetUserId, createdAt])
+}
+
+// =================== Tokens / Push / Audit ===================
 
 model PushToken {
   id         String   @id @default(uuid()) @db.Uuid
@@ -206,4 +621,19 @@ model AuditLog {
 
   @@index([actorId, createdAt])
   @@index([action, createdAt])
+}
+
+// =================== Analytics ===================
+
+model OnboardingEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String?  @db.Uuid
+  sessionId String
+  step      String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([sessionId, createdAt])
+  @@index([userId, createdAt])
+  @@index([step, createdAt])
 }

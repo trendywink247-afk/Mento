@@ -1,7 +1,8 @@
-import { Pressable, SafeAreaView, Text, View } from 'react-native'
+import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
+import { LetterAvatar } from '@/components/LetterAvatar'
 
 export default function Profile() {
   const { user, profile, tokens, clear } = useAuthStore()
@@ -16,19 +17,44 @@ export default function Profile() {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-1 px-6 pt-6">
-        <View className="rounded-md border border-gray-200 bg-gray-50 p-4">
-          <Text className="text-xs text-muted">Display name</Text>
-          <Text className="mt-1 text-base font-medium">{profile?.displayName ?? '—'}</Text>
-          <Text className="mt-3 text-xs text-muted">Phone</Text>
-          <Text className="mt-1 text-base">{user?.phone ?? '—'}</Text>
-          <Text className="mt-3 text-xs text-muted">Role</Text>
-          <Text className="mt-1 text-base">{user?.role}</Text>
+      <ScrollView contentContainerStyle={{ padding: 24 }}>
+        <View className="items-center">
+          {profile && (
+            <LetterAvatar
+              letter={profile.avatarLetter}
+              color={profile.avatarColor}
+              hasPurpleTick={profile.hasPurpleTick}
+              size={96}
+            />
+          )}
+          <Text className="mt-4 text-xl font-semibold">{profile?.displayHandle ?? '—'}</Text>
+          <Text className="mt-1 text-sm text-muted">
+            You interact anonymously within Mento.
+          </Text>
         </View>
-        <Pressable onPress={handleLogout} className="mt-6 rounded-md border border-gray-300 px-4 py-3">
+
+        <View className="mt-8 rounded-2xl bg-gray-50 p-4">
+          <Row label="Role" value={user?.role ?? '—'} />
+          <Row label="Phone (private)" value={user?.phone ?? '—'} />
+          <Row label="Joined" value={user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'} />
+        </View>
+
+        <Pressable
+          onPress={handleLogout}
+          className="mt-8 rounded-md border border-gray-300 px-4 py-3 active:bg-gray-50"
+        >
           <Text className="text-center text-base">Sign out</Text>
         </Pressable>
-      </View>
+      </ScrollView>
     </SafeAreaView>
+  )
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <View className="border-b border-gray-100 py-3 last:border-b-0">
+      <Text className="text-xs text-muted">{label}</Text>
+      <Text className="mt-1 text-base">{value}</Text>
+    </View>
   )
 }

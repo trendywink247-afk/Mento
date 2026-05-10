@@ -36,8 +36,10 @@ export class ChatService {
         createdAt: c.createdAt.toISOString(),
         counterpart: {
           id: counterpart.id,
-          displayName: counterpart.profile?.displayName ?? counterpart.phone ?? counterpart.id,
-          avatarUrl: counterpart.profile?.avatarUrl ?? null,
+          displayHandle: counterpart.profile?.displayHandle ?? `User_${counterpart.id.slice(0, 4)}`,
+          avatarLetter: counterpart.profile?.avatarLetter ?? 'B',
+          avatarColor: counterpart.profile?.avatarColor ?? 'SLATE',
+          hasPurpleTick: counterpart.profile?.hasPurpleTick ?? false,
         },
         lastMessage: last
           ? {
