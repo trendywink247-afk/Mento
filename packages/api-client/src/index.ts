@@ -131,6 +131,71 @@ export class ApiClient {
     }> => this.http.get(`mentors/${id}`).json(),
   }
 
+  journals = {
+    list: () =>
+      this.http.get('journals').json<
+        Array<{
+          id: string
+          category: string
+          title: string | null
+          isShared: boolean
+          isLocked: boolean
+          conversationId: string | null
+          entryCount: number
+          updatedAt: string
+          sharedWith: {
+            id: string
+            displayHandle: string
+            avatarLetter: AvatarLetter
+            avatarColor: AvatarColor
+          } | null
+        }>
+      >(),
+
+    upsert: (category: string, opts?: { title?: string; conversationId?: string }) =>
+      this.http
+        .post('journals', { json: { category, ...opts } })
+        .json<{ id: string; category: string }>(),
+
+    detail: (id: string) =>
+      this.http.get(`journals/${id}`).json<{
+        id: string
+        category: string
+        title: string | null
+        isShared: boolean
+        isLocked: boolean
+        canEdit: boolean
+        entries: Array<{
+          id: string
+          type: string
+          content: string
+          sourceMessageId: string | null
+          createdAt: string
+          updatedAt: string
+          author: {
+            id: string
+            displayHandle: string
+            avatarLetter: AvatarLetter
+            avatarColor: AvatarColor
+          }
+        }>
+      }>(),
+
+    addEntry: (id: string, content: string, type: string = 'MANUAL_TEXT') =>
+      this.http.post(`journals/${id}/entries`, { json: { type, content } }).json<{ id: string }>(),
+
+    updateEntry: (entryId: string, content: string) =>
+      this.http.patch(`journals/entries/${entryId}`, { json: { content } }).json<{ id: string }>(),
+
+    deleteEntry: (entryId: string) =>
+      this.http.delete(`journals/entries/${entryId}`).then(() => undefined),
+
+    saveFromChat: (messageId: string, category: string) =>
+      this.http
+        .post('journals/save-from-chat', { json: { messageId, category } })
+        .json<{ id: string }>(),
+  }
+
   chatRequests = {
     create: (mentorId: string, intro: string) =>
       this.http.post('chat-requests', { json: { mentorId, intro } }).json<{

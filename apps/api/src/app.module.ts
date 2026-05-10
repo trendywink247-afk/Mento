@@ -12,6 +12,7 @@ import { AdminModule } from './modules/admin/admin.module'
 import { OnboardingModule } from './modules/onboarding/onboarding.module'
 import { MentorsModule } from './modules/mentors/mentors.module'
 import { ChatRequestsModule } from './modules/chat-requests/chat-requests.module'
+import { JournalsModule } from './modules/journals/journals.module'
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { ChatRequestsModule } from './modules/chat-requests/chat-requests.module
     OnboardingModule,
     MentorsModule,
     ChatRequestsModule,
+    JournalsModule,
   ],
 })
 export class AppModule {}

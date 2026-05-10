@@ -38,6 +38,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="space-y-1 text-sm">
           {[
             { href: '/dashboard', label: 'Dashboard' },
+            { href: '/journals', label: 'Journals' },
             { href: '/chat', label: 'Chats' },
             { href: '/mentors', label: 'Mentors' },
             { href: '/profile', label: 'Profile' },

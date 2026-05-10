@@ -16,6 +16,7 @@ import { createAdapter } from '@socket.io/redis-adapter'
 import { Redis } from 'ioredis'
 import { Role } from '@prisma/client'
 import { ChatService } from './chat.service'
+import { JournalsService } from '../journals/journals.service'
 import type { SendMessageDto } from './dto/send-message.dto'
 
 interface AuthedSocketData {
@@ -33,6 +34,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly chat: ChatService,
+    private readonly journals: JournalsService,
   ) {}
 
   async afterInit(server: Server) {
@@ -127,6 +129,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     try {
       await this.chat.assertConversationParticipant(payload.conversationId, userId)
       await client.join(`conv:${payload.conversationId}`)
+      await this.journals.setPresence(payload.conversationId, userId, true)
     } catch {
       /* not a participant — ignore */
     }
@@ -137,7 +140,9 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @ConnectedSocket() client: AuthedSocket,
     @MessageBody() payload: { conversationId: string },
   ) {
+    const userId = client.data?.userId
     await client.leave(`conv:${payload.conversationId}`)
+    if (userId) await this.journals.setPresence(payload.conversationId, userId, false)
   }
 
   @SubscribeMessage('message:delivered')
