@@ -1,0 +1,195 @@
+import {
+  ConnectedSocket,
+  MessageBody,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  OnGatewayInit,
+  SubscribeMessage,
+  WebSocketGateway,
+  WebSocketServer,
+} from '@nestjs/websockets'
+import { JwtService } from '@nestjs/jwt'
+import { ConfigService } from '@nestjs/config'
+import { Logger } from '@nestjs/common'
+import { Server, Socket } from 'socket.io'
+import { createAdapter } from '@socket.io/redis-adapter'
+import { Redis } from 'ioredis'
+import { Role } from '@prisma/client'
+import { ChatService } from './chat.service'
+import type { SendMessageDto } from './dto/send-message.dto'
+
+interface AuthedSocketData {
+  userId: string
+  role: Role
+}
+type AuthedSocket = Socket & { data: AuthedSocketData }
+
+@WebSocketGateway({ namespace: '/chat', cors: { origin: true, credentials: true } })
+export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+  @WebSocketServer() server!: Server
+  private readonly logger = new Logger(ChatGateway.name)
+
+  constructor(
+    private readonly jwt: JwtService,
+    private readonly config: ConfigService,
+    private readonly chat: ChatService,
+  ) {}
+
+  async afterInit(server: Server) {
+    try {
+      const url = this.config.get<string>('REDIS_URL') ?? 'redis://localhost:6379/0'
+      const pub = new Redis(url)
+      const sub = pub.duplicate()
+      server.adapter(createAdapter(pub, sub))
+      this.logger.log('Socket.IO Redis adapter attached')
+    } catch (err) {
+      this.logger.warn(`Redis adapter unavailable; running single-node only: ${String(err)}`)
+    }
+  }
+
+  async handleConnection(client: AuthedSocket) {
+    const token =
+      (typeof client.handshake.auth === 'object' && client.handshake.auth?.token) ||
+      client.handshake.headers.authorization?.replace(/^Bearer\s+/i, '')
+
+    if (!token) {
+      this.logger.debug('Disconnecting: no token')
+      client.disconnect(true)
+      return
+    }
+
+    try {
+      const payload = await this.jwt.verifyAsync<{ sub: string; role: Role }>(token, {
+        secret: this.config.get<string>('JWT_ACCESS_SECRET'),
+      })
+      client.data = { userId: payload.sub, role: payload.role }
+      await client.join(`user:${payload.sub}`)
+      this.broadcastPresence(payload.sub, 'online')
+      this.logger.debug(`User ${payload.sub} connected`)
+    } catch {
+      client.disconnect(true)
+    }
+  }
+
+  async handleDisconnect(client: AuthedSocket) {
+    const userId = client.data?.userId
+    if (userId) this.broadcastPresence(userId, 'offline')
+  }
+
+  private broadcastPresence(userId: string, status: 'online' | 'offline') {
+    this.server.emit(status === 'online' ? 'presence:online' : 'presence:offline', { userId })
+  }
+
+  @SubscribeMessage('message:send')
+  async onSend(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: SendMessageDto,
+  ) {
+    const userId = client.data?.userId
+    if (!userId) return { ok: false as const, error: 'unauthenticated' }
+
+    try {
+      const message = await this.chat.sendMessage({
+        senderId: userId,
+        conversationId: payload.conversationId,
+        type: payload.type,
+        body: payload.body,
+        attachmentUrl: payload.attachmentUrl,
+        clientMessageId: payload.clientMessageId,
+      })
+      const dto = this.chat.serialize(message)
+      this.server
+        .to(`conv:${payload.conversationId}`)
+        .emit('message:new', dto)
+      // Also fanout to recipient personal room (so they see it even if not joined).
+      const conv = await this.chat.assertConversationParticipant(payload.conversationId, userId)
+      const otherId = conv.mentorId === userId ? conv.aspirantId : conv.mentorId
+      this.server.to(`user:${otherId}`).emit('message:new', dto)
+      return { ok: true as const, message: dto }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'send_failed'
+      this.logger.warn(`message:send failed: ${msg}`)
+      return { ok: false as const, error: msg }
+    }
+  }
+
+  @SubscribeMessage('conversation:join')
+  async onJoin(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { conversationId: string },
+  ) {
+    const userId = client.data?.userId
+    if (!userId) return
+    try {
+      await this.chat.assertConversationParticipant(payload.conversationId, userId)
+      await client.join(`conv:${payload.conversationId}`)
+    } catch {
+      /* not a participant — ignore */
+    }
+  }
+
+  @SubscribeMessage('conversation:leave')
+  async onLeave(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { conversationId: string },
+  ) {
+    await client.leave(`conv:${payload.conversationId}`)
+  }
+
+  @SubscribeMessage('message:delivered')
+  async onDelivered(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { messageId: string },
+  ) {
+    const userId = client.data?.userId
+    if (!userId) return
+    const updated = await this.chat.markDelivered(payload.messageId, userId)
+    if (!updated) return
+    this.server
+      .to(`conv:${updated.conversationId}`)
+      .emit('message:status', {
+        messageId: updated.id,
+        deliveredAt: updated.deliveredAt?.toISOString(),
+      })
+  }
+
+  @SubscribeMessage('message:read')
+  async onRead(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { messageId: string },
+  ) {
+    const userId = client.data?.userId
+    if (!userId) return
+    const updated = await this.chat.markRead(payload.messageId, userId)
+    if (!updated) return
+    this.server.to(`conv:${updated.conversationId}`).emit('message:status', {
+      messageId: updated.id,
+      deliveredAt: updated.deliveredAt?.toISOString(),
+      readAt: updated.readAt?.toISOString(),
+    })
+  }
+
+  @SubscribeMessage('typing:start')
+  onTypingStart(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { conversationId: string },
+  ) {
+    const userId = client.data?.userId
+    if (!userId) return
+    client
+      .to(`conv:${payload.conversationId}`)
+      .emit('typing:start', { conversationId: payload.conversationId, userId })
+  }
+
+  @SubscribeMessage('typing:stop')
+  onTypingStop(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { conversationId: string },
+  ) {
+    const userId = client.data?.userId
+    if (!userId) return
+    client
+      .to(`conv:${payload.conversationId}`)
+      .emit('typing:stop', { conversationId: payload.conversationId, userId })
+  }
+}

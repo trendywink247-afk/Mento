@@ -1,14 +1,21 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
+import { JwtModule } from '@nestjs/jwt'
 import { LoggerModule } from 'nestjs-pino'
 import { PrismaModule } from './database/prisma.module'
 import { HealthModule } from './modules/health/health.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { UsersModule } from './modules/users/users.module'
+import { ChatModule } from './modules/chat/chat.module'
+import { AssignmentsModule } from './modules/assignments/assignments.module'
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    JwtModule.registerAsync({
+      global: true,
+      useFactory: () => ({ secret: process.env.JWT_ACCESS_SECRET }),
+    }),
     LoggerModule.forRoot({
       pinoHttp: {
         level: process.env.LOG_LEVEL ?? 'info',
@@ -26,6 +33,8 @@ import { UsersModule } from './modules/users/users.module'
     HealthModule,
     AuthModule,
     UsersModule,
+    ChatModule,
+    AssignmentsModule,
   ],
 })
 export class AppModule {}

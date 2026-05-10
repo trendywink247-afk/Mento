@@ -2,7 +2,7 @@ import ky, { type KyInstance } from 'ky'
 import type {
   AuthSession,
   AuthTokens,
-  Conversation,
+  ConversationSummary,
   Message,
   OtpRequestResponse,
   Profile,
@@ -62,7 +62,8 @@ export class ApiClient {
   }
 
   chat = {
-    listConversations: (): Promise<Conversation[]> => this.http.get('conversations').json(),
+    listConversations: (): Promise<ConversationSummary[]> =>
+      this.http.get('conversations').json(),
 
     getMessages: (
       conversationId: string,
@@ -76,6 +77,18 @@ export class ApiClient {
           },
         })
         .json(),
+  }
+
+  admin = {
+    createAssignment: (mentorId: string, aspirantId: string) =>
+      this.http.post('assignments', { json: { mentorId, aspirantId } }).json<{
+        assignment: { id: string; mentorId: string; aspirantId: string; status: string }
+        conversation: { id: string; mentorId: string; aspirantId: string }
+      }>(),
+
+    listAssignments: () => this.http.get('assignments').json(),
+
+    endAssignment: (id: string) => this.http.delete(`assignments/${id}`).json(),
   }
 }
 

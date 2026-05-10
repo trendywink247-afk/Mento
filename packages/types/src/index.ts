@@ -34,6 +34,21 @@ export interface Conversation {
   createdAt: string
 }
 
+export interface ConversationSummary extends Conversation {
+  counterpart: {
+    id: string
+    displayName: string
+    avatarUrl: string | null
+  }
+  lastMessage: {
+    id: string
+    type: MessageType
+    body: string | null
+    createdAt: string
+    senderId: string
+  } | null
+}
+
 export interface Message {
   id: string
   conversationId: string
@@ -92,4 +107,6 @@ export type ClientToServerEvents = {
   'message:read': (payload: { messageId: string }) => void
   'typing:start': (payload: { conversationId: string }) => void
   'typing:stop': (payload: { conversationId: string }) => void
+  'conversation:join': (payload: { conversationId: string }) => void
+  'conversation:leave': (payload: { conversationId: string }) => void
 }
