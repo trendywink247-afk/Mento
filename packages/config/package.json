@@ -1,0 +1,14 @@
+{
+  "name": "@mento/config",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./index.js",
+  "files": [
+    "tsconfig.base.json",
+    "eslint.base.cjs"
+  ],
+  "scripts": {
+    "lint": "echo 'no-op'",
+    "typecheck": "echo 'no-op'"
+  }
+}

@@ -1,0 +1,209 @@
+// Prisma schema for Mento — MVP (auth, profiles, chat) + Phase 2 stubs.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MENTOR
+  ASPIRANT
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VOICE
+  FILE
+  SYSTEM
+}
+
+enum Platform {
+  IOS
+  ANDROID
+  WEB
+}
+
+model User {
+  id             String     @id @default(uuid()) @db.Uuid
+  phone          String?    @unique
+  email          String?    @unique
+  passwordHash   String?
+  role           Role       @default(ASPIRANT)
+  status         UserStatus @default(PENDING_VERIFICATION)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  deletedAt      DateTime?
+
+  profile         Profile?
+  mentorProfile   MentorProfile?
+  aspirantProfile AspirantProfile?
+  pushTokens      PushToken[]
+  refreshTokens   RefreshToken[]
+
+  conversationsAsMentor   Conversation[] @relation("MentorConversations")
+  conversationsAsAspirant Conversation[] @relation("AspirantConversations")
+  messagesSent            Message[]
+
+  assignmentsAsMentor   MentorAspirantAssignment[] @relation("MentorAssignments")
+  assignmentsAsAspirant MentorAspirantAssignment[] @relation("AspirantAssignments")
+
+  @@index([role, status])
+  @@index([deletedAt])
+}
+
+model Profile {
+  userId      String   @id @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String
+  avatarUrl   String?
+  bio         String?
+  city        String?
+  state       String?
+  language    String   @default("en")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model MentorProfile {
+  userId          String    @id @db.Uuid
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expertise       String[]
+  yearsExperience Int       @default(0)
+  attemptCount    Int       @default(0)
+  rankAchieved    Int?
+  isVerified      Boolean   @default(false)
+  approvedAt      DateTime?
+  approvedBy      String?   @db.Uuid
+
+  @@index([isVerified, approvedAt])
+}
+
+model AspirantProfile {
+  userId           String   @id @db.Uuid
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetExam       String   @default("UPSC_CSE")
+  targetYear       Int      @default(0)
+  preparationStage String?
+  weakSubjects     String[]
+}
+
+model MentorAspirantAssignment {
+  id         String           @id @default(uuid()) @db.Uuid
+  mentorId   String           @db.Uuid
+  aspirantId String           @db.Uuid
+  mentor     User             @relation("MentorAssignments", fields: [mentorId], references: [id])
+  aspirant   User             @relation("AspirantAssignments", fields: [aspirantId], references: [id])
+  status     AssignmentStatus @default(ACTIVE)
+  assignedAt DateTime         @default(now())
+  endedAt    DateTime?
+
+  @@unique([mentorId, aspirantId])
+  @@index([aspirantId])
+  @@index([mentorId])
+}
+
+model Conversation {
+  id            String    @id @default(uuid()) @db.Uuid
+  mentorId      String    @db.Uuid
+  aspirantId    String    @db.Uuid
+  mentor        User      @relation("MentorConversations", fields: [mentorId], references: [id])
+  aspirant      User      @relation("AspirantConversations", fields: [aspirantId], references: [id])
+  lastMessageAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  messages Message[]
+
+  @@unique([mentorId, aspirantId])
+  @@index([lastMessageAt(sort: Desc)])
+}
+
+model Message {
+  id              String       @id @default(uuid()) @db.Uuid
+  conversationId  String       @db.Uuid
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId        String       @db.Uuid
+  sender          User         @relation(fields: [senderId], references: [id])
+  type            MessageType  @default(TEXT)
+  body            String?
+  attachmentUrl   String?
+  attachmentMeta  Json?
+  clientMessageId String?      @db.Uuid
+  deliveredAt     DateTime?
+  readAt          DateTime?
+  createdAt       DateTime     @default(now())
+  deletedAt       DateTime?
+
+  @@unique([senderId, clientMessageId])
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+model PushToken {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  platform   Platform
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  family    String    @db.Uuid
+  issuedAt  DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  @@index([userId, revokedAt])
+}
+
+model OtpRequest {
+  id         String    @id @default(uuid()) @db.Uuid
+  phone      String
+  codeHash   String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([phone, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @db.Uuid
+  action     String
+  targetType String?
+  targetId   String?  @db.Uuid
+  metadata   Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+}

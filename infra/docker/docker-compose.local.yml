@@ -1,0 +1,48 @@
+# Local-only services for development on a laptop.
+# Brings up Postgres + Redis. The 3 apps run via `pnpm dev` (not in containers locally).
+#
+# Usage:
+#   pnpm db:up        # start
+#   pnpm db:down      # stop
+#   pnpm db:logs      # follow logs
+#
+# Data is persisted in named volumes; remove them to reset:
+#   docker volume rm mento_pg_local mento_redis_local
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mento-postgres-local
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mento
+      POSTGRES_PASSWORD: mento
+      POSTGRES_DB: mento
+    ports:
+      - "5432:5432"
+    volumes:
+      - mento_pg_local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mento -d mento"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: mento-redis-local
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - mento_redis_local:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  mento_pg_local:
+  mento_redis_local:
