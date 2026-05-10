@@ -10,6 +10,8 @@ import { ChatModule } from './modules/chat/chat.module'
 import { AssignmentsModule } from './modules/assignments/assignments.module'
 import { AdminModule } from './modules/admin/admin.module'
 import { OnboardingModule } from './modules/onboarding/onboarding.module'
+import { MentorsModule } from './modules/mentors/mentors.module'
+import { ChatRequestsModule } from './modules/chat-requests/chat-requests.module'
 
 @Module({
   imports: [
@@ -39,6 +41,8 @@ import { OnboardingModule } from './modules/onboarding/onboarding.module'
     AssignmentsModule,
     AdminModule,
     OnboardingModule,
+    MentorsModule,
+    ChatRequestsModule,
   ],
 })
 export class AppModule {}

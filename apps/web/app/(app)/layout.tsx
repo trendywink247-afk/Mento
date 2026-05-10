@@ -38,7 +38,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="space-y-1 text-sm">
           {[
             { href: '/dashboard', label: 'Dashboard' },
-            { href: '/chat', label: 'Chat' },
+            { href: '/chat', label: 'Chats' },
+            { href: '/mentors', label: 'Mentors' },
             { href: '/profile', label: 'Profile' },
             ...(user?.role === 'ADMIN' ? [{ href: '/admin', label: 'Admin' }] : []),
           ].map((link) => (

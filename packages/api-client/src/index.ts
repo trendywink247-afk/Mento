@@ -64,6 +64,93 @@ export class ApiClient {
     me: (): Promise<{ user: User; profile: Profile | null }> => this.http.get('me').json(),
   }
 
+  mentors = {
+    list: (filters?: {
+      prelimsCleared?: boolean
+      mainsAttempts?: number
+      interviewAttempted?: boolean
+      language?: string
+      optionalSubject?: string
+      guidanceCategory?: string
+      maxRateInr?: number
+      isVerified?: boolean
+    }): Promise<
+      Array<{
+        userId: string
+        displayHandle: string
+        avatarLetter: AvatarLetter
+        avatarColor: AvatarColor
+        hasPurpleTick: boolean
+        isVerified: boolean
+        isFoundingPartner: boolean
+        prelimsCleared: boolean
+        mainsAttempts: number
+        interviewAttempts: number
+        optionalSubject: string | null
+        guidanceCategories: string[]
+        languages: string[]
+        hourlyRateInr: number
+        rankAchieved: number | null
+      }>
+    > => {
+      const params: Record<string, string | number | boolean> = {}
+      if (filters) {
+        for (const [k, v] of Object.entries(filters)) {
+          if (v !== undefined && v !== null && v !== '') params[k] = v as string | number | boolean
+        }
+      }
+      return this.http.get('mentors', { searchParams: params }).json()
+    },
+
+    detail: (
+      id: string,
+    ): Promise<{
+      userId: string
+      displayHandle: string
+      avatarLetter: AvatarLetter
+      avatarColor: AvatarColor
+      hasPurpleTick: boolean
+      isVerified: boolean
+      isFoundingPartner: boolean
+      prelimsCleared: boolean
+      mainsAttempts: number
+      interviewAttempts: number
+      attemptHistory: unknown
+      rankAchieved: number | null
+      optionalSubject: string | null
+      guidanceCategories: string[]
+      languages: string[]
+      hourlyRateInr: number
+      metrics: { chats: number; mentees: number; sessions: number }
+      reviews: Array<{
+        id: string
+        body: string
+        createdAt: string
+        author: { displayHandle: string; avatarLetter: AvatarLetter; avatarColor: AvatarColor }
+      }>
+    }> => this.http.get(`mentors/${id}`).json(),
+  }
+
+  chatRequests = {
+    create: (mentorId: string, intro: string) =>
+      this.http.post('chat-requests', { json: { mentorId, intro } }).json<{
+        id: string
+        menteeId: string
+        mentorId: string
+        intro: string
+        status: string
+        createdAt: string
+      }>(),
+
+    list: () => this.http.get('chat-requests').json<unknown>(),
+
+    accept: (id: string) => this.http.patch(`chat-requests/${id}/accept`).json<unknown>(),
+
+    decline: (id: string) => this.http.patch(`chat-requests/${id}/decline`).json<unknown>(),
+
+    archive: (id: string) => this.http.patch(`chat-requests/${id}/archive`).json<unknown>(),
+  }
+
   onboarding = {
     pickRole: (sessionId: string, role: Role): Promise<void> =>
       this.http.post('onboarding/role', { json: { sessionId, role } }).then(() => undefined),
