@@ -80,6 +80,48 @@ export class ApiClient {
   }
 
   admin = {
+    listUsers: (filters?: { role?: 'ADMIN' | 'MENTOR' | 'ASPIRANT'; status?: string }) =>
+      this.http
+        .get('admin/users', {
+          searchParams: {
+            ...(filters?.role ? { role: filters.role } : {}),
+            ...(filters?.status ? { status: filters.status } : {}),
+          },
+        })
+        .json<
+          Array<{
+            id: string
+            phone: string | null
+            email: string | null
+            role: 'ADMIN' | 'MENTOR' | 'ASPIRANT'
+            status: string
+            createdAt: string
+            displayName: string | null
+            mentorVerified: boolean
+          }>
+        >(),
+
+    setUserRole: (userId: string, role: 'ADMIN' | 'MENTOR' | 'ASPIRANT') =>
+      this.http.patch(`admin/users/${userId}/role`, { json: { role } }).json(),
+
+    approveMentor: (userId: string) =>
+      this.http.post(`admin/mentors/${userId}/approve`).json(),
+
+    listAuditLogs: (limit = 50) =>
+      this.http
+        .get('admin/audit-logs', { searchParams: { limit } })
+        .json<
+          Array<{
+            id: string
+            actorId: string | null
+            action: string
+            targetType: string | null
+            targetId: string | null
+            metadata: Record<string, unknown> | null
+            createdAt: string
+          }>
+        >(),
+
     createAssignment: (mentorId: string, aspirantId: string) =>
       this.http.post('assignments', { json: { mentorId, aspirantId } }).json<{
         assignment: { id: string; mentorId: string; aspirantId: string; status: string }
