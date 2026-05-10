@@ -19,10 +19,9 @@ function AuthGate() {
   useEffect(() => {
     if (!hydrated) return
     const inAuthGroup = segments[0] === '(auth)'
-    if (!tokens && !inAuthGroup) {
-      router.replace('/(auth)/login')
-    } else if (tokens && inAuthGroup) {
-      router.replace('/(tabs)')
+    const inOnboardingGroup = segments[0] === '(onboarding)'
+    if (!tokens && !inAuthGroup && !inOnboardingGroup) {
+      router.replace('/(onboarding)/role')
     }
   }, [hydrated, segments, tokens, router])
 
@@ -43,6 +42,7 @@ export default function RootLayout() {
           </View>
         ) : (
           <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(onboarding)" />
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(tabs)" />
           </Stack>

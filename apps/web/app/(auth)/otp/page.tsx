@@ -10,6 +10,7 @@ function OtpForm() {
   const router = useRouter()
   const params = useSearchParams()
   const phone = params.get('phone') ?? ''
+  const role = params.get('role') ?? ''
   const setSession = useAuthStore((s) => s.setSession)
 
   const [code, setCode] = useState('')
@@ -32,12 +33,32 @@ function OtpForm() {
     try {
       const session = await getApiClient().auth.verifyOtp(phone, parsed.data)
       setSession(session)
-      router.push('/dashboard')
+
+      // Route based on onboarding state.
+      const state = await getApiClient().onboarding.state().catch(() => null)
+      const dest = nextDestination(state, role)
+      router.push(dest)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code')
     } finally {
       setLoading(false)
     }
+  }
+
+  function nextDestination(
+    state: Awaited<ReturnType<ReturnType<typeof getApiClient>['onboarding']['state']>> | null,
+    rolePick: string,
+  ): string {
+    // If the user picked MENTOR pre-auth, send to mentor onboarding regardless of API role.
+    if (rolePick === 'MENTOR' && (!state || state.role !== 'MENTOR' || !state.mentorOnboardingSubmitted)) {
+      return '/onboarding/mentor'
+    }
+    if (!state || !state.nextStep) return '/dashboard'
+    if (state.nextStep === 'mentee.mirror') return '/onboarding/mirror'
+    if (state.nextStep === 'mentor.journey') return '/onboarding/mentor'
+    if (state.nextStep === 'mentor.credentials') return '/onboarding/mentor#credentials'
+    if (state.nextStep === 'mentor.waiting_verification') return '/onboarding/submitted'
+    return '/dashboard'
   }
 
   return (

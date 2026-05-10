@@ -15,7 +15,7 @@ import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 
 export default function Otp() {
-  const params = useLocalSearchParams<{ phone?: string }>()
+  const params = useLocalSearchParams<{ phone?: string; role?: string }>()
   const phone = params.phone ?? ''
   const setSession = useAuthStore((s) => s.setSession)
   const [code, setCode] = useState('')
@@ -37,6 +37,24 @@ export default function Otp() {
     try {
       const session = await getApiClient().auth.verifyOtp(phone, parsed.data)
       await setSession(session)
+      const state = await getApiClient().onboarding.state().catch(() => null)
+      const rolePick = String(params.role ?? '')
+      if (rolePick === 'MENTOR' && (!state || !state.mentorOnboardingSubmitted)) {
+        router.replace('/(onboarding)/mentor')
+        return
+      }
+      if (state?.nextStep === 'mentee.mirror') {
+        router.replace('/(onboarding)/mirror')
+        return
+      }
+      if (state?.nextStep === 'mentor.journey' || state?.nextStep === 'mentor.credentials') {
+        router.replace('/(onboarding)/mentor')
+        return
+      }
+      if (state?.nextStep === 'mentor.waiting_verification') {
+        router.replace('/(onboarding)/submitted')
+        return
+      }
       router.replace('/(tabs)')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code')

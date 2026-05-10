@@ -3,7 +3,13 @@ import { NextResponse, type NextRequest } from 'next/server'
 const MOBILE_UA = /Android|iPhone|iPod|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i
 
 // Paths that mobile UAs may access (well-known + the redirect destination itself).
-const MOBILE_ALLOWED = ['/get-app', '/.well-known', '/_next', '/favicon.ico']
+const MOBILE_ALLOWED = [
+  '/get-app',
+  '/.well-known',
+  '/_next',
+  '/favicon.ico',
+  '/api',
+]
 
 // Allow search-engine crawlers through so SEO still works.
 const CRAWLER_UA = /Googlebot|Bingbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|Sogou|Exabot|facebot|ia_archiver/i

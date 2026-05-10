@@ -64,6 +64,49 @@ export class ApiClient {
     me: (): Promise<{ user: User; profile: Profile | null }> => this.http.get('me').json(),
   }
 
+  onboarding = {
+    pickRole: (sessionId: string, role: Role): Promise<void> =>
+      this.http.post('onboarding/role', { json: { sessionId, role } }).then(() => undefined),
+
+    trackEvent: (
+      sessionId: string,
+      step: string,
+      metadata?: Record<string, unknown>,
+    ): Promise<void> =>
+      this.http
+        .post('onboarding/event', { json: { sessionId, step, metadata } })
+        .then(() => undefined),
+
+    state: (): Promise<{
+      role: Role
+      mirrorComplete: boolean
+      mentorOnboardingSubmitted: boolean
+      mentorVerified: boolean
+      verificationDocsSubmitted: boolean
+      nextStep: string | null
+    } | null> => this.http.get('onboarding/state').json(),
+
+    submitMirror: (body: {
+      journeyStage: string
+      background?: string
+      knowledge?: Record<string, number>
+      challenges: string[]
+    }) => this.http.post('onboarding/mirror', { json: body }).json(),
+
+    submitMentor: (body: {
+      journeyType: string
+      prelimsCleared: boolean
+      mainsAttempts: number
+      interviewAttempts: number
+      attemptHistory: Array<{ year: number; prelims: boolean; mains: boolean; interview: boolean }>
+      rankAchieved?: number
+      optionalSubject?: string
+      guidanceCategories: string[]
+      languages: string[]
+      hourlyRateInr?: number
+    }) => this.http.post('onboarding/mentor', { json: body }).json(),
+  }
+
   chat = {
     listConversations: (): Promise<ConversationSummary[]> =>
       this.http.get('conversations').json(),

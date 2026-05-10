@@ -9,6 +9,7 @@ import { UsersModule } from './modules/users/users.module'
 import { ChatModule } from './modules/chat/chat.module'
 import { AssignmentsModule } from './modules/assignments/assignments.module'
 import { AdminModule } from './modules/admin/admin.module'
+import { OnboardingModule } from './modules/onboarding/onboarding.module'
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { AdminModule } from './modules/admin/admin.module'
     ChatModule,
     AssignmentsModule,
     AdminModule,
+    OnboardingModule,
   ],
 })
 export class AppModule {}
