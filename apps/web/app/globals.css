@@ -2,41 +2,89 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Mento — B2C light theme.
+ * Slate neutrals (warmer than pure gray, more enterprise than gray-zinc).
+ * Blue-600 primary (trust, calm, broadly recognised across B2C SaaS).
+ * No dark mode for MVP — explicitly light by spec.
+ */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
-    --radius: 0.5rem;
+    /* canvas */
+    --background: 0 0% 100%;                /* #ffffff */
+    --foreground: 222 47% 11%;              /* slate-900 #0f172a */
+
+    /* surfaces */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* primary (trust blue) */
+    --primary: 221 83% 53%;                 /* blue-600 #2563eb */
+    --primary-foreground: 0 0% 100%;
+
+    /* secondary / muted */
+    --secondary: 210 40% 96%;               /* slate-100 */
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 98%;                   /* slate-50 */
+    --muted-foreground: 215 16% 47%;        /* slate-500 */
+
+    /* accent (hover) */
+    --accent: 210 40% 96%;                  /* slate-100 */
+    --accent-foreground: 222 47% 11%;
+
+    /* lines */
+    --border: 214 32% 91%;                  /* slate-200 */
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;                    /* blue-600 */
+
+    /* semantic */
+    --destructive: 0 72% 51%;               /* red-600 #dc2626 */
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 35%;                 /* green-600-ish */
+    --success-foreground: 0 0% 100%;
+    --warning: 28 92% 41%;                  /* amber-600 */
+    --warning-foreground: 0 0% 100%;
+
+    --radius: 0.75rem;                       /* roomy 12px corner — B2C feel */
   }
 
-  .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-  }
+  /* Reserve a hook for future dark mode but it's intentionally unused. */
+  .dark {}
 
   * {
     @apply border-border;
   }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: 'rlig' 1, 'calt' 1;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  button:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer utilities {
+  .shadow-card {
+    box-shadow:
+      0 1px 2px 0 rgb(15 23 42 / 0.04),
+      0 1px 3px 0 rgb(15 23 42 / 0.06);
+  }
+  .shadow-elevated {
+    box-shadow:
+      0 4px 6px -1px rgb(15 23 42 / 0.06),
+      0 2px 4px -2px rgb(15 23 42 / 0.04);
   }
 }
