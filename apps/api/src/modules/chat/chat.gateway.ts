@@ -25,7 +25,20 @@ interface AuthedSocketData {
 }
 type AuthedSocket = Socket & { data: AuthedSocketData }
 
-@WebSocketGateway({ namespace: '/chat', cors: { origin: true, credentials: true } })
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS ?? 'http://localhost:3030,http://localhost:8081').split(',').map((s) => s.trim()).filter(Boolean)
+
+@WebSocketGateway({
+  namespace: '/chat',
+  cors: {
+    origin: (origin, cb) => {
+      // Same-origin / non-browser clients (no Origin header) are allowed.
+      if (!origin) return cb(null, true)
+      if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true)
+      cb(new Error(`CORS: origin ${origin} not allowed`))
+    },
+    credentials: true,
+  },
+})
 export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server!: Server
   private readonly logger = new Logger(ChatGateway.name)

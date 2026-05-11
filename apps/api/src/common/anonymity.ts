@@ -1,4 +1,5 @@
 import { AvatarColor, AvatarLetter, JourneyStage, MentorJourney, Role } from '@prisma/client'
+import { randomInt } from 'crypto'
 
 const HANDLE_PREFIX_BY_LETTER: Record<AvatarLetter, string> = {
   B: 'Aspirant',
@@ -19,8 +20,8 @@ const COLOR_BY_LETTER: Record<AvatarLetter, AvatarColor> = {
 }
 
 export function generateDisplayHandle(letter: AvatarLetter, salt?: string): string {
-  // 4-digit random suffix; pre-check uniqueness at insert time and retry on conflict.
-  const random = Math.floor(1000 + Math.random() * 9000)
+  // 4-digit random suffix from CSPRNG; pre-check uniqueness at insert time and retry on conflict.
+  const random = randomInt(1000, 10_000)
   const seed = salt ? `_${salt.slice(0, 4)}` : ''
   return `${HANDLE_PREFIX_BY_LETTER[letter]}${seed}_${random}`
 }

@@ -63,17 +63,40 @@ export class ChatRequestsService {
   }
 
   async listForUser(userId: string, role: Role) {
-    if (role === Role.MENTOR) {
-      return this.prisma.chatRequest.findMany({
-        where: { mentorId: userId },
-        orderBy: { createdAt: 'desc' },
-        include: { mentee: { include: { profile: true } } },
-      })
-    }
-    return this.prisma.chatRequest.findMany({
-      where: { menteeId: userId },
-      orderBy: { createdAt: 'desc' },
-      include: { mentor: { include: { profile: true } } },
+    const rows = await (role === Role.MENTOR
+      ? this.prisma.chatRequest.findMany({
+          where: { mentorId: userId },
+          orderBy: { createdAt: 'desc' },
+          include: { mentee: { include: { profile: true } } },
+        })
+      : this.prisma.chatRequest.findMany({
+          where: { menteeId: userId },
+          orderBy: { createdAt: 'desc' },
+          include: { mentor: { include: { profile: true } } },
+        }))
+
+    // SECURITY: never return raw User row — strip to anonymous identity.
+    return rows.map((r) => {
+      const cp =
+        role === Role.MENTOR
+          ? (r as typeof r & { mentee: { id: string; profile: { displayHandle: string; avatarLetter: string; avatarColor: string; hasPurpleTick: boolean } | null } }).mentee
+          : (r as typeof r & { mentor: { id: string; profile: { displayHandle: string; avatarLetter: string; avatarColor: string; hasPurpleTick: boolean } | null } }).mentor
+      return {
+        id: r.id,
+        intro: r.intro,
+        status: r.status,
+        createdAt: r.createdAt.toISOString(),
+        respondedAt: r.respondedAt?.toISOString() ?? null,
+        expiresAt: r.expiresAt?.toISOString() ?? null,
+        conversationId: r.conversationId,
+        counterpart: {
+          id: cp.id,
+          displayHandle: cp.profile?.displayHandle ?? `User_${cp.id.slice(0, 4)}`,
+          avatarLetter: cp.profile?.avatarLetter ?? 'B',
+          avatarColor: cp.profile?.avatarColor ?? 'SLATE',
+          hasPurpleTick: cp.profile?.hasPurpleTick ?? false,
+        },
+      }
     })
   }
 

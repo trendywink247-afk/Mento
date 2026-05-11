@@ -2,8 +2,8 @@ import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import { Role, User, UserStatus } from '@prisma/client'
-import { hash, compare } from 'bcryptjs'
 import { v4 as uuidv4 } from 'uuid'
+import { createHmac } from 'crypto'
 import { Redis } from 'ioredis'
 import { PrismaService } from '../../database/prisma.service'
 import { OtpService } from './otp.service'
@@ -58,7 +58,7 @@ export class AuthService {
 
   async refresh(refreshToken: string): Promise<IssueResult> {
     const decoded = await this.verifyRefresh(refreshToken)
-    const tokenHash = await hashRefreshToken(refreshToken)
+    const tokenHash = this.hashRefreshToken(refreshToken)
 
     const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash } })
     if (!stored) {
@@ -87,7 +87,7 @@ export class AuthService {
 
   async logout(refreshToken: string): Promise<void> {
     try {
-      const tokenHash = await hashRefreshToken(refreshToken)
+      const tokenHash = this.hashRefreshToken(refreshToken)
       const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash } })
       if (stored && !stored.revokedAt) {
         await this.prisma.refreshToken.update({
@@ -117,7 +117,7 @@ export class AuthService {
       },
     )
 
-    const tokenHash = await hashRefreshToken(refreshToken)
+    const tokenHash = this.hashRefreshToken(refreshToken)
     await this.prisma.refreshToken.create({
       data: {
         userId: user.id,
@@ -179,6 +179,17 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token')
     }
   }
+
+  /**
+   * Deterministic hash of a refresh token for DB lookup.
+   * HMAC-SHA256 keyed by JWT_REFRESH_SECRET — same plaintext always hashes to the same digest,
+   * unlike bcrypt. Refresh tokens are already high-entropy so a fast hash is correct here.
+   */
+  private hashRefreshToken(token: string): string {
+    const key = this.config.get<string>('JWT_REFRESH_SECRET')
+    if (!key) throw new Error('JWT_REFRESH_SECRET is not configured')
+    return createHmac('sha256', key).update(token).digest('hex')
+  }
 }
 
 function parseTtl(input: string): number {
@@ -199,10 +210,3 @@ function parseTtl(input: string): number {
   }
 }
 
-async function hashRefreshToken(token: string): Promise<string> {
-  // Refresh tokens are short — bcrypt cost 8 is fine and faster on hot path.
-  return hash(token, 8)
-}
-
-// re-export to silence unused import lint when bcrypt.compare is added later
-void compare

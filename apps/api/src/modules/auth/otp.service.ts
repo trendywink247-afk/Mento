@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { compare, hash } from 'bcryptjs'
+import { randomInt } from 'crypto'
 import { PrismaService } from '../../database/prisma.service'
 
 const OTP_TTL_MS = 5 * 60 * 1000
@@ -80,7 +81,8 @@ export class OtpService {
   }
 
   private generate6DigitCode(): string {
-    return String(Math.floor(100000 + Math.random() * 900000))
+    // CSPRNG — Math.random is a Xorshift PRNG and is not appropriate for security tokens.
+    return String(randomInt(100000, 1_000_000))
   }
 
   private async sendViaMsg91(phone: string, code: string): Promise<void> {
