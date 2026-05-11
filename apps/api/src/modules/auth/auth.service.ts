@@ -62,14 +62,22 @@ export class AuthService {
 
     const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash } })
     if (!stored) {
-      // Token reuse — revoke entire family.
+      // Token completely unknown — tampered or pruned. Revoke the family as a safety net.
       await this.prisma.refreshToken.updateMany({
         where: { family: decoded.family, revokedAt: null },
         data: { revokedAt: new Date() },
       })
       throw new UnauthorizedException('Refresh token reuse detected')
     }
-    if (stored.revokedAt) throw new UnauthorizedException('Refresh token revoked')
+    if (stored.revokedAt) {
+      // Replay of a previously-rotated token — classic theft signal.
+      // Revoke the whole family so the attacker's freshly-issued token also stops working.
+      await this.prisma.refreshToken.updateMany({
+        where: { family: stored.family, revokedAt: null },
+        data: { revokedAt: new Date() },
+      })
+      throw new UnauthorizedException('Refresh token reuse detected')
+    }
     if (stored.expiresAt < new Date()) throw new UnauthorizedException('Refresh token expired')
 
     const user = await this.prisma.user.findUnique({ where: { id: stored.userId } })

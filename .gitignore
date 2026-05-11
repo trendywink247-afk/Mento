@@ -35,6 +35,9 @@ yarn-error.log*
 # Testing
 coverage/
 .nyc_output/
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/.playwright/
 
 # OS
 Thumbs.db

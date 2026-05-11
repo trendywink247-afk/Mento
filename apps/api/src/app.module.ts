@@ -23,11 +23,13 @@ import { JournalsModule } from './modules/journals/journals.module'
       global: true,
       useFactory: () => ({ secret: process.env.JWT_ACCESS_SECRET }),
     }),
-    // Global per-IP rate limit. Auth routes get tighter limits in their own controllers.
+    // Global per-IP rate limit.
+    // Realistic for India where many users sit behind shared NAT (campus / college Wi-Fi).
+    // Auth-specific limits live in OtpService (3 unconsumed OTPs/hour per phone).
     ThrottlerModule.forRoot([
-      { name: 'short', ttl: 1_000, limit: 10 },   // burst: 10 req / sec
-      { name: 'medium', ttl: 60_000, limit: 120 }, // 120 req / min
-      { name: 'long', ttl: 3_600_000, limit: 2_000 }, // 2000 req / hour
+      { name: 'short', ttl: 1_000, limit: 30 },         // burst: 30 req / sec
+      { name: 'medium', ttl: 60_000, limit: 600 },      // 600 req / min
+      { name: 'long', ttl: 3_600_000, limit: 10_000 },  // 10k req / hour
     ]),
     LoggerModule.forRoot({
       pinoHttp: {

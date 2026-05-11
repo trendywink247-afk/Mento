@@ -335,5 +335,5 @@ export class ApiClient {
   }
 }
 
-export { createSocketClient } from './socket.js'
-export type { SocketClient } from './socket.js'
+export { createSocketClient } from './socket'
+export type { SocketClient } from './socket'
