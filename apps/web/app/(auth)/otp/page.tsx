@@ -1,10 +1,20 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { otpCodeSchema } from '@mento/validation'
 import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
+import { OtpInput } from '@/components/OtpInput'
+
+const RESEND_SECONDS = 30
+
+function maskPhone(phone: string): string {
+  // +919876543210 → +91 98765 ••••••
+  if (phone.startsWith('+91') && phone.length === 13) {
+    return `+91 ${phone.slice(3, 8)} ••••••`
+  }
+  return phone
+}
 
 function OtpForm() {
   const router = useRouter()
@@ -14,34 +24,37 @@ function OtpForm() {
   const setSession = useAuthStore((s) => s.setSession)
 
   const [code, setCode] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [clearKey, setClearKey] = useState(0)
+  const [countdown, setCountdown] = useState(RESEND_SECONDS)
+  const [resending, setResending] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError(null)
-    const parsed = otpCodeSchema.safeParse(code)
-    if (!parsed.success) {
-      setError('Enter the 6-digit code')
-      return
-    }
-    if (!phone) {
-      setError('Missing phone number; go back to login')
-      return
-    }
-    setLoading(true)
-    try {
-      const session = await getApiClient().auth.verifyOtp(phone, parsed.data)
-      setSession(session)
+  useEffect(() => {
+    startCountdown()
+    return () => stopCountdown()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-      // Route based on onboarding state.
-      const state = await getApiClient().onboarding.state().catch(() => null)
-      const dest = nextDestination(state, role)
-      router.push(dest)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid code')
-    } finally {
-      setLoading(false)
+  function startCountdown() {
+    stopCountdown()
+    setCountdown(RESEND_SECONDS)
+    timerRef.current = setInterval(() => {
+      setCountdown((c) => {
+        if (c <= 1) {
+          stopCountdown()
+          return 0
+        }
+        return c - 1
+      })
+    }, 1000)
+  }
+
+  function stopCountdown() {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
     }
   }
 
@@ -49,7 +62,6 @@ function OtpForm() {
     state: Awaited<ReturnType<ReturnType<typeof getApiClient>['onboarding']['state']>> | null,
     rolePick: string,
   ): string {
-    // If the user picked MENTOR pre-auth, send to mentor onboarding regardless of API role.
     if (rolePick === 'MENTOR' && (!state || state.role !== 'MENTOR' || !state.mentorOnboardingSubmitted)) {
       return '/onboarding/mentor'
     }
@@ -61,38 +73,160 @@ function OtpForm() {
     return '/dashboard'
   }
 
+  const handleVerify = useCallback(async (codeValue: string) => {
+    if (codeValue.length !== 6 || submitting) return
+    if (!phone) {
+      setError('Missing phone number; go back to login.')
+      return
+    }
+    setSubmitting(true)
+    setError(null)
+    try {
+      const session = await getApiClient().auth.verifyOtp(phone, codeValue)
+      setSession(session)
+      const state = await getApiClient().onboarding.state().catch(() => null)
+      router.push(nextDestination(state, role))
+    } catch {
+      setError("Code didn't match. Try again.")
+      setCode('')
+      setClearKey((k) => k + 1)
+    } finally {
+      setSubmitting(false)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phone, role, submitting])
+
+  // Web OTP API — feature-detected, no crash on Safari/Firefox
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!('OTPCredential' in window)) return
+    const controller = new AbortController()
+    ;(async () => {
+      try {
+        const otp = await (navigator.credentials as unknown as {
+          get(opts: { otp: { transport: string[] }; signal: AbortSignal }): Promise<{ code: string } | null>
+        }).get({ otp: { transport: ['sms'] }, signal: controller.signal })
+        if (otp?.code) {
+          const digits = otp.code.replace(/\D/g, '').slice(0, 6)
+          setCode(digits)
+          if (digits.length === 6) {
+            await handleVerify(digits)
+          }
+        }
+      } catch {
+        // Dismissed or unsupported — silently ignore
+      }
+    })()
+    return () => controller.abort()
+  }, [handleVerify])
+
+  async function handleResend() {
+    if (!phone || resending || countdown > 0) return
+    setResending(true)
+    setError(null)
+    try {
+      await getApiClient().auth.requestOtp(phone)
+      startCountdown()
+      setCode('')
+      setClearKey((k) => k + 1)
+    } catch {
+      setError('Could not resend OTP. Please try again.')
+    } finally {
+      setResending(false)
+    }
+  }
+
+  function handleEditPhone() {
+    router.push(`/login?phone=${encodeURIComponent(phone)}`)
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-6">
+      {/* Phone display with edit affordance */}
       <div>
-        <p className="text-sm text-muted-foreground">Enter the 6-digit code we sent to</p>
-        <p className="font-medium">{phone || '(no phone)'}</p>
+        <p className="text-sm text-muted-foreground mb-1">Code sent to</p>
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-foreground">{maskPhone(phone) || '(no phone)'}</span>
+          <button
+            type="button"
+            onClick={handleEditPhone}
+            className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+            aria-label="Edit phone number"
+          >
+            <PencilIcon />
+            Edit
+          </button>
+        </div>
       </div>
-      <input
-        type="text"
-        inputMode="numeric"
-        maxLength={6}
-        value={code}
-        onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-        placeholder="123456"
-        className="w-full rounded-md border bg-background px-3 py-2 text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-ring"
-        autoFocus
-      />
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button
-        type="submit"
-        disabled={loading || code.length !== 6}
-        className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-      >
-        {loading ? 'Verifying…' : 'Verify & sign in'}
-      </button>
+
+      {/* 6-cell OTP input */}
+      <div>
+        <OtpInput
+          key={clearKey}
+          value={code}
+          onChange={setCode}
+          onComplete={handleVerify}
+          disabled={submitting}
+          hasError={!!error}
+        />
+        {error && (
+          <p className="mt-2 text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        )}
+        {submitting && (
+          <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
+            <SpinnerIcon />
+            Verifying…
+          </p>
+        )}
+      </div>
+
+      {/* Submit button (fallback) */}
       <button
         type="button"
-        className="block w-full text-center text-xs text-muted-foreground hover:underline"
-        onClick={() => router.back()}
+        onClick={() => handleVerify(code)}
+        disabled={submitting || code.length !== 6}
+        className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Use a different number
+        {submitting ? 'Verifying…' : 'Verify & sign in'}
       </button>
-    </form>
+
+      {/* Resend countdown */}
+      <div className="text-center">
+        {countdown > 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Resend in <span className="tabular-nums font-medium">{countdown}s</span>
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={resending}
+            className="text-sm text-primary hover:text-primary/80 font-medium transition-colors disabled:opacity-50"
+          >
+            {resending ? 'Sending…' : 'Resend OTP'}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PencilIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+    </svg>
+  )
+}
+
+function SpinnerIcon() {
+  return (
+    <svg className="animate-spin h-3 w-3 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+    </svg>
   )
 }
 

@@ -131,3 +131,19 @@ export const LANGUAGE_OPTIONS = [
   { value: 'bn', label: 'Bengali' },
   { value: 'gu', label: 'Gujarati' },
 ] as const
+
+// Auth flow copy (login + OTP)
+export const AUTH_COPY = {
+  loginLeftPanelQuote: 'We honour the struggle.',
+  loginLeftPanelSub: "Anonymous, peer-led UPSC mentorship.\nWalk with someone who's been there.",
+  googleComingSoon: 'Coming soon',
+  phonePlaceholder: '98765 43210',
+  phoneHint: "We'll send a 6-digit code by SMS.",
+  phoneError: 'Please enter a 10-digit Indian mobile number.',
+  phoneErrorInvalidStart: 'Please enter a valid Indian mobile number (starts with 6–9).',
+  termsText: "I agree to Mento's Terms & Privacy",
+  trustStrip: '🔒 Anonymous · 🛡 Verified mentors · 🇮🇳 Built in India',
+  otpWrongCode: "Code didn't match. Try again.",
+  otpResendLabel: 'Resend OTP',
+  otpResendCountdown: 'Resend in',
+} as const
