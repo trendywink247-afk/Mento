@@ -117,7 +117,7 @@ export default function MirrorPage() {
       {stage === 'reflection' && (
         <Center>
           <h2 className="text-xl font-medium">{COPY.honestReflection}</h2>
-          <Cta onClick={() => setStage('knowledge')}>I'm ready</Cta>
+          <Cta onClick={() => setStage('knowledge')}>I&apos;m ready</Cta>
         </Center>
       )}
 
@@ -157,7 +157,7 @@ export default function MirrorPage() {
             {COPY.privacyNotice}
           </p>
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-          <Cta onClick={submit}>I understand — let's begin</Cta>
+          <Cta onClick={submit}>I understand &mdash; let&apos;s begin</Cta>
         </Center>
       )}
 

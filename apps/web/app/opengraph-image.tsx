@@ -43,7 +43,7 @@ export default function OpengraphImage() {
             marginBottom: 24,
           }}
         >
-          Walk the UPSC path with someone who's been there.
+          {'Walk the UPSC path with someone who’s been there.'}
         </div>
         <div
           style={{

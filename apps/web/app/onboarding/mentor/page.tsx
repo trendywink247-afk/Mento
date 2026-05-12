@@ -159,7 +159,7 @@ export default function MentorOnboardingPage() {
         <div className="space-y-6">
           <div>
             <h2 className="text-xl font-semibold">Where you can guide</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Pick the areas you're comfortable with.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Pick the areas you&apos;re comfortable with.</p>
           </div>
           <ChipPicker
             options={GUIDANCE_CATEGORIES}

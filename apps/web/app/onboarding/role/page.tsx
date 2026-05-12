@@ -35,9 +35,9 @@ export default function RolePickPage() {
             onClick={() => pick('ASPIRANT')}
             className="w-full rounded-2xl border bg-card p-5 text-left transition-colors hover:bg-accent disabled:opacity-50"
           >
-            <p className="text-base font-medium">I'm preparing for UPSC</p>
+            <p className="text-base font-medium">I&apos;m preparing for UPSC</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Find guidance from someone who's walked your path.
+              Find guidance from someone who&apos;s walked your path.
             </p>
           </button>
           <button
@@ -45,9 +45,9 @@ export default function RolePickPage() {
             onClick={() => pick('MENTOR')}
             className="w-full rounded-2xl border bg-card p-5 text-left transition-colors hover:bg-accent disabled:opacity-50"
           >
-            <p className="text-base font-medium">I'd like to mentor</p>
+            <p className="text-base font-medium">I&apos;d like to mentor</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              You've cleared at least one Prelims. Help someone navigate it.
+              You&apos;ve cleared at least one Prelims. Help someone navigate it.
             </p>
           </button>
         </div>

@@ -51,7 +51,7 @@ export default function MentorsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Mentors</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Verified, anonymous mentors who've walked the UPSC path.
+          Verified, anonymous mentors who&apos;ve walked the UPSC path.
         </p>
       </div>
 
