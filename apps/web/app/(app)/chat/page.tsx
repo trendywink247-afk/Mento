@@ -6,6 +6,8 @@ import { Inbox, Clock, Send, Archive } from 'lucide-react'
 import type { ConversationSummary, AvatarLetter, AvatarColor } from '@mento/types'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
+import { ChatConversationSkeleton } from '@/components/skeletons/ChatConversationSkeleton'
+import { EmptyChat } from '@/components/illustrations/EmptyChat'
 
 // ---- Types ----
 
@@ -45,6 +47,7 @@ function formatTime(iso: string) {
 function EmptyAllState() {
   return (
     <div className="rounded-2xl border bg-card p-10 text-center shadow-sm">
+      <EmptyChat className="mx-auto mb-4 h-36 w-auto" />
       <p className="mx-auto max-w-sm text-base font-medium">No conversations yet.</p>
       <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
         Browse mentors and send your first 160-character intro. When a mentor accepts, your
@@ -408,7 +411,17 @@ export default function ChatListPage() {
   if (error) return <p className="text-sm text-red-600">{error}</p>
 
   if (!convs || !requests) {
-    return <p className="text-sm text-muted-foreground">Loading conversations…</p>
+    return (
+      <div className="space-y-4">
+        <div className="h-8 w-32 animate-pulse rounded bg-slate-200" aria-hidden="true" />
+        <div className="h-10 w-full animate-pulse rounded-t border-b bg-slate-100" aria-hidden="true" />
+        <ul className="divide-y rounded-lg border bg-card">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <ChatConversationSkeleton key={i} />
+          ))}
+        </ul>
+      </div>
+    )
   }
 
   const pendingRequests = requests.filter((r) => r.status === 'PENDING')

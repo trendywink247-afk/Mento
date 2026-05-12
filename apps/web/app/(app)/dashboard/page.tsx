@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { Users, BookOpen, MessageSquare, ArrowRight, PenLine, RefreshCw } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth-store'
 import { getApiClient } from '@/lib/api'
+import { DashboardCardSkeleton } from '@/components/skeletons/DashboardCardSkeleton'
+import { EmptyDashboard } from '@/components/illustrations/EmptyDashboard'
 
 // ─── Static data ─────────────────────────────────────────────────────────────
 
@@ -51,18 +53,6 @@ interface JournalSummary {
 
 interface ConversationSummary {
   id: string
-}
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-
-function CardSkeleton() {
-  return (
-    <div className="animate-pulse rounded-2xl border bg-muted/30 p-6">
-      <div className="mb-3 h-4 w-1/3 rounded bg-muted" />
-      <div className="mb-2 h-3 w-2/3 rounded bg-muted" />
-      <div className="h-3 w-1/2 rounded bg-muted" />
-    </div>
-  )
 }
 
 // ─── Dashboard page ───────────────────────────────────────────────────────────
@@ -122,13 +112,31 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Empty state — new user who hasn't started Mirror */}
+      {!loading && !isMirrorComplete && conversationCount === 0 && (journals ?? []).length === 0 && (
+        <div className="rounded-2xl border bg-card p-10 text-center shadow-sm">
+          <EmptyDashboard className="mx-auto mb-4 h-40 w-auto" />
+          <h2 className="text-xl font-semibold tracking-tight">Welcome to Mento.</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
+            You&apos;ve taken the first step. Tell us where you are on your journey so we can
+            connect you with a mentor who truly understands.
+          </p>
+          <Link
+            href="/onboarding/mirror"
+            className="mt-6 inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+          >
+            Begin the Mirror <ArrowRight size={14} />
+          </Link>
+        </div>
+      )}
+
       {/* 3-column next-step cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {loading ? (
           <>
-            <CardSkeleton />
-            <CardSkeleton />
-            <CardSkeleton />
+            <DashboardCardSkeleton />
+            <DashboardCardSkeleton />
+            <DashboardCardSkeleton />
           </>
         ) : (
           <>

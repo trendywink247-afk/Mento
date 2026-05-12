@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/auth-store'
+import { Submitted } from '@/components/illustrations/Submitted'
 
 export default function MentorSubmittedPage() {
   const router = useRouter()
@@ -16,6 +17,7 @@ export default function MentorSubmittedPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-md space-y-6 text-center">
+        <Submitted className="mx-auto h-44 w-auto" />
         <h1 className="text-2xl font-semibold tracking-tight">Thank you.</h1>
         <p className="text-sm leading-relaxed text-muted-foreground">
           Our team will review your details and verify your account within 1-2 business days.

@@ -6,6 +6,7 @@ import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
 import { CategoryIconBadge } from '@/components/journals/category-icons'
 import { relativeTime } from '@/components/journals/relative-time'
+import { JournalCardSkeleton } from '@/components/skeletons/JournalCardSkeleton'
 
 // ─── Category definitions ────────────────────────────────────────────────────
 
@@ -67,10 +68,15 @@ type ExistingJournal = {
 
 export default function JournalsPage() {
   const [existing, setExisting] = useState<ExistingJournal[]>([])
+  const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    getApiClient().journals.list().then(setExisting).catch(() => {})
+    getApiClient()
+      .journals.list()
+      .then(setExisting)
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
   async function open(category: string) {
@@ -135,7 +141,33 @@ export default function JournalsPage() {
       )}
 
       {/* ── Category groups ───────────────────────────────────────────── */}
-      {CATEGORIES.map((group) => {
+      {loading ? (
+        <>
+          {/* Personal hero card skeleton */}
+          <div className="rounded-2xl border bg-muted/20 p-6">
+            <div className="flex items-start gap-4">
+              <div className="h-10 w-10 animate-pulse rounded-xl bg-slate-200 shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-32 animate-pulse rounded bg-slate-200" />
+                <div className="h-3 w-24 animate-pulse rounded bg-slate-200" />
+                <div className="mt-3 h-3 w-3/5 animate-pulse rounded bg-slate-100" />
+              </div>
+            </div>
+          </div>
+          {/* Category grid skeletons */}
+          {(['Prelims', 'Mains'] as const).map((label) => (
+            <section key={label} className="space-y-3">
+              <div className="h-4 w-24 animate-pulse rounded bg-slate-200" />
+              <div className="grid gap-2 md:grid-cols-3">
+                {Array.from({ length: label === 'Prelims' ? 8 : 6 }).map((_, i) => (
+                  <JournalCardSkeleton key={i} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </>
+      ) : null}
+      {!loading && CATEGORIES.map((group) => {
         const activeCount = group.items.filter((it) =>
           existing.some((j) => j.category === it.key && !j.isShared && j.entryCount > 0),
         ).length

@@ -5,6 +5,8 @@ import Link from 'next/link'
 import type { AvatarColor, AvatarLetter } from '@mento/types'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
+import { MentorCardSkeleton } from '@/components/mentors/MentorCardSkeleton'
+import { EmptyMentors } from '@/components/illustrations/EmptyMentors'
 
 type Mentor = {
   userId: string
@@ -63,10 +65,29 @@ export default function MentorsPage() {
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {mentors === null ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <ul className="grid gap-3 md:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <MentorCardSkeleton key={i} />
+          ))}
+        </ul>
       ) : mentors.length === 0 ? (
-        <div className="rounded-lg border bg-muted/30 p-6 text-sm text-muted-foreground">
-          No mentors match your filters yet. Mentors are joining every week.
+        <div className="rounded-2xl border bg-card p-10 text-center shadow-sm">
+          <EmptyMentors className="mx-auto mb-4 h-36 w-auto" />
+          <p className="mx-auto max-w-sm text-base font-medium">No mentors match your filters.</p>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
+            Try clearing the filters — new verified mentors are joining every week.
+          </p>
+          {(verifiedOnly || interviewOnly) && (
+            <button
+              onClick={() => {
+                setVerifiedOnly(false)
+                setInterviewOnly(false)
+              }}
+              className="mt-6 inline-block rounded-md border px-5 py-2 text-sm font-medium hover:bg-accent"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       ) : (
         <ul className="grid gap-3 md:grid-cols-2">

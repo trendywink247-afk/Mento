@@ -7,6 +7,7 @@ import type { AvatarColor, AvatarLetter } from '@mento/types'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
 import { relativeTime } from '@/components/journals/relative-time'
+import { EmptyJournal } from '@/components/illustrations/EmptyJournal'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -80,7 +81,43 @@ export default function JournalPage() {
   }
 
   if (error) return <p className="text-sm text-red-600">{error}</p>
-  if (!journal) return <p className="text-sm text-muted-foreground">Loading…</p>
+  if (!journal) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-6" aria-hidden="true">
+        {/* Breadcrumb skeleton */}
+        <div className="flex items-center gap-2">
+          <div className="h-3 w-14 animate-pulse rounded bg-slate-200" />
+          <div className="h-3 w-3 animate-pulse rounded bg-slate-100" />
+          <div className="h-3 w-20 animate-pulse rounded bg-slate-200" />
+        </div>
+        {/* Title skeleton */}
+        <div className="h-8 w-48 animate-pulse rounded bg-slate-200" />
+        {/* Editor area skeleton */}
+        <div className="rounded-2xl border bg-card p-4">
+          <div className="h-24 w-full animate-pulse rounded bg-slate-100" />
+          <div className="mt-2 flex justify-end">
+            <div className="h-8 w-24 animate-pulse rounded bg-slate-200" />
+          </div>
+        </div>
+        {/* Entry skeletons */}
+        <ul className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <li key={i} className="rounded-2xl border bg-card p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <div className="h-6 w-6 animate-pulse rounded-full bg-slate-200" />
+                <div className="h-3 w-32 animate-pulse rounded bg-slate-200" />
+              </div>
+              <div className="space-y-1.5">
+                <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
+                <div className="h-3 w-5/6 animate-pulse rounded bg-slate-100" />
+                <div className="h-3 w-3/4 animate-pulse rounded bg-slate-100" />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
 
   const categoryLabel = prettyCategory(journal.category)
   const sectionLabel = getSectionLabel(journal.category)
@@ -220,18 +257,27 @@ export default function JournalPage() {
 
 function EmptyState({ canEdit, isShared }: { canEdit: boolean; isShared: boolean }) {
   return (
-    <li className="rounded-2xl border border-dashed bg-muted/20 p-6 text-sm text-muted-foreground">
+    <li className="rounded-2xl border border-dashed bg-muted/10 p-8 text-center">
+      <EmptyJournal className="mx-auto mb-4 h-36 w-auto" />
       {canEdit ? (
         <>
-          <p className="font-medium text-foreground/70">Your first reflection in this category.</p>
-          <p className="mt-1">
-            There's no template. Write what you can't say out loud.
+          <p className="font-semibold text-foreground/80">Your first reflection in this category.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            There&apos;s no template. Write what you can&apos;t say out loud.
           </p>
         </>
       ) : isShared ? (
-        <p>Waiting for both of you to be active.</p>
+        <>
+          <p className="font-medium text-foreground/70">Waiting for both of you to be here.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            This space opens when both of you are active in the conversation.
+          </p>
+        </>
       ) : (
-        <p>No entries yet.</p>
+        <>
+          <p className="font-medium text-foreground/70">Nothing written yet.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Start above when you&apos;re ready.</p>
+        </>
       )}
     </li>
   )
