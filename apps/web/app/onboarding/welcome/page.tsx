@@ -2,15 +2,28 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { COPY } from '@/lib/copy'
+import { useTranslations } from 'next-intl'
 import { FlashSequence } from '@/components/onboarding/FlashSequence'
 
-const ALL_LINES = [...COPY.welcome, ...COPY.notAPlace, COPY.reflection, COPY.brand]
 const INTRO_SEEN_KEY = 'mento.intro_seen'
 
 export default function WelcomeFlashPage() {
   const router = useRouter()
+  const t = useTranslations('onboarding.welcome.lines')
   const [ready, setReady] = useState(false)
+
+  // Build flash lines from i18n messages
+  const ALL_LINES = [
+    t('safe'),
+    t('guidance'),
+    t('yourself'),
+    t('noCompetition'),
+    t('noClassroom'),
+    t('noMaterial'),
+    t('noRace'),
+    t('reflection'),
+    t('brand'),
+  ]
 
   // Check localStorage on mount. Returning users skip the intro automatically.
   useEffect(() => {

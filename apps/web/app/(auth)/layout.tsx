@@ -1,10 +1,12 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { MotionFade, MotionStagger, MotionStaggerItem } from '@/components/motion'
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
+  const t = useTranslations('auth.layout')
   return (
-    <main className="flex min-h-screen bg-muted/30">
+    <main id="main" className="flex min-h-screen bg-muted/30">
       {/* Left panel — visible on md+ only */}
       <div className="hidden md:flex md:flex-1 flex-col justify-center px-16 bg-gradient-to-br from-primary/5 via-primary/3 to-transparent border-r border-border">
         <div className="max-w-sm">
@@ -13,22 +15,23 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               <span className="text-2xl font-bold tracking-tight text-foreground">Mento</span>
             </div>
             <h2 className="text-display-lg font-semibold text-foreground leading-tight mb-4">
-              We honour<br />the struggle.
+              {t('honourStruggle').split('\n').map((line, i) => (
+                <span key={i}>{line}{i === 0 ? <br /> : null}</span>
+              ))}
             </h2>
             <p className="text-base text-muted-foreground leading-relaxed mb-8">
-              Anonymous, peer-led UPSC mentorship.<br />
-              Walk with someone who&apos;s been there.
+              {t('subline')}
             </p>
           </MotionFade>
           <MotionStagger staggerDelay={0.1} initialDelay={0.2}>
             <MotionStaggerItem>
-              <Stat value="10,000+" label="aspirants supported" />
+              <Stat value={t('stat1Value')} label={t('stat1Label')} />
             </MotionStaggerItem>
             <MotionStaggerItem>
-              <Stat value="500+" label="verified mentors" />
+              <Stat value={t('stat2Value')} label={t('stat2Label')} />
             </MotionStaggerItem>
             <MotionStaggerItem>
-              <Stat value="100%" label="anonymous by design" />
+              <Stat value={t('stat3Value')} label={t('stat3Label')} />
             </MotionStaggerItem>
           </MotionStagger>
         </div>
@@ -41,12 +44,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             {/* Mobile-only header */}
             <div className="mb-6 text-center md:hidden">
               <h1 className="text-2xl font-semibold tracking-tight">Mento</h1>
-              <p className="mt-1 text-sm text-muted-foreground">UPSC mentorship</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t('mobileHeader')}</p>
             </div>
             {/* Desktop header — smaller since panel has the big text */}
             <div className="mb-6 hidden md:block">
-              <h1 className="text-xl font-semibold tracking-tight">Sign in</h1>
-              <p className="mt-1 text-sm text-muted-foreground">We&apos;ll send a 6-digit code by SMS.</p>
+              <h1 className="text-xl font-semibold tracking-tight">{t('desktopHeader')}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">{t('desktopSubheader')}</p>
             </div>
             {children}
           </div>

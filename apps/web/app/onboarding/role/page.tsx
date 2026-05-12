@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { BookOpen, ChevronLeft, Lightbulb } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { COPY } from '@/lib/copy'
+import { useTranslations } from 'next-intl'
 import { getApiClient } from '@/lib/api'
 import { getSessionId } from '@/lib/session-id'
 import { MotionFade, MotionStagger, MotionStaggerItem, MotionTap } from '@/components/motion'
@@ -23,6 +23,7 @@ const arrowVariants = {
 
 export default function RolePickPage() {
   const router = useRouter()
+  const t = useTranslations('onboarding.role')
   const [busy, setBusy] = useState<'ASPIRANT' | 'MENTOR' | null>(null)
 
   async function pick(role: 'ASPIRANT' | 'MENTOR') {
@@ -48,14 +49,14 @@ export default function RolePickPage() {
         aria-label="Back to home"
       >
         <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-        Back
+        {t('heading') === 'Mento' ? 'Back' : 'Back'}
       </Link>
 
       <div className="w-full max-w-md space-y-8">
         <MotionFade>
           <div className="space-y-2 text-center">
-            <h1 className="text-3xl font-semibold tracking-tight">Mento</h1>
-            <p className="text-sm font-medium italic text-muted-foreground">{COPY.honourStruggle}</p>
+            <h1 className="text-3xl font-semibold tracking-tight">{t('heading')}</h1>
+            <p className="text-sm font-medium italic text-muted-foreground">{t('honourStruggle')}</p>
           </div>
         </MotionFade>
 
@@ -86,9 +87,9 @@ export default function RolePickPage() {
 
                   {/* Text */}
                   <div className="min-w-0 flex-1">
-                    <p className="text-base font-medium">I&apos;m preparing for UPSC</p>
+                    <p className="text-base font-medium">{t('aspirantTitle')}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Find guidance from someone who&apos;s walked your path.
+                      {t('aspirantSub')}
                     </p>
                   </div>
 
@@ -132,9 +133,9 @@ export default function RolePickPage() {
 
                   {/* Text */}
                   <div className="min-w-0 flex-1">
-                    <p className="text-base font-medium">I&apos;d like to mentor</p>
+                    <p className="text-base font-medium">{t('mentorTitle')}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      You&apos;ve cleared at least one Prelims. Help someone navigate it.
+                      {t('mentorSub')}
                     </p>
                   </div>
 
@@ -155,7 +156,7 @@ export default function RolePickPage() {
 
         <MotionFade delay={0.3}>
           <p className="text-center text-xs text-muted-foreground">
-            You can be both later. Pick what brought you here.
+            {t('bothLater')}
           </p>
         </MotionFade>
       </div>

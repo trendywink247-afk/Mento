@@ -17,33 +17,19 @@ import {
   Settings,
   HelpCircle,
   ChevronUp,
+  Globe,
 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@/lib/auth-store'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { LANGUAGE_OPTIONS } from '@/lib/copy'
 import { reset as analyticsReset } from '@/lib/analytics'
 import * as Sentry from '@sentry/nextjs'
 
-const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
-  { href: '/journals', label: 'Journals', Icon: BookOpen },
-  { href: '/chat', label: 'Chats', Icon: MessageSquare },
-  { href: '/mentors', label: 'Mentors', Icon: Users },
-  { href: '/profile', label: 'Profile', Icon: User },
-]
-
-const PAGE_TITLES: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/journals': 'Journals',
-  '/chat': 'Chats',
-  '/mentors': 'Mentors',
-  '/profile': 'Profile',
-  '/admin': 'Admin',
-}
-
-function getPageTitle(pathname: string): string {
-  for (const [prefix, title] of Object.entries(PAGE_TITLES)) {
+function getPageTitle(pathname: string, titles: Record<string, string>): string {
+  for (const [prefix, title] of Object.entries(titles)) {
     if (pathname.startsWith(prefix)) return title
   }
   return 'Mento'
@@ -52,6 +38,9 @@ function getPageTitle(pathname: string): string {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
+  const t = useTranslations('nav')
+  const tSidebar = useTranslations('sidebar')
+  const tCommon = useTranslations('common')
   const { user, profile, tokens, hasHydrated, clear } = useAuthStore()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -89,18 +78,35 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!hasHydrated) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-        Loading your session&hellip;
+        {tSidebar('loadingSession')}
       </div>
     )
   }
   if (!tokens) return null
 
-  const pageTitle = getPageTitle(pathname ?? '')
+  const NAV_ITEMS_TRANSLATED = [
+    { href: '/dashboard', label: t('dashboard'), Icon: LayoutDashboard },
+    { href: '/journals', label: t('journals'), Icon: BookOpen },
+    { href: '/chat', label: t('chats'), Icon: MessageSquare },
+    { href: '/mentors', label: t('mentors'), Icon: Users },
+    { href: '/profile', label: t('profile'), Icon: User },
+  ]
+
+  const PAGE_TITLES_TRANSLATED: Record<string, string> = {
+    '/dashboard': t('dashboard'),
+    '/journals': t('journals'),
+    '/chat': t('chats'),
+    '/mentors': t('mentors'),
+    '/profile': t('profile'),
+    '/admin': t('admin'),
+  }
+
+  const pageTitle = getPageTitle(pathname ?? '', PAGE_TITLES_TRANSLATED)
   const isAdmin = user?.role === 'ADMIN'
 
   const navItems = [
-    ...NAV_ITEMS,
-    ...(isAdmin ? [{ href: '/admin', label: 'Admin', Icon: Shield }] : []),
+    ...NAV_ITEMS_TRANSLATED,
+    ...(isAdmin ? [{ href: '/admin', label: t('admin'), Icon: Shield }] : []),
   ]
 
   return (
@@ -160,6 +166,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
+        {/* Language switcher */}
+        <div className="border-t px-3 py-2">
+          <LanguageSwitcher label={tSidebar('languageSwitcher')} />
+        </div>
+
         {/* User menu at bottom */}
         <div className="border-t p-3" ref={menuRef}>
           {userMenuOpen && (
@@ -170,7 +181,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-accent"
               >
                 <User size={14} />
-                Profile
+                {t('profile')}
               </Link>
               <button
                 className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-accent"
@@ -192,7 +203,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10"
               >
                 <LogOut size={14} />
-                Sign out
+                {tCommon('signOut')}
               </button>
             </div>
           )}
@@ -255,6 +266,82 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Page content */}
         <main id="main" className="flex-1 overflow-y-auto p-8">{children}</main>
       </div>
+    </div>
+  )
+}
+
+// ---- Language switcher ----
+
+function LanguageSwitcher({ label }: { label: string }) {
+  const tCommon = useTranslations('common')
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  function selectLocale(locale: string) {
+    document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=31536000`
+    window.location.reload()
+    setOpen(false)
+  }
+
+  // Read current locale from cookie
+  const currentLocale =
+    typeof document !== 'undefined'
+      ? document.cookie
+          .split('; ')
+          .find((c) => c.startsWith('NEXT_LOCALE='))
+          ?.split('=')[1] ?? 'en'
+      : 'en'
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+        aria-label={label}
+        aria-expanded={open}
+      >
+        <Globe size={14} />
+        <span>{label}</span>
+      </button>
+
+      {open && (
+        <div className="absolute bottom-full left-0 mb-1 w-48 overflow-hidden rounded-lg border bg-background shadow-lg">
+          {LANGUAGE_OPTIONS.map((lang) => {
+            const isActive = lang.value === currentLocale
+            const isEnglish = lang.value === 'en'
+            return (
+              <button
+                key={lang.value}
+                onClick={() => selectLocale(lang.value)}
+                className={[
+                  'flex w-full items-center justify-between px-3 py-2 text-left text-sm',
+                  isActive
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-foreground hover:bg-accent',
+                ].join(' ')}
+              >
+                <span>{lang.label}</span>
+                {!isEnglish && (
+                  <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase text-muted-foreground">
+                    {tCommon('comingSoon')}
+                  </span>
+                )}
+                {isActive && !(!isEnglish) && (
+                  <span className="ml-2 h-1.5 w-1.5 rounded-full bg-primary" />
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

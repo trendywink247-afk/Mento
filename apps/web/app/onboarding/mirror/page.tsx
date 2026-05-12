@@ -130,6 +130,15 @@ export default function MirrorPage() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-xl flex-col px-6 py-12">
+      {/* Screen-reader live region — announces step changes */}
+      <div
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {progress ? `Mirror step ${progress.current} of ${progress.total}` : ''}
+      </div>
+
       {/* Animated progress bar */}
       {progress && (
         <div className="mb-8 flex items-center justify-between">

@@ -2,21 +2,25 @@
 
 import { useState, useRef, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { getApiClient } from '@/lib/api'
 import { MotionTap } from '@/components/motion'
 
 // 10-digit India mobile number validation (client-side, user-facing)
-function validateIndianPhone(digits: string): string | null {
-  if (digits.length === 0) return 'Please enter your 10-digit mobile number.'
-  if (digits.length < 10) return 'Please enter a 10-digit Indian mobile number.'
-  if (digits.length > 10) return 'Please enter exactly 10 digits.'
-  if (!/^[6-9]\d{9}$/.test(digits)) return 'Please enter a valid Indian mobile number (starts with 6–9).'
+function validateIndianPhone(digits: string, t: ReturnType<typeof useTranslations<'auth.errors'>>): string | null {
+  if (digits.length === 0) return t('phoneEmpty')
+  if (digits.length < 10) return t('phoneTooShort')
+  if (digits.length > 10) return t('phoneTooLong')
+  if (!/^[6-9]\d{9}$/.test(digits)) return t('phoneInvalidStart')
   return null
 }
 
 function LoginForm() {
   const router = useRouter()
   const params = useSearchParams()
+  const t = useTranslations('auth.login')
+  const te = useTranslations('auth.errors')
+
   // If returning from OTP page with ?phone=+91XXXXXXXXXX, pre-fill the 10 digits
   const prefillRaw = params.get('phone') ?? ''
   const prefillDigits = prefillRaw.startsWith('+91') ? prefillRaw.slice(3) : prefillRaw.replace(/^\+\d{0,2}/, '')
@@ -33,10 +37,10 @@ function LoginForm() {
   // Live validation after first invalid submit
   useEffect(() => {
     if (touched && digits.length > 0) {
-      const err = validateIndianPhone(digits)
+      const err = validateIndianPhone(digits, te)
       setError(err)
     }
-  }, [digits, touched])
+  }, [digits, touched, te])
 
   function triggerShake() {
     setShake(true)
@@ -45,7 +49,7 @@ function LoginForm() {
 
   function handleBlur() {
     if (digits.length > 0) {
-      const err = validateIndianPhone(digits)
+      const err = validateIndianPhone(digits, te)
       setError(err)
       setTouched(true)
     }
@@ -54,7 +58,7 @@ function LoginForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setTouched(true)
-    const validationError = validateIndianPhone(digits)
+    const validationError = validateIndianPhone(digits, te)
     if (validationError) {
       setError(validationError)
       triggerShake()
@@ -62,7 +66,7 @@ function LoginForm() {
       return
     }
     if (!agreed) {
-      setError('Please agree to the Terms & Privacy to continue.')
+      setError(te('termsRequired'))
       return
     }
     setError(null)
@@ -73,7 +77,7 @@ function LoginForm() {
       if (res.devCode) setDevCode(res.devCode)
       router.push(`/otp?phone=${encodeURIComponent(phone)}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send OTP. Please try again.')
+      setError(err instanceof Error ? err.message : te('otpSendFailed'))
     } finally {
       setLoading(false)
     }
@@ -98,27 +102,27 @@ function LoginForm() {
           disabled
           className="w-full flex items-center justify-center gap-3 rounded-lg border bg-background px-4 py-2.5 text-sm font-medium text-muted-foreground cursor-not-allowed opacity-60"
           aria-disabled="true"
-          title="Coming soon"
+          title={t('googleComingSoon')}
         >
           <GoogleIcon />
-          Continue with Google
+          {t('continueWithGoogle')}
         </button>
         <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-xs text-background opacity-0 group-hover:opacity-100 transition-opacity">
-          Coming soon
+          {t('googleComingSoon')}
         </span>
       </div>
 
       {/* Divider */}
       <div className="relative flex items-center gap-3">
         <div className="flex-1 border-t border-border" />
-        <span className="text-xs text-muted-foreground">or sign in with phone</span>
+        <span className="text-xs text-muted-foreground">{t('orSignInWithPhone')}</span>
         <div className="flex-1 border-t border-border" />
       </div>
 
       {/* Phone input */}
       <div>
         <label htmlFor="phone" className="mb-1.5 block text-sm font-medium">
-          Mobile number
+          {t('mobileNumberLabel')}
         </label>
         <div
           className={[
@@ -142,7 +146,7 @@ function LoginForm() {
             value={digits}
             onChange={(e) => setDigits(e.target.value.replace(/\D/g, '').slice(0, 10))}
             onBlur={handleBlur}
-            placeholder="98765 43210"
+            placeholder={t('phonePlaceholder')}
             className={inputClasses}
             aria-invalid={hasError}
             aria-describedby={hasError ? 'phone-error' : 'phone-hint'}
@@ -156,12 +160,12 @@ function LoginForm() {
           </p>
         ) : (
           <p id="phone-hint" className="mt-1.5 text-xs text-muted-foreground">
-            We&apos;ll send a 6-digit code by SMS.
+            {t('phoneHint')}
           </p>
         )}
         {devCode && (
           <p className="mt-1 text-xs font-mono text-muted-foreground bg-muted rounded px-2 py-1">
-            Dev OTP: <strong>{devCode}</strong>
+            {t('devOtpLabel')} <strong>{devCode}</strong>
           </p>
         )}
       </div>
@@ -175,23 +179,23 @@ function LoginForm() {
           className="mt-0.5 h-4 w-4 rounded border-border text-primary accent-primary cursor-pointer"
         />
         <span className="text-xs text-muted-foreground leading-relaxed">
-          I agree to Mento&apos;s{' '}
+          {t('termsText')}{' '}
           <a
             href="/terms"
             target="_blank"
             rel="noopener noreferrer"
             className="underline underline-offset-2 hover:text-foreground transition-colors"
           >
-            Terms
+            {t('termsLink')}
           </a>
-          {' '}&amp;{' '}
+          {' '}{t('termsConnector')}{' '}
           <a
             href="/privacy"
             target="_blank"
             rel="noopener noreferrer"
             className="underline underline-offset-2 hover:text-foreground transition-colors"
           >
-            Privacy
+            {t('privacyLink')}
           </a>
         </span>
       </label>
@@ -203,13 +207,13 @@ function LoginForm() {
           disabled={loading || !agreed}
           className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? 'Sending…' : 'Send OTP'}
+          {loading ? t('sending') : t('sendOtp')}
         </button>
       </MotionTap>
 
       {/* Trust strip */}
       <p className="text-center text-[11px] text-muted-foreground/70 pt-1">
-        🔒 Anonymous &nbsp;·&nbsp; 🛡 Verified mentors &nbsp;·&nbsp; 🇮🇳 Built in India
+        {t('trustStrip')}
       </p>
     </form>
   )

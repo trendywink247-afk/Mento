@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { getApiClient } from '@/lib/api'
 import { LANGUAGE_OPTIONS } from '@/lib/copy'
 import { MentorCard, type MentorListItem } from '@/components/mentors/MentorCard'
@@ -57,6 +58,7 @@ function countActiveFilters(f: Filters): number {
 }
 
 export default function MentorsPage() {
+  const t = useTranslations('mentors')
   const [mentors, setMentors] = useState<MentorListItem[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
@@ -134,9 +136,9 @@ export default function MentorsPage() {
     <div className="space-y-6">
       <MotionFade>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Mentors</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Verified, anonymous mentors who&apos;ve walked the UPSC path.
+            {t('subtitle')}
           </p>
         </div>
       </MotionFade>
@@ -144,41 +146,51 @@ export default function MentorsPage() {
       <MotionFade delay={0.05}>
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-[220px] flex-1">
+            <label htmlFor="mentor-search" className="sr-only">
+              Search mentors
+            </label>
             <Search
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
             />
             <input
+              id="mentor-search"
               type="search"
               value={filters.search}
               onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-              placeholder="Search handle, subject, language…"
+              placeholder={t('searchPlaceholder')}
               className="w-full rounded-full border bg-background py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
           <button
             onClick={() => setFiltersOpen((v) => !v)}
+            aria-expanded={filtersOpen}
+            aria-controls="mentor-filters-panel"
             className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
               active > 0 ? 'border-primary bg-primary/5 text-primary' : 'border-input bg-background'
             }`}
           >
             <SlidersHorizontal size={14} />
-            Filters
+            {t('filters')}
             {active > 0 && (
               <span className="rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">
                 {active}
               </span>
             )}
           </button>
+          <label htmlFor="mentor-sort" className="sr-only">
+            Sort mentors
+          </label>
           <select
+            id="mentor-sort"
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
             className="rounded-full border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            <option value="online">Online first</option>
-            <option value="helped">Most helped</option>
-            <option value="rate-asc">Lowest rate</option>
-            <option value="recent">Recently joined</option>
+            <option value="online">{t('sort.onlineFirst')}</option>
+            <option value="helped">{t('sort.mostHelped')}</option>
+            <option value="rate-asc">{t('sort.lowestRate')}</option>
+            <option value="recent">{t('sort.recentlyJoined')}</option>
           </select>
         </div>
       </MotionFade>
@@ -187,19 +199,19 @@ export default function MentorsPage() {
         <div className="flex flex-wrap gap-2">
           {filters.statusPrelimsCleared && (
             <FilterChip
-              label="Prelims cleared"
+              label={t('chips.prelimsCleared')}
               onRemove={() => setFilters({ ...filters, statusPrelimsCleared: false })}
             />
           )}
           {filters.statusMainsWritten && (
             <FilterChip
-              label="Mains written"
+              label={t('chips.mainsWritten')}
               onRemove={() => setFilters({ ...filters, statusMainsWritten: false })}
             />
           )}
           {filters.statusInterviewAttended && (
             <FilterChip
-              label="Interview attended"
+              label={t('chips.interviewAttended')}
               onRemove={() => setFilters({ ...filters, statusInterviewAttended: false })}
             />
           )}
@@ -214,7 +226,7 @@ export default function MentorsPage() {
           ))}
           {filters.optionalSubject.trim() && (
             <FilterChip
-              label={`Optional: ${filters.optionalSubject}`}
+              label={t('chips.optionalPrefix', { subject: filters.optionalSubject })}
               onRemove={() => setFilters({ ...filters, optionalSubject: '' })}
             />
           )}
@@ -228,31 +240,31 @@ export default function MentorsPage() {
             onClick={() => setFilters(EMPTY_FILTERS)}
             className="text-xs text-muted-foreground underline-offset-2 hover:underline"
           >
-            Clear all
+            {t('clearAll')}
           </button>
         </div>
       )}
 
       {filtersOpen && (
         <MotionFade>
-          <div className="space-y-4 rounded-2xl border bg-card p-5">
+          <div id="mentor-filters-panel" className="space-y-4 rounded-2xl border bg-card p-5">
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                UPSC status
+                {t('filterSections.upscStatus')}
               </p>
               <div className="flex flex-wrap gap-2">
                 <CheckChip
-                  label="Prelims cleared"
+                  label={t('chips.prelimsCleared')}
                   value={filters.statusPrelimsCleared}
                   onChange={(v) => setFilters({ ...filters, statusPrelimsCleared: v })}
                 />
                 <CheckChip
-                  label="Mains written"
+                  label={t('chips.mainsWritten')}
                   value={filters.statusMainsWritten}
                   onChange={(v) => setFilters({ ...filters, statusMainsWritten: v })}
                 />
                 <CheckChip
-                  label="Interview attended"
+                  label={t('chips.interviewAttended')}
                   value={filters.statusInterviewAttended}
                   onChange={(v) => setFilters({ ...filters, statusInterviewAttended: v })}
                 />
@@ -260,7 +272,7 @@ export default function MentorsPage() {
             </div>
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Languages
+                {t('filterSections.languages')}
               </p>
               <div className="flex flex-wrap gap-2">
                 {LANGUAGE_OPTIONS.map((l) => (
@@ -281,19 +293,20 @@ export default function MentorsPage() {
               </div>
             </div>
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Optional subject
-              </p>
+              <label htmlFor="filter-optional-subject" className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {t('filterSections.optionalSubject')}
+              </label>
               <input
+                id="filter-optional-subject"
                 value={filters.optionalSubject}
                 onChange={(e) => setFilters({ ...filters, optionalSubject: e.target.value })}
-                placeholder="e.g. Sociology"
+                placeholder={t('optionalSubjectPlaceholder')}
                 className="w-full max-w-sm rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Rate band
+                {t('filterSections.rateBand')}
               </p>
               <div className="flex flex-wrap gap-2">
                 {(['0-300', '300-600', '600-1000', '1000+'] as RateBand[]).map((band) => (
@@ -321,12 +334,12 @@ export default function MentorsPage() {
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border bg-card p-10 text-center">
           <EmptyMentors className="mx-auto h-32 w-auto" />
-          <p className="mt-4 text-base font-medium">No mentors match your filters yet.</p>
+          <p className="mt-4 text-base font-medium">{t('noMatches')}</p>
           <button
             onClick={() => setFilters(EMPTY_FILTERS)}
             className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
           >
-            Clear filters
+            {t('clearFilters')}
           </button>
         </div>
       ) : (
@@ -348,6 +361,7 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
   return (
     <button
       onClick={onRemove}
+      aria-label={`Remove filter: ${label}`}
       className="inline-flex items-center gap-1 rounded-full border bg-primary/5 px-2.5 py-1 text-xs text-primary hover:bg-primary/10"
     >
       {label}
@@ -368,6 +382,7 @@ function CheckChip({
   return (
     <button
       onClick={() => onChange(!value)}
+      aria-pressed={value}
       className={`rounded-full border px-3 py-1 text-xs transition-colors ${
         value ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-background'
       }`}

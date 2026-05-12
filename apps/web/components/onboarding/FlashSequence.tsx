@@ -67,12 +67,7 @@ export function FlashSequence({
       className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-8"
       style={{ background: 'var(--background)' }}
       onClick={advance}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') advance()
-      }}
-      aria-label="Flash introduction. Click or tap to advance."
+      aria-label="Welcome introduction"
     >
       {/* ── Animated background layer ── */}
       {/* Slow-rotating conic gradient overlay */}

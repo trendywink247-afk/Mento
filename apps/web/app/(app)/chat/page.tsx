@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Inbox, Clock, Send, Archive } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import type { ConversationSummary, AvatarLetter, AvatarColor } from '@mento/types'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
@@ -46,14 +47,14 @@ function formatTime(iso: string) {
 // ---- Empty states ----
 
 function EmptyAllState() {
+  const t = useTranslations('chat')
   return (
     <MotionFade>
       <div className="rounded-2xl border bg-card p-10 text-center shadow-sm">
         <EmptyChat className="mx-auto mb-4 h-36 w-auto" />
-        <p className="mx-auto max-w-sm text-base font-medium">No conversations yet.</p>
+        <p className="mx-auto max-w-sm text-base font-medium">{t('emptyAll.heading')}</p>
         <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-          Browse mentors and send your first 160-character intro. When a mentor accepts, your
-          conversation will appear here.
+          {t('emptyAll.body')}
         </p>
         <MotionTap className="mt-6 inline-block">
           <Link
@@ -120,20 +121,43 @@ function ConfirmDialog({
   onConfirm: () => void
   onCancel: () => void
 }) {
+  // Close on Escape key
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onCancel()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onCancel])
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-sm rounded-xl border bg-background p-6 shadow-xl">
-        <p className="text-sm text-foreground">{message}</p>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      aria-hidden="false"
+      onClick={(e) => {
+        // Close when clicking the backdrop
+        if (e.target === e.currentTarget) onCancel()
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-dialog-msg"
+        className="w-full max-w-sm rounded-xl border bg-background p-6 shadow-xl"
+      >
+        <p id="confirm-dialog-msg" className="text-sm text-foreground">{message}</p>
         <div className="mt-5 flex justify-end gap-2">
           <button
             onClick={onCancel}
-            className="rounded-md border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
+            className="rounded-md border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             Cancel
           </button>
           <button
+            // eslint-disable-next-line jsx-a11y/no-autofocus
+            autoFocus
             onClick={onConfirm}
-            className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:opacity-90"
+            className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             Confirm
           </button>
@@ -146,6 +170,7 @@ function ConfirmDialog({
 // ---- Sub-panels ----
 
 function AllTab({ convs }: { convs: ConversationSummary[] }) {
+  const t = useTranslations('chat')
   if (convs.length === 0) return <EmptyAllState />
   return (
     <ul className="divide-y rounded-lg border bg-card">
@@ -168,7 +193,7 @@ function AllTab({ convs }: { convs: ConversationSummary[] }) {
                 </span>
               </div>
               <p className="truncate text-sm text-muted-foreground">
-                {c.lastMessage?.body ?? 'No messages yet'}
+                {c.lastMessage?.body ?? t('noMessages')}
               </p>
             </div>
           </Link>
@@ -381,6 +406,7 @@ function ArchivedTab({
 // ---- Main page ----
 
 export default function ChatListPage() {
+  const t = useTranslations('chat')
   const [convs, setConvs] = useState<ConversationSummary[] | null>(null)
   const [requests, setRequests] = useState<ChatRequest[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -436,24 +462,32 @@ export default function ChatListPage() {
   )
 
   const TABS: { id: Tab; label: string; Icon: React.ElementType; count?: number }[] = [
-    { id: 'all', label: 'All', Icon: Inbox, count: convs.length },
-    { id: 'pending', label: 'Pending', Icon: Clock, count: pendingRequests.length },
-    { id: 'sent', label: 'Sent', Icon: Send, count: sentRequests.length },
-    { id: 'archived', label: 'Archived', Icon: Archive, count: archivedRequests.length },
+    { id: 'all', label: t('tabs.all'), Icon: Inbox, count: convs.length },
+    { id: 'pending', label: t('tabs.pending'), Icon: Clock, count: pendingRequests.length },
+    { id: 'sent', label: t('tabs.sent'), Icon: Send, count: sentRequests.length },
+    { id: 'archived', label: t('tabs.archived'), Icon: Archive, count: archivedRequests.length },
   ]
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Chats</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
 
       {/* Tab bar — sticky within the scrolling main area */}
-      <div className="sticky top-0 z-10 -mx-1 flex gap-1 border-b bg-background pb-0 pt-0">
+      <div
+        role="tablist"
+        aria-label="Chat sections"
+        className="sticky top-0 z-10 -mx-1 flex gap-1 border-b bg-background pb-0 pt-0"
+      >
         {TABS.map(({ id, label, Icon, count }) => (
           <button
             key={id}
+            role="tab"
+            id={`tab-${id}`}
+            aria-selected={tab === id}
+            aria-controls={`tabpanel-${id}`}
             onClick={() => setTab(id)}
             className={[
-              'relative flex items-center gap-1.5 rounded-t px-4 py-2.5 text-sm font-medium transition-colors',
+              'relative flex items-center gap-1.5 rounded-t px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2',
               tab === id
                 ? 'border-b-2 border-primary text-primary'
                 : 'text-muted-foreground hover:text-foreground',
@@ -463,6 +497,7 @@ export default function ChatListPage() {
             {label}
             {count !== undefined && count > 0 && (
               <span
+                aria-label={`${count} items`}
                 className={[
                   'ml-0.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
                   tab === id ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
@@ -476,7 +511,11 @@ export default function ChatListPage() {
       </div>
 
       {/* Tab content */}
-      <div>
+      <div
+        role="tabpanel"
+        id={`tabpanel-${tab}`}
+        aria-labelledby={`tab-${tab}`}
+      >
         {tab === 'all' && <AllTab convs={convs} />}
         {tab === 'pending' && <PendingTab requests={pendingRequests} onAction={load} />}
         {tab === 'sent' && <SentTab requests={sentRequests} onAction={load} />}

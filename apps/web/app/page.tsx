@@ -27,7 +27,7 @@ export default async function HomePage() {
   return (
     <>
       <LandingNav />
-      <main>
+      <main id="main">
         <HeroSection mentorCount={mentors} aspirantCount={aspirants} />
         <ManifestoStrip />
         <HowItWorks />

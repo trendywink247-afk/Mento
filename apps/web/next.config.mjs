@@ -1,3 +1,7 @@
+import createNextIntlPlugin from 'next-intl/plugin'
+
+const withNextIntl = createNextIntlPlugin('./i18n.ts')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -25,15 +29,15 @@ const nextConfig = {
 
 // Wrap with Sentry only when SENTRY_AUTH_TOKEN is provided (CI / production).
 // Without it the build works normally — local dev stays fast and offline-safe.
-let finalConfig = nextConfig
+let wrappedConfig = withNextIntl(nextConfig)
 
 if (process.env.SENTRY_AUTH_TOKEN) {
   const { withSentryConfig } = await import('@sentry/nextjs')
-  finalConfig = withSentryConfig(nextConfig, {
+  wrappedConfig = withSentryConfig(wrappedConfig, {
     silent: true,
     org: process.env.SENTRY_ORG,
     project: process.env.SENTRY_PROJECT,
   })
 }
 
-export default finalConfig
+export default wrappedConfig

@@ -1,0 +1,351 @@
+{
+  "common": {
+    "next": "Next",
+    "back": "Back",
+    "cancel": "Cancel",
+    "save": "Save",
+    "confirm": "Confirm",
+    "loading": "Loading…",
+    "sending": "Sending…",
+    "verifying": "Verifying…",
+    "goToDashboard": "Go to dashboard",
+    "browseMentors": "Browse mentors",
+    "signOut": "Sign out",
+    "profile": "Profile",
+    "settings": "Settings",
+    "help": "Help",
+    "search": "Search",
+    "notifications": "Notifications",
+    "edit": "Edit",
+    "accept": "Accept",
+    "decline": "Decline",
+    "unarchive": "Unarchive",
+    "cancelRequest": "Cancel request",
+    "comingSoon": "Coming soon"
+  },
+  "brand": {
+    "name": "Mento",
+    "tagline": "Anonymous UPSC mentorship",
+    "madeInIndia": "Made with care, in India.",
+    "copyright": "Mento © 2026"
+  },
+  "landing": {
+    "nav": {
+      "signIn": "Sign in"
+    },
+    "hero": {
+      "eyebrow": "Anonymous. Peer-led. Human.",
+      "headline": "Walk the UPSC path with someone who’s been there.",
+      "subheadline": "Anonymous, verified peer mentors. No coaching pitch.",
+      "ctaGetStarted": "Get started",
+      "ctaHowItWorks": "How it works",
+      "mentorsVerified": "verified mentors",
+      "aspirantsHelped": "aspirants helped",
+      "percentAnonymous": "100% anonymous"
+    },
+    "manifesto": {
+      "quote": "“Anonymity is not a feature — it is the condition that makes honesty possible.”"
+    },
+    "howItWorks": {
+      "heading": "How it works",
+      "subheading": "Three steps. Honest from the first moment.",
+      "step1Title": "Tell us where you are",
+      "step1Desc": "Answer an honest self-assessment. The Mirror helps you see your preparation as it truly is — not as you wish it were.",
+      "step2Title": "Match anonymously",
+      "step2Desc": "We connect you with a verified mentor who has lived your exact stage of the journey. No photos. No real names.",
+      "step3Title": "Walk together",
+      "step3Desc": "Open, honest conversations through shared journals and anonymous chat. One human, sitting with another.",
+      "stepLabel": "Step {number}"
+    },
+    "whatIsNot": {
+      "heading": "What Mento is NOT",
+      "subheading": "Every feature decision passes this filter. We are one human, anonymously, sitting with another.",
+      "notCoaching": "Not a coaching institute",
+      "notContent": "Not a content platform",
+      "notDoubt": "Not a doubt service",
+      "notTherapy": "Not therapy",
+      "notSocial": "Not a social network",
+      "notLeaderboard": "Not a leaderboard"
+    },
+    "faq": {
+      "heading": "Frequently asked questions",
+      "q1": "How does anonymity work?",
+      "a1": "You never see or share a real name or photo. Your profile is a single letter on a coloured tile, plus a randomly generated handle (e.g., Aspirant_8421). Mentors are the same. Our platform is built so that honesty is possible precisely because your identity is never at stake.",
+      "q2": "How are mentors verified?",
+      "a2": "Mentors submit their Mains hall ticket (required) and marks sheet (optional) plus an Aadhaar verification. Our team reviews each application manually before granting access. Verified mentors receive a purple tick on their avatar.",
+      "q3": "What does it cost?",
+      "a3": "Mento has four tiers: FREE (discovery only), BASIC (₹399/mo — open chat + personal journals), PRO (₹599/mo — priority in mentor feed + broadcast requests), and MAX (₹999/mo — 1:1 session credits + verified-mentor priority). Pricing is in validation; your first conversation is always free.",
+      "q4": "Is this a coaching institute?",
+      "a4": "No. Emphatically not. Mento is not coaching, not content, not a doubt-clearing service. We are one human who has walked a hard path turning around to hold a light for the person still walking it. No study material. No recorded lectures. No mock tests.",
+      "q5": "What happens if I share personal details?",
+      "a5": "Both parties are banned immediately, with no refund. This is a hard rule — not a guideline. The platform is anonymous because anonymity is the infrastructure that makes honest conversation possible. Breaking it breaks the platform for everyone.",
+      "q6": "Can I be a mentor and an aspirant at the same time?",
+      "a6": "Yes. If you have cleared Prelims at least once, you are eligible to mentor someone at an earlier stage while still preparing yourself. The platform will show you both a Mentees tab and a Mentors tab so you can operate in both roles."
+    },
+    "finalCta": {
+      "eyebrow": "Ready to begin?",
+      "heading": "Find the mentor you needed.",
+      "subheading": "Someone out there is exactly where you were. You can be the person you needed then.",
+      "cta": "Get started — it’s free",
+      "honourStruggle": "We honour the struggle."
+    },
+    "footer": {
+      "tagline": "Anonymous, peer-led mentorship for the UPSC journey. One human, sitting with another.",
+      "product": "Product",
+      "company": "Company",
+      "legal": "Legal",
+      "mentors": "Mentors",
+      "pricing": "Pricing",
+      "forMentors": "For Mentors",
+      "getApp": "Get the app",
+      "about": "About",
+      "press": "Press",
+      "contact": "Contact",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "refunds": "Refunds",
+      "anonymityPolicy": "Anonymity policy"
+    }
+  },
+  "auth": {
+    "layout": {
+      "honourStruggle": "We honour\nthe struggle.",
+      "subline": "Anonymous, peer-led UPSC mentorship.\nWalk with someone who’s been there.",
+      "stat1Value": "10,000+",
+      "stat1Label": "aspirants supported",
+      "stat2Value": "500+",
+      "stat2Label": "verified mentors",
+      "stat3Value": "100%",
+      "stat3Label": "anonymous by design",
+      "mobileHeader": "UPSC mentorship",
+      "desktopHeader": "Sign in",
+      "desktopSubheader": "We’ll send a 6-digit code by SMS."
+    },
+    "login": {
+      "continueWithGoogle": "Continue with Google",
+      "googleComingSoon": "Coming soon",
+      "orSignInWithPhone": "or sign in with phone",
+      "mobileNumberLabel": "Mobile number",
+      "phonePlaceholder": "98765 43210",
+      "phoneHint": "We’ll send a 6-digit code by SMS.",
+      "termsText": "I agree to Mento’s",
+      "termsLink": "Terms",
+      "privacyLink": "Privacy",
+      "termsConnector": "&",
+      "sendOtp": "Send OTP",
+      "sending": "Sending…",
+      "trustStrip": "🔒 Anonymous · 🛡 Verified mentors · 🇮🇳 Built in India",
+      "devOtpLabel": "Dev OTP:"
+    },
+    "otp": {
+      "codeSentTo": "Code sent to",
+      "editPhoneLabel": "Edit phone number",
+      "editPhone": "Edit",
+      "verifyAndSignIn": "Verify & sign in",
+      "verifying": "Verifying…",
+      "resendIn": "Resend in {seconds}s",
+      "resendOtp": "Resend OTP",
+      "resending": "Sending…"
+    },
+    "errors": {
+      "phoneEmpty": "Please enter your 10-digit mobile number.",
+      "phoneTooShort": "Please enter a 10-digit Indian mobile number.",
+      "phoneTooLong": "Please enter exactly 10 digits.",
+      "phoneInvalidStart": "Please enter a valid Indian mobile number (starts with 6–9).",
+      "termsRequired": "Please agree to the Terms & Privacy to continue.",
+      "otpSendFailed": "Failed to send OTP. Please try again.",
+      "otpWrongCode": "Code didn’t match. Try again.",
+      "otpResendFailed": "Could not resend OTP. Please try again.",
+      "missingPhone": "Missing phone number; go back to login."
+    }
+  },
+  "onboarding": {
+    "role": {
+      "heading": "Mento",
+      "honourStruggle": "We honour the struggle.",
+      "aspirantTitle": "I’m preparing for UPSC",
+      "aspirantSub": "Find guidance from someone who’s walked your path.",
+      "mentorTitle": "I’d like to mentor",
+      "mentorSub": "You’ve cleared at least one Prelims. Help someone navigate it.",
+      "bothLater": "You can be both later. Pick what brought you here."
+    },
+    "mirror": {
+      "title": "The Mirror",
+      "subtitle": "Let’s understand where you truly are in your journey.",
+      "step": "Step {current} of {total}",
+      "begin": "Begin",
+      "ready": "I’m ready",
+      "honestReflection": "Be brutally honest. Grade yourself lower than you think. No one is here to judge you.",
+      "privacyNotice": "Some parts of your prep profile may be shared with mentors to help us match you. Emotional reflections and personal journals stay private."
+    },
+    "mentor": {
+      "philosophy": "You are one of the valuable assets of this country. You studied hard for years. You carry experience, discipline, and wisdom that many aspirants are searching for.",
+      "anonymity": "Anonymous mentorship preferred. Avoid sharing personal details. This is built for guidance and meaningful mentorship.",
+      "selfProtect": "If you are still preparing, protect your own preparation time. Avoid continuous mentoring sessions."
+    },
+    "submitted": {
+      "heading": "Thank you.",
+      "body": "Our team will review your details and verify your account within 1–2 business days. You will see your Mentor profile activate when verification completes.",
+      "honourTime": "We honour the time you’ve given to this preparation.",
+      "goToDashboard": "Go to dashboard"
+    },
+    "welcome": {
+      "lines": {
+        "safe": "This is a safe place.",
+        "guidance": "A place for guidance.",
+        "yourself": "A place to be yourself.",
+        "noCompetition": "Not a place for competition.",
+        "noClassroom": "Not a classroom.",
+        "noMaterial": "Not a material exchange.",
+        "noRace": "Not a race.",
+        "reflection": "A place for self-reflection. A place for self-improvement. A place to understand your preparation honestly.",
+        "brand": "Welcome to Mento."
+      }
+    }
+  },
+  "dashboard": {
+    "welcome": "Welcome, {handle}.",
+    "subline": "It’s good to see you again.",
+    "todayReflection": "Today’s reflection",
+    "openPersonalJournal": "Open Personal journal",
+    "questionsToAskMentor": "Questions to ask a mentor",
+    "sendToMentor": "Send to a mentor",
+    "recentJournalActivity": "Recent journal activity",
+    "findMentor": {
+      "title": "Find a mentor",
+      "description": "Browse anonymous, verified mentors who’ve walked your path.",
+      "link": "Browse mentors"
+    },
+    "mirrorComplete": {
+      "title": "Your Mirror is complete",
+      "description": "Your journey profile is up to date. Mentors can see where you are.",
+      "link": "Update Mirror"
+    },
+    "mirrorIncomplete": {
+      "title": "Complete your Mirror",
+      "description": "Tell us where you are in your journey so mentors can find the right words.",
+      "link": "Continue Mirror"
+    },
+    "conversations": {
+      "titleWithCount": "{count, plural, one {# conversation} other {# conversations}}",
+      "titleEmpty": "Your conversations",
+      "descWithCount": "Pick up where you left off.",
+      "descEmpty": "No conversations yet — say hi to a mentor.",
+      "linkChat": "Go to chat",
+      "linkMentors": "Browse mentors"
+    },
+    "journalEntry": "{count, plural, one {# entry} other {# entries}}"
+  },
+  "journals": {
+    "title": "Journals",
+    "subtitle": "Reflect privately, or together with a mentor.",
+    "startFirstEntry": "Start your first entry",
+    "entriesCount": "{count, plural, one {# entry} other {# entries}}",
+    "activeLabel": "{count} active",
+    "lockedLabel": "Locked",
+    "activeStatusLabel": "Active",
+    "sharedWithMentors": "Shared with mentors",
+    "sharedWith": "With {handle}",
+    "personalQuote": "Where you write down what you can’t tell anyone else. Some pages stay with you. Others, you and your mentor write together.",
+    "firstEntryPrompt": "Your first reflection in this category. There’s no template. Write what you can’t say out loud.",
+    "lockedBanner": "This journal is locked. Your shared history with {handle} is preserved here.",
+    "readOnlyBanner": "Both of you must be active in the chat to write here. Currently read-only.",
+    "categories": {
+      "personal": "Personal",
+      "prelims": "Prelims",
+      "mains": "Mains",
+      "interview": "Interview",
+      "personalJournal": "Personal journal",
+      "polity": "Polity",
+      "history": "History",
+      "geography": "Geography",
+      "economy": "Economy",
+      "environment": "Environment",
+      "sciTech": "Sci-Tech",
+      "csat": "CSAT",
+      "currentAffairs": "Current affairs",
+      "gs1": "GS1",
+      "gs2": "GS2",
+      "gs3": "GS3",
+      "gs4": "GS4",
+      "essay": "Essay",
+      "optional": "Optional",
+      "interviewJournal": "Interview"
+    }
+  },
+  "mentors": {
+    "title": "Mentors",
+    "subtitle": "Verified, anonymous mentors who’ve walked the UPSC path.",
+    "searchPlaceholder": "Search handle, subject, language…",
+    "filters": "Filters",
+    "clearAll": "Clear all",
+    "clearFilters": "Clear filters",
+    "noMatches": "No mentors match your filters yet.",
+    "optionalSubjectPlaceholder": "e.g. Sociology",
+    "sort": {
+      "onlineFirst": "Online first",
+      "mostHelped": "Most helped",
+      "lowestRate": "Lowest rate",
+      "recentlyJoined": "Recently joined"
+    },
+    "filterSections": {
+      "upscStatus": "UPSC status",
+      "languages": "Languages",
+      "optionalSubject": "Optional subject",
+      "rateBand": "Rate band"
+    },
+    "chips": {
+      "prelimsCleared": "Prelims cleared",
+      "mainsWritten": "Mains written",
+      "interviewAttended": "Interview attended",
+      "optionalPrefix": "Optional: {subject}"
+    }
+  },
+  "chat": {
+    "title": "Chats",
+    "tabs": {
+      "all": "All",
+      "pending": "Pending",
+      "sent": "Sent",
+      "archived": "Archived"
+    },
+    "noMessages": "No messages yet",
+    "emptyAll": {
+      "heading": "No conversations yet.",
+      "body": "Browse mentors and send your first 160-character intro. When a mentor accepts, your conversation will appear here."
+    },
+    "emptyPending": {
+      "heading": "No pending requests.",
+      "body": "When an aspirant sends you a chat request, it will appear here for you to accept or decline."
+    },
+    "emptySent": {
+      "heading": "You have not sent any requests yet.",
+      "body": "Find a mentor and send a 160-character intro to get started."
+    },
+    "emptyArchived": {
+      "heading": "Nothing archived yet.",
+      "body": "Declined or cancelled requests will appear here."
+    },
+    "confirmDecline": "Decline this chat request? The aspirant will not be notified.",
+    "confirmCancelRequest": "Cancel this chat request? It will be moved to archived."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "journals": "Journals",
+    "chats": "Chats",
+    "mentors": "Mentors",
+    "profile": "Profile",
+    "admin": "Admin"
+  },
+  "sidebar": {
+    "loadingSession": "Loading your session…",
+    "mentorsOnline": "Mentors online",
+    "language": "Language",
+    "languageSwitcher": "Language"
+  },
+  "errors": {
+    "phoneFormat": "Please enter a 10-digit Indian mobile number",
+    "wrongOtp": "Code didn’t match. Try again.",
+    "failedToLoad": "Failed to load"
+  }
+}

@@ -2,46 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
 import { MotionFade, MotionStagger, MotionStaggerItem, MotionTap } from '@/components/motion'
 import { CategoryIconBadge } from '@/components/journals/category-icons'
 import { relativeTime } from '@/components/journals/relative-time'
-
-const CATEGORIES = [
-  {
-    label: 'Personal',
-    items: [{ key: 'PERSONAL', name: 'Personal journal' }],
-  },
-  {
-    label: 'Prelims',
-    items: [
-      { key: 'PRELIMS_POLITY', name: 'Polity' },
-      { key: 'PRELIMS_HISTORY', name: 'History' },
-      { key: 'PRELIMS_GEOGRAPHY', name: 'Geography' },
-      { key: 'PRELIMS_ECONOMY', name: 'Economy' },
-      { key: 'PRELIMS_ENVIRONMENT', name: 'Environment' },
-      { key: 'PRELIMS_SCI_TECH', name: 'Sci-Tech' },
-      { key: 'PRELIMS_CSAT', name: 'CSAT' },
-      { key: 'PRELIMS_CURRENT_AFFAIRS', name: 'Current affairs' },
-    ],
-  },
-  {
-    label: 'Mains',
-    items: [
-      { key: 'MAINS_GS1', name: 'GS1' },
-      { key: 'MAINS_GS2', name: 'GS2' },
-      { key: 'MAINS_GS3', name: 'GS3' },
-      { key: 'MAINS_GS4', name: 'GS4' },
-      { key: 'MAINS_ESSAY', name: 'Essay' },
-      { key: 'MAINS_OPTIONAL', name: 'Optional' },
-    ],
-  },
-  {
-    label: 'Interview',
-    items: [{ key: 'INTERVIEW', name: 'Interview' }],
-  },
-] as const
 
 type ExistingJournal = {
   id: string
@@ -61,8 +27,44 @@ type ExistingJournal = {
 }
 
 export default function JournalsPage() {
+  const t = useTranslations('journals')
   const [existing, setExisting] = useState<ExistingJournal[]>([])
   const [busy, setBusy] = useState(false)
+
+  const CATEGORIES = [
+    {
+      label: t('categories.personal'),
+      items: [{ key: 'PERSONAL', name: t('categories.personalJournal') }],
+    },
+    {
+      label: t('categories.prelims'),
+      items: [
+        { key: 'PRELIMS_POLITY', name: t('categories.polity') },
+        { key: 'PRELIMS_HISTORY', name: t('categories.history') },
+        { key: 'PRELIMS_GEOGRAPHY', name: t('categories.geography') },
+        { key: 'PRELIMS_ECONOMY', name: t('categories.economy') },
+        { key: 'PRELIMS_ENVIRONMENT', name: t('categories.environment') },
+        { key: 'PRELIMS_SCI_TECH', name: t('categories.sciTech') },
+        { key: 'PRELIMS_CSAT', name: t('categories.csat') },
+        { key: 'PRELIMS_CURRENT_AFFAIRS', name: t('categories.currentAffairs') },
+      ],
+    },
+    {
+      label: t('categories.mains'),
+      items: [
+        { key: 'MAINS_GS1', name: t('categories.gs1') },
+        { key: 'MAINS_GS2', name: t('categories.gs2') },
+        { key: 'MAINS_GS3', name: t('categories.gs3') },
+        { key: 'MAINS_GS4', name: t('categories.gs4') },
+        { key: 'MAINS_ESSAY', name: t('categories.essay') },
+        { key: 'MAINS_OPTIONAL', name: t('categories.optional') },
+      ],
+    },
+    {
+      label: t('categories.interview'),
+      items: [{ key: 'INTERVIEW', name: t('categories.interviewJournal') }],
+    },
+  ]
 
   useEffect(() => {
     getApiClient().journals.list().then(setExisting).catch(() => {})
@@ -84,9 +86,9 @@ export default function JournalsPage() {
     <div className="space-y-8">
       <MotionFade>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Journals</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Reflect privately, or together with a mentor.
+            {t('subtitle')}
           </p>
         </div>
       </MotionFade>
@@ -94,7 +96,7 @@ export default function JournalsPage() {
       {sharedJournals.length > 0 && (
         <MotionFade delay={0.06}>
           <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">Shared with mentors</h2>
+            <h2 className="mb-3 text-sm font-medium text-muted-foreground">{t('sharedWithMentors')}</h2>
             <MotionStagger staggerDelay={0.06} className="grid gap-3 md:grid-cols-2">
               {sharedJournals.map((j) => (
                 <MotionStaggerItem key={j.id}>
@@ -112,10 +114,10 @@ export default function JournalsPage() {
                       )}
                       <div className="flex-1">
                         <p className="text-sm font-medium">
-                          With {j.sharedWith?.displayHandle ?? '—'}
+                          {t('sharedWith', { handle: j.sharedWith?.displayHandle ?? '—' })}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {j.entryCount} entries · {j.isLocked ? 'Locked' : 'Active'}
+                          {t('entriesCount', { count: j.entryCount })} · {j.isLocked ? t('lockedLabel') : t('activeStatusLabel')}
                         </p>
                       </div>
                     </Link>
@@ -139,7 +141,7 @@ export default function JournalsPage() {
                   {group.label} <span className="text-foreground/70">({group.items.length})</span>
                 </h2>
                 {activeInGroup > 0 && (
-                  <span className="text-xs text-muted-foreground">{activeInGroup} active</span>
+                  <span className="text-xs text-muted-foreground">{t('activeLabel', { count: activeInGroup })}</span>
                 )}
               </div>
               <MotionStagger staggerDelay={0.04} className="grid gap-2 md:grid-cols-3">
@@ -161,8 +163,8 @@ export default function JournalsPage() {
                             <p className="text-sm font-medium">{it.name}</p>
                             <p className="mt-0.5 text-xs text-muted-foreground">
                               {exists
-                                ? `${exists.entryCount} ${exists.entryCount === 1 ? 'entry' : 'entries'}`
-                                : 'Start your first entry'}
+                                ? t('entriesCount', { count: exists.entryCount })
+                                : t('startFirstEntry')}
                             </p>
                             {hasEntries && exists && (
                               <p className="mt-0.5 text-[11px] text-muted-foreground/80">

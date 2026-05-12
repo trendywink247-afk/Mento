@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
+import { useTranslations } from 'next-intl'
 import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { OtpInput } from '@/components/OtpInput'
@@ -22,6 +23,8 @@ function maskPhone(phone: string): string {
 function OtpForm() {
   const router = useRouter()
   const params = useSearchParams()
+  const t = useTranslations('auth.otp')
+  const te = useTranslations('auth.errors')
   const phone = params.get('phone') ?? ''
   const role = params.get('role') ?? ''
   const setSession = useAuthStore((s) => s.setSession)
@@ -79,7 +82,7 @@ function OtpForm() {
   const handleVerify = useCallback(async (codeValue: string) => {
     if (codeValue.length !== 6 || submitting) return
     if (!phone) {
-      setError('Missing phone number; go back to login.')
+      setError(te('missingPhone'))
       return
     }
     setSubmitting(true)
@@ -93,14 +96,14 @@ function OtpForm() {
       const state = await getApiClient().onboarding.state().catch(() => null)
       router.push(nextDestination(state, role))
     } catch {
-      setError("Code didn't match. Try again.")
+      setError(te('otpWrongCode'))
       setCode('')
       setClearKey((k) => k + 1)
     } finally {
       setSubmitting(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phone, role, submitting])
+  }, [phone, role, submitting, te])
 
   // Web OTP API — feature-detected, no crash on Safari/Firefox
   useEffect(() => {
@@ -136,7 +139,7 @@ function OtpForm() {
       setCode('')
       setClearKey((k) => k + 1)
     } catch {
-      setError('Could not resend OTP. Please try again.')
+      setError(te('otpResendFailed'))
     } finally {
       setResending(false)
     }
@@ -150,17 +153,17 @@ function OtpForm() {
     <div className="space-y-6">
       {/* Phone display with edit affordance */}
       <div>
-        <p className="text-sm text-muted-foreground mb-1">Code sent to</p>
+        <p className="text-sm text-muted-foreground mb-1">{t('codeSentTo')}</p>
         <div className="flex items-center gap-2">
           <span className="font-semibold text-foreground">{maskPhone(phone) || '(no phone)'}</span>
           <button
             type="button"
             onClick={handleEditPhone}
             className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
-            aria-label="Edit phone number"
+            aria-label={t('editPhoneLabel')}
           >
             <PencilIcon />
-            Edit
+            {t('editPhone')}
           </button>
         </div>
       </div>
@@ -183,7 +186,7 @@ function OtpForm() {
         {submitting && (
           <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
             <SpinnerIcon />
-            Verifying…
+            {t('verifying')}
           </p>
         )}
       </div>
@@ -196,7 +199,7 @@ function OtpForm() {
           disabled={submitting || code.length !== 6}
           className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {submitting ? 'Verifying…' : 'Verify & sign in'}
+          {submitting ? t('verifying') : t('verifyAndSignIn')}
         </button>
       </MotionTap>
 
@@ -204,7 +207,7 @@ function OtpForm() {
       <div className="text-center">
         {countdown > 0 ? (
           <p className="text-sm text-muted-foreground">
-            Resend in <span className="tabular-nums font-medium">{countdown}s</span>
+            {t('resendIn', { seconds: countdown })}
           </p>
         ) : (
           <button
@@ -213,7 +216,7 @@ function OtpForm() {
             disabled={resending}
             className="text-sm text-primary hover:text-primary/80 font-medium transition-colors disabled:opacity-50"
           >
-            {resending ? 'Sending…' : 'Resend OTP'}
+            {resending ? t('resending') : t('resendOtp')}
           </button>
         )}
       </div>
