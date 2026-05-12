@@ -14,10 +14,11 @@ import { Logger } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
 import { createAdapter } from '@socket.io/redis-adapter'
 import { Redis } from 'ioredis'
-import { Role } from '@prisma/client'
+import { Role, UserStatus } from '@prisma/client'
 import { ChatService } from './chat.service'
 import { JournalsService } from '../journals/journals.service'
 import { NotificationsService } from '../notifications/notifications.service'
+import { PrismaService } from '../../database/prisma.service'
 import type { SendMessageDto } from './dto/send-message.dto'
 
 interface AuthedSocketData {
@@ -50,6 +51,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     private readonly chat: ChatService,
     private readonly journals: JournalsService,
     private readonly notifications: NotificationsService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async afterInit(server: Server) {
@@ -83,6 +85,18 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       const payload = await this.jwt.verifyAsync<{ sub: string; role: Role }>(token, {
         secret: this.config.get<string>('JWT_ACCESS_SECRET'),
       })
+
+      // Reject suspended/banned users at socket handshake (not in the message hot-path).
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { status: true },
+      })
+      if (!user || user.status !== UserStatus.ACTIVE) {
+        this.logger.debug(`Disconnecting ${payload.sub}: status=${user?.status ?? 'not found'}`)
+        client.disconnect(true)
+        return
+      }
+
       client.data = { userId: payload.sub, role: payload.role }
       await client.join(`user:${payload.sub}`)
       this.broadcastPresence(payload.sub, 'online')

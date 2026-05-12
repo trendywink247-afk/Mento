@@ -9,6 +9,7 @@ import { useAuthStore } from '@/lib/auth-store'
 import { OtpInput } from '@/components/OtpInput'
 import { identify } from '@/lib/analytics'
 import { MotionTap } from '@/components/motion'
+import { MODERATION_COPY } from '@/lib/copy'
 
 const RESEND_SECONDS = 30
 
@@ -32,6 +33,7 @@ function OtpForm() {
   const [code, setCode] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [suspended, setSuspended] = useState(false)
   const [clearKey, setClearKey] = useState(0)
   const [countdown, setCountdown] = useState(RESEND_SECONDS)
   const [resending, setResending] = useState(false)
@@ -95,7 +97,16 @@ function OtpForm() {
       Sentry.setUser({ id: session.user.id })
       const state = await getApiClient().onboarding.state().catch(() => null)
       router.push(nextDestination(state, role))
-    } catch {
+    } catch (err) {
+      // Check if the error is a 401 "Account suspended" response.
+      const isSuspended =
+        err instanceof Error &&
+        (err.message.toLowerCase().includes('suspended') ||
+          (err as { response?: { status?: number } }).response?.status === 401)
+      if (isSuspended && err instanceof Error && err.message.toLowerCase().includes('suspended')) {
+        setSuspended(true)
+        return
+      }
       setError(te('otpWrongCode'))
       setCode('')
       setClearKey((k) => k + 1)
@@ -147,6 +158,15 @@ function OtpForm() {
 
   function handleEditPhone() {
     router.push(`/login?phone=${encodeURIComponent(phone)}`)
+  }
+
+  // Suspended banner — non-dismissable.
+  if (suspended) {
+    return (
+      <div className="rounded-lg border border-red-300 bg-red-50 px-5 py-4 text-sm text-red-800 dark:border-red-700 dark:bg-red-950 dark:text-red-200">
+        {MODERATION_COPY.accountSuspended}
+      </div>
+    )
   }
 
   return (

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
 const tiles: Array<{ href: string; label: string; description: string }> = [
+  { href: '/admin/moderation', label: 'Moderation', description: 'Triage reported messages — warn, suspend, or ban.' },
   { href: '/admin/users', label: 'Users', description: 'List, change roles, suspend.' },
   {
     href: '/admin/mentors',

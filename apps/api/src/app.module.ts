@@ -21,6 +21,7 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
 import { NotificationsModule } from './modules/notifications/notifications.module'
 import { PushTokensModule } from './modules/push-tokens/push-tokens.module'
 import { SessionsModule } from './modules/sessions/sessions.module'
+import { ModerationModule } from './modules/moderation/moderation.module'
 
 @Module({
   imports: [
@@ -89,6 +90,7 @@ import { SessionsModule } from './modules/sessions/sessions.module'
     NotificationsModule,
     PushTokensModule,
     SessionsModule,
+    ModerationModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
