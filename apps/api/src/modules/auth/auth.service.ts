@@ -1,10 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import { Role, User, UserStatus } from '@prisma/client'
 import { v4 as uuidv4 } from 'uuid'
 import { createHmac } from 'crypto'
 import { Redis } from 'ioredis'
+import { OAuth2Client } from 'google-auth-library'
 import { PrismaService } from '../../database/prisma.service'
 import { OtpService } from './otp.service'
 import { colorForLetter, defaultLetterForRole, generateDisplayHandle } from '../../common/anonymity'
@@ -34,6 +35,58 @@ export class AuthService {
 
   requestOtp(phone: string) {
     return this.otp.issue(phone)
+  }
+
+  async googleSignin(idToken: string): Promise<{ user: User; tokens: IssueResult }> {
+    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID')
+    if (!clientId) {
+      throw new BadRequestException('Google OAuth is not configured on this server')
+    }
+
+    // Verify the ID token against our client ID — rejects tampered tokens.
+    const client = new OAuth2Client(clientId)
+    let googleSub: string
+    let email: string | undefined
+    let emailVerified: boolean
+    try {
+      const ticket = await client.verifyIdToken({ idToken, audience: clientId })
+      const p = ticket.getPayload()
+      if (!p) throw new Error('Empty payload')
+      googleSub = p.sub
+      email = p.email
+      emailVerified = p.email_verified === true
+    } catch {
+      throw new UnauthorizedException('Invalid Google ID token')
+    }
+
+    if (!emailVerified) {
+      throw new UnauthorizedException('Google account email is not verified — use phone OTP instead')
+    }
+
+    // Look up by googleSub first; email is not guaranteed to be stable across Google accounts.
+    let user = await this.prisma.user.findUnique({ where: { googleSub } })
+
+    if (!user) {
+      // New user — create with Aspirant_NNNN handle.
+      const letter = defaultLetterForRole(Role.ASPIRANT)
+      user = await this.createUserWithProfile({
+        googleSub,
+        email: email ?? undefined,
+        role: Role.ASPIRANT,
+        letter,
+      })
+    } else if (user.status === UserStatus.SUSPENDED) {
+      throw new UnauthorizedException('Account suspended')
+    } else if (user.status === UserStatus.PENDING_VERIFICATION) {
+      // Activate if somehow stuck in pending state.
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { status: UserStatus.ACTIVE },
+      })
+    }
+
+    const tokens = await this.issueTokens(user)
+    return { user, tokens }
   }
 
   async verifyOtp(phone: string, code: string): Promise<{ user: User; tokens: IssueResult }> {

@@ -53,6 +53,9 @@ export class ApiClient {
     verifyOtp: (phone: string, code: string): Promise<AuthSession> =>
       this.http.post('auth/otp/verify', { json: { phone, code } }).json(),
 
+    googleSignin: (idToken: string): Promise<AuthSession> =>
+      this.http.post('auth/google', { json: { idToken } }).json(),
+
     refresh: (refreshToken: string): Promise<AuthTokens> =>
       this.http.post('auth/refresh', { json: { refreshToken } }).json(),
 
@@ -234,6 +237,14 @@ export class ApiClient {
     archive: (id: string) => this.http.patch(`chat-requests/${id}/archive`).json<unknown>(),
   }
 
+  pushTokens = {
+    register: (token: string, platform: 'IOS' | 'ANDROID' | 'WEB'): Promise<void> =>
+      this.http.post('push-tokens', { json: { token, platform } }).then(() => undefined),
+
+    unregister: (token: string): Promise<void> =>
+      this.http.delete(`push-tokens/${encodeURIComponent(token)}`).then(() => undefined),
+  }
+
   storage = {
     presignUpload: (body: {
       kind: 'aadhaar' | 'hall_ticket' | 'marks_sheet' | 'avatar'
@@ -298,6 +309,32 @@ export class ApiClient {
       }
     }): Promise<{ status: string; nextStep: string }> =>
       this.http.post('onboarding/mentor/verification', { json: body }).json(),
+  }
+
+  subscriptions = {
+    me: () =>
+      this.http.get('subscriptions/me').json<{
+        tier: 'FREE' | 'BASIC' | 'PRO' | 'MAX'
+        status?: string
+        currentPeriodEnd?: string | null
+        razorpaySubscriptionId?: string | null
+      }>(),
+
+    checkout: (tier: 'BASIC' | 'PRO' | 'MAX') =>
+      this.http.post('subscriptions/checkout', { json: { tier } }).json<{
+        orderId: string
+        checkoutUrl: string
+        simulated: boolean
+        tier: string
+      }>(),
+
+    cancel: () =>
+      this.http.post('subscriptions/cancel').json<{ status: string }>(),
+
+    simulateSuccess: (tier: 'BASIC' | 'PRO' | 'MAX') =>
+      this.http
+        .post('subscriptions/simulate-success', { json: { tier } })
+        .json<{ tier: string; status: string; currentPeriodEnd: string; simulated: boolean }>(),
   }
 
   chat = {

@@ -4,6 +4,7 @@ import { AuthService } from './auth.service'
 import { OtpRequestDto } from './dto/otp-request.dto'
 import { OtpVerifyDto } from './dto/otp-verify.dto'
 import { RefreshDto } from './dto/refresh.dto'
+import { GoogleSigninDto } from './dto/google-signin.dto'
 import { PrismaService } from '../../database/prisma.service'
 
 @Controller('auth')
@@ -32,6 +33,38 @@ export class AuthController {
         id: user.id,
         phone: user.phone,
         email: user.email,
+        role: user.role,
+        status: user.status,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+      },
+      profile: profile
+        ? {
+            userId: profile.userId,
+            displayHandle: profile.displayHandle,
+            avatarLetter: profile.avatarLetter,
+            avatarColor: profile.avatarColor,
+            hasPurpleTick: profile.hasPurpleTick,
+            bio: profile.bio,
+            city: profile.city,
+            state: profile.state,
+            language: profile.language,
+          }
+        : null,
+      tokens,
+    }
+  }
+
+  @Public()
+  @Post('google')
+  @HttpCode(200)
+  async googleSignin(@Body() body: GoogleSigninDto) {
+    const { user, tokens } = await this.auth.googleSignin(body.idToken)
+    const profile = await this.prisma.profile.findUnique({ where: { userId: user.id } })
+    return {
+      user: {
+        id: user.id,
+        // phone and email are admin-only. NEVER expose googleSub.
         role: user.role,
         status: user.status,
         createdAt: user.createdAt.toISOString(),

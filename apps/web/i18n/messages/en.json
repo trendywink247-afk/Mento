@@ -124,6 +124,11 @@
     "login": {
       "continueWithGoogle": "Continue with Google",
       "googleComingSoon": "Coming soon",
+      "googleNotConfigured": "Google sign-in not configured — use phone OTP below.",
+      "googleVerifying": "Verifying with Google…",
+      "googleFailed": "Google sign-in failed. Please try again.",
+      "googleUnverified": "Email not verified — use phone OTP instead.",
+      "googleSuspended": "Account suspended. Contact support.",
       "orSignInWithPhone": "or sign in with phone",
       "mobileNumberLabel": "Mobile number",
       "phonePlaceholder": "98765 43210",
@@ -334,6 +339,8 @@
     "journals": "Journals",
     "chats": "Chats",
     "mentors": "Mentors",
+    "calls": "Calls",
+    "wallet": "Wallet",
     "profile": "Profile",
     "admin": "Admin"
   },
