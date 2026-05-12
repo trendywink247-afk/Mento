@@ -3,8 +3,10 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@mento/types', '@mento/validation', '@mento/api-client', '@mento/hooks'],
   experimental: { typedRoutes: false },
-  // Hide the "N" dev-tools badge that was leaking into screenshots.
-  devIndicators: { position: 'bottom-right', appIsrStatus: false },
+  // Fully suppress the "N" dev-tools badge.
+  // Next 15 added `buildActivity` + `appIsrStatus` sub-keys; setting all
+  // known knobs to false is the safest cross-version approach.
+  devIndicators: { appIsrStatus: false, buildActivity: false },
   // Strong security headers in addition to the api's helmet config.
   async headers() {
     return [
@@ -21,4 +23,17 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+// Wrap with Sentry only when SENTRY_AUTH_TOKEN is provided (CI / production).
+// Without it the build works normally — local dev stays fast and offline-safe.
+let finalConfig = nextConfig
+
+if (process.env.SENTRY_AUTH_TOKEN) {
+  const { withSentryConfig } = await import('@sentry/nextjs')
+  finalConfig = withSentryConfig(nextConfig, {
+    silent: true,
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+  })
+}
+
+export default finalConfig
