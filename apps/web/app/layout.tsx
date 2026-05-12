@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Providers } from '@/components/providers'
+import { AnalyticsRouteTracker } from '@/components/AnalyticsRouteTracker'
 import './globals.css'
 
 // Inter is the de-facto B2C font (Stripe, Linear, Notion).
@@ -51,7 +52,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={inter.variable}>
       <body className="min-h-screen bg-background font-sans antialiased">
-        <Providers>{children}</Providers>
+        <Providers>
+          <AnalyticsRouteTracker />
+          {children}
+        </Providers>
       </body>
     </html>
   )

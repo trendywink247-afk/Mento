@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   BACKGROUND_OPTIONS,
   CHALLENGE_OPTIONS,
@@ -14,12 +15,11 @@ import { useAuthStore } from '@/lib/auth-store'
 import { ConfidenceSlider } from '@/components/onboarding/ConfidenceSlider'
 import { ChipPicker } from '@/components/onboarding/ChipPicker'
 import { getSessionId } from '@/lib/session-id'
+import { MotionTap } from '@/components/motion'
+import { capture } from '@/lib/analytics'
 
 type Stage = 'intro' | 'journey' | 'background' | 'reflection' | 'knowledge' | 'challenges' | 'privacy' | 'submitting'
 
-// Map stage to human step number and total for the progress bar.
-// Beginners: intro(1) journey(2) background(3) reflection(4) knowledge(5) challenges(6) privacy(7)
-// Others:    intro(1) journey(2) reflection(3) knowledge(4) challenges(5) privacy(6)
 function getProgress(stage: Stage, isBeginner: boolean): { current: number; total: number } | null {
   const beginnerOrder: Stage[] = ['intro', 'journey', 'background', 'reflection', 'knowledge', 'challenges', 'privacy']
   const standardOrder: Stage[] = ['intro', 'journey', 'reflection', 'knowledge', 'challenges', 'privacy']
@@ -29,7 +29,6 @@ function getProgress(stage: Stage, isBeginner: boolean): { current: number; tota
   return { current: idx + 1, total: order.length }
 }
 
-// Subject groupings for collapsible accordion sections
 const SUBJECT_GROUPS: { label: string; subjects: readonly string[] }[] = [
   {
     label: 'Polity & History',
@@ -52,6 +51,12 @@ const SUBJECT_GROUPS: { label: string; subjects: readonly string[] }[] = [
     subjects: KNOWLEDGE_SUBJECTS.filter((s) => ['Current Affairs', 'Newspaper Reading'].includes(s)),
   },
 ]
+
+const stepVariants = {
+  initial: { opacity: 0, y: 16 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.28, ease: 'easeOut' } },
+  exit: { opacity: 0, y: -10, transition: { duration: 0.18, ease: 'easeIn' } },
+}
 
 export default function MirrorPage() {
   const router = useRouter()
@@ -77,6 +82,8 @@ export default function MirrorPage() {
     void getApiClient()
       .onboarding.trackEvent(getSessionId(), `mirror.${stage}`)
       .catch(() => {})
+    // Client-side PostHog event — mirrors the server-side audit event.
+    capture('onboarding.mirror.step_changed', { stage })
   }, [stage])
 
   const isBeginner =
@@ -96,6 +103,7 @@ export default function MirrorPage() {
         knowledge,
         challenges,
       })
+      capture('onboarding.mirror.submitted', { journeyStage })
       router.replace('/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save')
@@ -122,7 +130,7 @@ export default function MirrorPage() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-xl flex-col px-6 py-12">
-      {/* Progress bar header */}
+      {/* Animated progress bar */}
       {progress && (
         <div className="mb-8 flex items-center justify-between">
           <div className="flex flex-1 flex-col gap-1.5 pr-4">
@@ -130,9 +138,10 @@ export default function MirrorPage() {
               Step {progress.current} of {progress.total}
             </span>
             <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-500"
-                style={{ width: `${(progress.current / progress.total) * 100}%` }}
+              <motion.div
+                className="h-full rounded-full bg-primary"
+                animate={{ width: `${(progress.current / progress.total) * 100}%` }}
+                transition={{ duration: 0.4, ease: 'easeOut' }}
                 role="progressbar"
                 aria-valuenow={progress.current}
                 aria-valuemin={1}
@@ -153,142 +162,162 @@ export default function MirrorPage() {
         </div>
       )}
 
-      {stage === 'intro' && (
-        <Center>
-          <h1 className="text-3xl font-semibold tracking-tight">{COPY.mirrorTitle}</h1>
-          <p className="mt-2 text-base text-muted-foreground">{COPY.mirrorSubtitle}</p>
-          <Cta onClick={() => setStage('journey')}>Begin</Cta>
-        </Center>
-      )}
+      {/* Crossfading step panels */}
+      <AnimatePresence mode="wait">
+        {stage === 'intro' && (
+          <motion.div key="intro" variants={stepVariants} initial="initial" animate="animate" exit="exit">
+            <Center>
+              <h1 className="text-3xl font-semibold tracking-tight">{COPY.mirrorTitle}</h1>
+              <p className="mt-2 text-base text-muted-foreground">{COPY.mirrorSubtitle}</p>
+              <Cta onClick={() => setStage('journey')}>Begin</Cta>
+            </Center>
+          </motion.div>
+        )}
 
-      {stage === 'journey' && (
-        <div className="space-y-6">
-          <h2 className="text-xl font-semibold">Where are you in your journey?</h2>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            {JOURNEY_STAGES.map((s) => {
-              const isSelected = journeyStage === s.value
-              return (
-                <button
-                  key={s.value}
-                  onClick={() => setJourneyStage(s.value)}
-                  aria-pressed={isSelected}
-                  className={`relative flex w-full items-center justify-between overflow-hidden rounded-lg border p-3 text-left transition-all ${
-                    isSelected
-                      ? 'border-primary bg-primary/5 font-medium shadow-sm'
-                      : 'border-input hover:bg-accent'
-                  }`}
-                >
-                  <span
-                    className={`absolute inset-y-0 left-0 w-[3px] rounded-l transition-all ${
-                      isSelected ? 'bg-primary' : 'bg-transparent'
-                    }`}
-                    aria-hidden="true"
-                  />
-                  <span className="pl-2">{s.label}</span>
-                  {isSelected && (
-                    <span className="ml-2 shrink-0 text-primary" aria-hidden="true">
-                      &#10003;
-                    </span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-          <Cta
-            disabled={!journeyStage}
-            onClick={() => setStage(isBeginner ? 'background' : 'reflection')}
-          >
-            Next
-          </Cta>
-        </div>
-      )}
+        {stage === 'journey' && (
+          <motion.div key="journey" variants={stepVariants} initial="initial" animate="animate" exit="exit">
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold">Where are you in your journey?</h2>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {JOURNEY_STAGES.map((s) => {
+                  const isSelected = journeyStage === s.value
+                  return (
+                    <MotionTap key={s.value}>
+                      <button
+                        onClick={() => setJourneyStage(s.value)}
+                        aria-pressed={isSelected}
+                        className={`relative flex w-full items-center justify-between overflow-hidden rounded-lg border p-3 text-left transition-all ${
+                          isSelected
+                            ? 'border-primary bg-primary/5 font-medium shadow-sm'
+                            : 'border-input hover:bg-accent'
+                        }`}
+                      >
+                        <span
+                          className={`absolute inset-y-0 left-0 w-[3px] rounded-l transition-all ${
+                            isSelected ? 'bg-primary' : 'bg-transparent'
+                          }`}
+                          aria-hidden="true"
+                        />
+                        <span className="pl-2">{s.label}</span>
+                        {isSelected && (
+                          <span className="ml-2 shrink-0 text-primary" aria-hidden="true">
+                            &#10003;
+                          </span>
+                        )}
+                      </button>
+                    </MotionTap>
+                  )
+                })}
+              </div>
+              <Cta
+                disabled={!journeyStage}
+                onClick={() => setStage(isBeginner ? 'background' : 'reflection')}
+              >
+                Next
+              </Cta>
+            </div>
+          </motion.div>
+        )}
 
-      {stage === 'background' && (
-        <div className="space-y-6">
-          <h2 className="text-xl font-semibold">How are you preparing?</h2>
-          <ChipPicker
-            options={BACKGROUND_OPTIONS}
-            selected={background ? [background] : []}
-            onChange={(next) => setBackground(next[0] ?? '')}
-            multi={false}
-          />
-          <Cta disabled={!background} onClick={() => setStage('reflection')}>
-            Next
-          </Cta>
-        </div>
-      )}
+        {stage === 'background' && (
+          <motion.div key="background" variants={stepVariants} initial="initial" animate="animate" exit="exit">
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold">How are you preparing?</h2>
+              <ChipPicker
+                options={BACKGROUND_OPTIONS}
+                selected={background ? [background] : []}
+                onChange={(next) => setBackground(next[0] ?? '')}
+                multi={false}
+              />
+              <Cta disabled={!background} onClick={() => setStage('reflection')}>
+                Next
+              </Cta>
+            </div>
+          </motion.div>
+        )}
 
-      {stage === 'reflection' && (
-        <Center>
-          <h2 className="text-xl font-medium">{COPY.honestReflection}</h2>
-          <Cta onClick={() => setStage('knowledge')}>I&apos;m ready</Cta>
-        </Center>
-      )}
+        {stage === 'reflection' && (
+          <motion.div key="reflection" variants={stepVariants} initial="initial" animate="animate" exit="exit">
+            <Center>
+              <h2 className="text-xl font-medium">{COPY.honestReflection}</h2>
+              <Cta onClick={() => setStage('knowledge')}>I&apos;m ready</Cta>
+            </Center>
+          </motion.div>
+        )}
 
-      {stage === 'knowledge' && (
-        <div className="space-y-6">
-          <h2 className="text-xl font-semibold">How comfortable are you with each subject?</h2>
-          <p className="text-sm text-muted-foreground">
-            There&apos;s no right answer. Lower is safer &mdash; we&apos;ll show you what to study, not judge you.
-          </p>
-          <div className="space-y-3">
-            {SUBJECT_GROUPS.map((group, groupIdx) => (
-              <details key={group.label} open={groupIdx === 0} className="group">
-                <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-input px-4 py-3 hover:bg-accent">
-                  <span className="text-sm font-medium">{group.label}</span>
-                  <span className="text-xs text-muted-foreground group-open:rotate-180">
-                    &#9660;
-                  </span>
-                </summary>
-                <div className="mt-2 space-y-4 px-1 pb-2">
-                  {group.subjects.map((s) => (
-                    <ConfidenceSlider
-                      key={s}
-                      label={s}
-                      value={knowledge[s] ?? 0}
-                      onChange={(v) => setKnowledge({ ...knowledge, [s]: v })}
-                    />
-                  ))}
-                </div>
-              </details>
-            ))}
-          </div>
-          <Cta onClick={() => setStage('challenges')}>Next</Cta>
-        </div>
-      )}
+        {stage === 'knowledge' && (
+          <motion.div key="knowledge" variants={stepVariants} initial="initial" animate="animate" exit="exit">
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold">How comfortable are you with each subject?</h2>
+              <p className="text-sm text-muted-foreground">
+                There&apos;s no right answer. Lower is safer &mdash; we&apos;ll show you what to study, not judge you.
+              </p>
+              <div className="space-y-3">
+                {SUBJECT_GROUPS.map((group, groupIdx) => (
+                  <details key={group.label} open={groupIdx === 0} className="group">
+                    <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-input px-4 py-3 hover:bg-accent">
+                      <span className="text-sm font-medium">{group.label}</span>
+                      <span className="text-xs text-muted-foreground group-open:rotate-180">
+                        &#9660;
+                      </span>
+                    </summary>
+                    <div className="mt-2 space-y-4 px-1 pb-2">
+                      {group.subjects.map((s) => (
+                        <ConfidenceSlider
+                          key={s}
+                          label={s}
+                          value={knowledge[s] ?? 0}
+                          onChange={(v) => setKnowledge({ ...knowledge, [s]: v })}
+                        />
+                      ))}
+                    </div>
+                  </details>
+                ))}
+              </div>
+              <Cta onClick={() => setStage('challenges')}>Next</Cta>
+            </div>
+          </motion.div>
+        )}
 
-      {stage === 'challenges' && (
-        <div className="space-y-6">
-          <h2 className="text-xl font-semibold">What gets in your way most?</h2>
-          <ChipPicker
-            options={CHALLENGE_OPTIONS}
-            selected={challenges}
-            onChange={setChallenges}
-            showCount
-            gridCols
-          />
-          <Cta disabled={challenges.length === 0} onClick={() => setStage('privacy')}>
-            Next
-          </Cta>
-        </div>
-      )}
+        {stage === 'challenges' && (
+          <motion.div key="challenges" variants={stepVariants} initial="initial" animate="animate" exit="exit">
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold">What gets in your way most?</h2>
+              <ChipPicker
+                options={CHALLENGE_OPTIONS}
+                selected={challenges}
+                onChange={setChallenges}
+                showCount
+                gridCols
+              />
+              <Cta disabled={challenges.length === 0} onClick={() => setStage('privacy')}>
+                Next
+              </Cta>
+            </div>
+          </motion.div>
+        )}
 
-      {stage === 'privacy' && (
-        <Center>
-          <h2 className="text-xl font-medium">A note on privacy</h2>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            {COPY.privacyNotice}
-          </p>
-          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-          <Cta onClick={submit}>I understand &mdash; let&apos;s begin</Cta>
-        </Center>
-      )}
+        {stage === 'privacy' && (
+          <motion.div key="privacy" variants={stepVariants} initial="initial" animate="animate" exit="exit">
+            <Center>
+              <h2 className="text-xl font-medium">A note on privacy</h2>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                {COPY.privacyNotice}
+              </p>
+              {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+              <Cta onClick={submit}>I understand &mdash; let&apos;s begin</Cta>
+            </Center>
+          </motion.div>
+        )}
 
-      {stage === 'submitting' && (
-        <Center>
-          <p className="text-sm text-muted-foreground">Saving your reflection...</p>
-        </Center>
-      )}
+        {stage === 'submitting' && (
+          <motion.div key="submitting" variants={stepVariants} initial="initial" animate="animate" exit="exit">
+            <Center>
+              <p className="text-sm text-muted-foreground">Saving your reflection...</p>
+            </Center>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -307,12 +336,14 @@ function Cta({
   disabled?: boolean
 }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="mt-6 w-full rounded-md bg-primary px-4 py-3 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-    >
-      {children}
-    </button>
+    <MotionTap disabled={disabled} className="mt-6 block">
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        className="w-full rounded-md bg-primary px-4 py-3 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+      >
+        {children}
+      </button>
+    </MotionTap>
   )
 }

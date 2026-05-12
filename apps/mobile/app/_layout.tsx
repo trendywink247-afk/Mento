@@ -5,7 +5,29 @@ import { useEffect } from 'react'
 import { ActivityIndicator, View } from 'react-native'
 import { Providers } from '@/components/providers'
 import { useAuthStore } from '@/lib/auth-store'
+import { initAnalytics } from '@/lib/analytics'
 import '../global.css'
+
+// Initialise PostHog at module level so events during early startup are captured.
+// No-op when EXPO_PUBLIC_POSTHOG_KEY is absent.
+initAnalytics()
+
+// Initialise Sentry (native crashes + JS errors).
+// We use require() to avoid a dynamic-import-in-module-scope issue with TSC.
+// No-op when EXPO_PUBLIC_SENTRY_DSN is absent.
+if (process.env.EXPO_PUBLIC_SENTRY_DSN && process.env.NODE_ENV !== 'test') {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Sentry = require('@sentry/react-native') as typeof import('@sentry/react-native')
+    Sentry.init({
+      dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+      tracesSampleRate: 0.1,
+      enabled: true,
+    })
+  } catch {
+    // Swallow — Sentry native module unavailable in some build configs.
+  }
+}
 
 function AuthGate() {
   const segments = useSegments()

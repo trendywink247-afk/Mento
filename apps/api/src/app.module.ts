@@ -5,6 +5,7 @@ import { APP_GUARD } from '@nestjs/core'
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
 import { LoggerModule } from 'nestjs-pino'
 import { PrismaModule } from './database/prisma.module'
+import { PostHogModule } from './common/posthog.module'
 import { HealthModule } from './modules/health/health.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { UsersModule } from './modules/users/users.module'
@@ -67,6 +68,7 @@ import { JournalsModule } from './modules/journals/journals.module'
       },
     }),
     PrismaModule,
+    PostHogModule,
     HealthModule,
     AuthModule,
     UsersModule,

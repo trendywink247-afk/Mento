@@ -1,9 +1,18 @@
 import 'reflect-metadata'
+import * as Sentry from '@sentry/node'
 import { NestFactory } from '@nestjs/core'
 import { ValidationPipe } from '@nestjs/common'
 import helmet from 'helmet'
 import { Logger } from 'nestjs-pino'
 import { AppModule } from './app.module'
+
+// Initialise Sentry BEFORE the app is created so all errors (including
+// bootstrap failures) are captured. No-op when SENTRY_DSN_API is unset.
+Sentry.init({
+  dsn: process.env.SENTRY_DSN_API,
+  enabled: !!process.env.SENTRY_DSN_API && process.env.NODE_ENV !== 'test',
+  tracesSampleRate: 0.1,
+})
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true })
@@ -13,8 +22,19 @@ async function bootstrap() {
   // NestJS doesn't expose set('trust proxy') directly via the Adapter type — get
   // the underlying Express instance from the HttpAdapter.
   const httpAdapter = app.getHttpAdapter()
-  const expressApp = httpAdapter.getInstance() as { set?: (k: string, v: unknown) => void }
+  const expressApp = httpAdapter.getInstance() as {
+    set?: (k: string, v: unknown) => void
+    use?: (handler: unknown) => void
+  }
   expressApp.set?.('trust proxy', 1)
+
+  // Wire Sentry's Express error handler so unhandled exceptions flow through.
+  // Must be added AFTER routes are set up (happens inside NestFactory.create).
+  if (process.env.SENTRY_DSN_API && process.env.NODE_ENV !== 'test') {
+    Sentry.setupExpressErrorHandler(
+      expressApp as Parameters<typeof Sentry.setupExpressErrorHandler>[0],
+    )
+  }
 
   // Strict security headers. Caddy adds HSTS at the edge — set it here too as a backstop.
   app.use(

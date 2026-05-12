@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
 import { Role } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
+import { PostHogService } from '../../common/posthog.service'
 import {
   colorForLetter,
   letterForMenteeStage,
@@ -11,7 +12,10 @@ import type { MentorOnboardingSubmitDto } from './dto/mentor-onboarding-submit.d
 
 @Injectable()
 export class OnboardingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly posthog: PostHogService,
+  ) {}
 
   async trackEvent(input: {
     sessionId: string
@@ -26,6 +30,16 @@ export class OnboardingService {
         userId: input.userId,
         metadata: (input.metadata ?? {}) as never,
       },
+    })
+
+    // Mirror to PostHog for funnel analytics.
+    // Use userId when available, otherwise fall back to anonymous sessionId.
+    // NEVER include PII — step and safe metadata only.
+    const distinctId = input.userId ?? `anon:${input.sessionId}`
+    this.posthog.capture(distinctId, `onboarding.${input.step}`, {
+      step: input.step,
+      // Only safe, non-PII metadata keys are forwarded.
+      ...(input.metadata ?? {}),
     })
   }
 

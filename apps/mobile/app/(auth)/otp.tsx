@@ -13,6 +13,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { otpCodeSchema } from '@mento/validation'
 import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
+import { identify } from '@/lib/analytics'
 
 export default function Otp() {
   const params = useLocalSearchParams<{ phone?: string; role?: string }>()
@@ -37,6 +38,18 @@ export default function Otp() {
     try {
       const session = await getApiClient().auth.verifyOtp(phone, parsed.data)
       await setSession(session)
+      // Identify in PostHog — UUID only, no PII.
+      identify(session.user.id, { role: session.user.role })
+      // Set Sentry user context.
+      if (process.env.EXPO_PUBLIC_SENTRY_DSN && process.env.NODE_ENV !== 'test') {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const Sentry = require('@sentry/react-native') as typeof import('@sentry/react-native')
+          Sentry.setUser({ id: session.user.id })
+        } catch {
+          // Sentry native module unavailable in some build configs.
+        }
+      }
       const state = await getApiClient().onboarding.state().catch(() => null)
       const rolePick = String(params.role ?? '')
       if (rolePick === 'MENTOR' && (!state || !state.mentorOnboardingSubmitted)) {

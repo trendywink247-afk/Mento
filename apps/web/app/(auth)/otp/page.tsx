@@ -2,9 +2,12 @@
 
 import { Suspense, useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import * as Sentry from '@sentry/nextjs'
 import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { OtpInput } from '@/components/OtpInput'
+import { identify } from '@/lib/analytics'
+import { MotionTap } from '@/components/motion'
 
 const RESEND_SECONDS = 30
 
@@ -84,6 +87,9 @@ function OtpForm() {
     try {
       const session = await getApiClient().auth.verifyOtp(phone, codeValue)
       setSession(session)
+      // Identify in PostHog and Sentry — UUID only, no PII.
+      identify(session.user.id, { role: session.user.role })
+      Sentry.setUser({ id: session.user.id })
       const state = await getApiClient().onboarding.state().catch(() => null)
       router.push(nextDestination(state, role))
     } catch {
@@ -183,14 +189,16 @@ function OtpForm() {
       </div>
 
       {/* Submit button (fallback) */}
-      <button
-        type="button"
-        onClick={() => handleVerify(code)}
-        disabled={submitting || code.length !== 6}
-        className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {submitting ? 'Verifying…' : 'Verify & sign in'}
-      </button>
+      <MotionTap disabled={submitting || code.length !== 6}>
+        <button
+          type="button"
+          onClick={() => handleVerify(code)}
+          disabled={submitting || code.length !== 6}
+          className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {submitting ? 'Verifying…' : 'Verify & sign in'}
+        </button>
+      </MotionTap>
 
       {/* Resend countdown */}
       <div className="text-center">

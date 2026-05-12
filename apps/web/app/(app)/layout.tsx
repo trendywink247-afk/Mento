@@ -20,6 +20,8 @@ import {
 import { useAuthStore } from '@/lib/auth-store'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
+import { reset as analyticsReset } from '@/lib/analytics'
+import * as Sentry from '@sentry/nextjs'
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
@@ -72,6 +74,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setUserMenuOpen(false)
     if (tokens) {
       await getApiClient().auth.logout(tokens.refreshToken).catch(() => {})
+    }
+    // Reset analytics identity and Sentry user on sign-out.
+    analyticsReset()
+    if (typeof Sentry.setUser === 'function') {
+      Sentry.setUser(null)
     }
     clear()
     router.replace('/login')
