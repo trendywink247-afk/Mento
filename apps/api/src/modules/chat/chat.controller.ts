@@ -1,6 +1,11 @@
-import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common'
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common'
 import { CurrentUser, type JwtUser } from '../auth/decorators/current-user.decorator'
 import { ChatService } from './chat.service'
+
+class ReportMessageDto {
+  reason!: string
+  details?: string
+}
 
 @Controller()
 export class ChatController {
@@ -22,5 +27,14 @@ export class ChatController {
       limit: limit ? Number(limit) : undefined,
       before,
     })
+  }
+
+  @Post('chat/messages/:messageId/report')
+  reportMessage(
+    @CurrentUser() user: JwtUser,
+    @Param('messageId', new ParseUUIDPipe()) messageId: string,
+    @Body() body: ReportMessageDto,
+  ) {
+    return this.chat.reportMessage(messageId, user.sub, body.reason, body.details)
   }
 }

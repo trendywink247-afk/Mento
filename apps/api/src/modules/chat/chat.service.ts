@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { Message, MessageType } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
 
@@ -142,6 +142,28 @@ export class ChatService {
         readAt: new Date(),
       },
     })
+  }
+
+  async reportMessage(messageId: string, reporterId: string, reason: string, details?: string) {
+    const msg = await this.prisma.message.findUnique({ where: { id: messageId } })
+    if (!msg) throw new NotFoundException('Message not found')
+    await this.assertConversationParticipant(msg.conversationId, reporterId)
+    if (msg.senderId === reporterId) throw new BadRequestException('Cannot report your own message')
+
+    // Check for duplicate report by the same user.
+    const existing = await this.prisma.messageReport.findFirst({
+      where: { messageId, reporterId },
+    })
+    if (existing) return { id: existing.id }
+
+    const report = await this.prisma.$transaction(async (tx) => {
+      const r = await tx.messageReport.create({
+        data: { messageId, reporterId, reason: details ? `${reason}: ${details}` : reason },
+      })
+      await tx.message.update({ where: { id: messageId }, data: { isReported: true } })
+      return r
+    })
+    return { id: report.id }
   }
 
   serialize = (m: Message) => ({

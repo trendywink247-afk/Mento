@@ -207,7 +207,25 @@ export class ApiClient {
         createdAt: string
       }>(),
 
-    list: () => this.http.get('chat-requests').json<unknown>(),
+    list: () =>
+      this.http.get('chat-requests').json<
+        Array<{
+          id: string
+          intro: string
+          status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'ARCHIVED' | 'EXPIRED'
+          createdAt: string
+          respondedAt: string | null
+          expiresAt: string | null
+          conversationId: string | null
+          counterpart: {
+            id: string
+            displayHandle: string
+            avatarLetter: AvatarLetter
+            avatarColor: AvatarColor
+            hasPurpleTick: boolean
+          }
+        }>
+      >(),
 
     accept: (id: string) => this.http.patch(`chat-requests/${id}/accept`).json<unknown>(),
 
@@ -274,6 +292,11 @@ export class ApiClient {
             ...(params?.before ? { before: params.before } : {}),
           },
         })
+        .json(),
+
+    reportMessage: (messageId: string, reason: string, details?: string): Promise<{ id: string }> =>
+      this.http
+        .post(`chat/messages/${messageId}/report`, { json: { reason, details } })
         .json(),
   }
 
