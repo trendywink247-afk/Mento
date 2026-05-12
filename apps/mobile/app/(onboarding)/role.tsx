@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Pressable, SafeAreaView, Text, View } from 'react-native'
 import { router } from 'expo-router'
+import { LinearGradient } from 'expo-linear-gradient'
+import { GraduationCap, Star } from 'lucide-react-native'
 import { COPY } from '@/lib/copy'
 import { getApiClient } from '@/lib/api'
 import { getSessionId } from '@/lib/session-id'
@@ -19,33 +21,66 @@ export default function RolePick() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="flex-1 justify-center px-6">
+        {/* Back */}
+        <Pressable
+          onPress={() => router.back()}
+          className="mb-8 self-start"
+          hitSlop={12}
+        >
+          <Text className="text-sm text-muted">← Back</Text>
+        </Pressable>
+
+        {/* Header */}
         <View className="mb-10 items-center">
-          <Text className="text-3xl font-bold tracking-tight">Mento</Text>
+          <Text className="text-3xl font-bold tracking-tight text-foreground">Mento</Text>
           <Text className="mt-2 text-sm text-muted">{COPY.honourStruggle}</Text>
         </View>
 
-        <View className="gap-3">
+        <View className="gap-4">
+          {/* Aspirant card */}
           <Pressable
             disabled={busy !== null}
             onPress={() => pick('ASPIRANT')}
-            className="rounded-2xl border border-gray-200 bg-white p-5 active:bg-gray-50"
+            className="overflow-hidden rounded-2xl"
           >
-            <Text className="text-base font-medium">I'm preparing for UPSC</Text>
-            <Text className="mt-1 text-xs text-muted">
-              Find guidance from someone who's walked your path.
-            </Text>
+            <LinearGradient
+              colors={['#dbeafe', '#eff6ff']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ padding: 20, borderRadius: 16, borderWidth: 1, borderColor: '#bfdbfe' }}
+            >
+              <View className="mb-3 h-12 w-12 items-center justify-center rounded-xl bg-blue-100">
+                <GraduationCap size={24} color="#1d4ed8" strokeWidth={2} />
+              </View>
+              <Text className="text-lg font-semibold text-foreground">I'm preparing for UPSC</Text>
+              <Text className="mt-1.5 text-sm leading-relaxed text-muted">
+                Find guidance from someone who's walked your path.
+              </Text>
+            </LinearGradient>
           </Pressable>
+
+          {/* Mentor card */}
           <Pressable
             disabled={busy !== null}
             onPress={() => pick('MENTOR')}
-            className="rounded-2xl border border-gray-200 bg-white p-5 active:bg-gray-50"
+            className="overflow-hidden rounded-2xl"
           >
-            <Text className="text-base font-medium">I'd like to mentor</Text>
-            <Text className="mt-1 text-xs text-muted">
-              You've cleared at least one Prelims. Help someone navigate it.
-            </Text>
+            <LinearGradient
+              colors={['#ede9fe', '#f5f3ff']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ padding: 20, borderRadius: 16, borderWidth: 1, borderColor: '#ddd6fe' }}
+            >
+              <View className="mb-3 h-12 w-12 items-center justify-center rounded-xl bg-violet-100">
+                <Star size={24} color="#6d28d9" strokeWidth={2} />
+              </View>
+              <Text className="text-lg font-semibold text-foreground">I'd like to mentor</Text>
+              <Text className="mt-1.5 text-sm leading-relaxed text-muted">
+                You've cleared at least one Prelims. Help someone navigate it.
+              </Text>
+            </LinearGradient>
           </Pressable>
         </View>
 

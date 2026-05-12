@@ -15,6 +15,25 @@ interface AttemptYear {
 
 type Stage = 'journey' | 'history' | 'subjects' | 'reach' | 'submitting'
 
+const STAGES: Stage[] = ['journey', 'history', 'subjects', 'reach']
+
+function ProgressBar({ stage }: { stage: Stage }) {
+  const idx = STAGES.indexOf(stage)
+  const progress = idx < 0 ? 1 : (idx + 1) / STAGES.length
+  return (
+    <View style={{ height: 3, backgroundColor: '#e2e8f0', borderRadius: 2 }}>
+      <View
+        style={{
+          height: 3,
+          borderRadius: 2,
+          backgroundColor: '#2563eb',
+          width: `${Math.round(progress * 100)}%`,
+        }}
+      />
+    </View>
+  )
+}
+
 export default function MentorOnboarding() {
   const tokens = useAuthStore((s) => s.tokens)
   const [stage, setStage] = useState<Stage>('journey')
@@ -62,23 +81,41 @@ export default function MentorOnboarding() {
     }
   }
 
+  const showProgress = stage !== 'submitting'
+
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-background">
+      {showProgress && (
+        <View className="px-6 pt-4 pb-1">
+          <ProgressBar stage={stage} />
+        </View>
+      )}
+
       <ScrollView contentContainerStyle={{ padding: 24, flexGrow: 1 }}>
         {stage === 'journey' && (
           <View className="gap-4">
-            <Text className="text-2xl font-bold tracking-tight">Your UPSC journey</Text>
+            <Text className="text-2xl font-bold tracking-tight text-foreground">Your UPSC journey</Text>
             <Text className="text-sm text-muted">Pick the description that fits you best.</Text>
             <View className="gap-2">
               {MENTOR_JOURNEY_OPTIONS.map((o) => (
                 <Pressable
                   key={o.value}
                   onPress={() => setJourneyType(o.value)}
-                  className={`rounded-lg border p-3 ${
-                    journeyType === o.value ? 'border-primary bg-primary/5' : 'border-gray-200'
+                  className={`rounded-xl border p-4 ${
+                    journeyType === o.value
+                      ? 'border-primary bg-blue-50'
+                      : 'border-border bg-white'
                   }`}
                 >
-                  <Text>{o.label}</Text>
+                  <Text
+                    className={
+                      journeyType === o.value
+                        ? 'text-sm font-medium text-primary'
+                        : 'text-sm text-foreground'
+                    }
+                  >
+                    {o.label}
+                  </Text>
                 </Pressable>
               ))}
             </View>
@@ -90,27 +127,61 @@ export default function MentorOnboarding() {
 
         {stage === 'history' && (
           <View className="gap-4">
-            <Text className="text-xl font-semibold">Year-by-year</Text>
+            <Text className="text-xl font-semibold text-foreground">Year-by-year history</Text>
             <Text className="text-sm text-muted">
               Add each year you attempted UPSC. Mentees see this on your profile.
             </Text>
             <View className="gap-3">
               {history.map((h, idx) => (
-                <View key={idx} className="rounded-lg border border-gray-200 p-4">
+                <View
+                  key={idx}
+                  className="rounded-xl border border-border bg-white p-4"
+                >
+                  {/* Year header */}
                   <View className="mb-3 flex-row items-center justify-between">
-                    <TextInput
-                      value={String(h.year)}
-                      onChangeText={(v) => updateYear(idx, { year: Number(v) })}
-                      keyboardType="number-pad"
-                      className="w-20 rounded border border-gray-200 px-2 py-1"
-                    />
-                    <Pressable onPress={() => setHistory(history.filter((_, i) => i !== idx))}>
-                      <Text className="text-xs text-muted">Remove</Text>
-                    </Pressable>
+                    <View className="flex-row items-center gap-2">
+                      <View className="h-8 w-8 items-center justify-center rounded-full bg-primary">
+                        <Text className="text-xs font-bold text-white">{idx + 1}</Text>
+                      </View>
+                      <TextInput
+                        value={String(h.year)}
+                        onChangeText={(v) => updateYear(idx, { year: Number(v) || h.year })}
+                        keyboardType="number-pad"
+                        style={{
+                          width: 70,
+                          borderWidth: 1,
+                          borderColor: '#e2e8f0',
+                          borderRadius: 8,
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          fontSize: 15,
+                          fontWeight: '600',
+                          color: '#0f172a',
+                        }}
+                      />
+                    </View>
+                    {history.length > 1 && (
+                      <Pressable
+                        onPress={() => setHistory(history.filter((_, i) => i !== idx))}
+                        hitSlop={8}
+                      >
+                        <Text className="text-xs text-muted">Remove</Text>
+                      </Pressable>
+                    )}
                   </View>
-                  <View className="flex-row flex-wrap gap-2">
-                    <Toggle label="Prelims" value={h.prelims} onChange={(v) => updateYear(idx, { prelims: v })} />
-                    <Toggle label="Mains" value={h.mains} onChange={(v) => updateYear(idx, { mains: v })} />
+
+                  {/* Stage toggles — horizontal chips */}
+                  <View className="flex-row gap-2">
+                    <Toggle
+                      label="Prelims"
+                      value={h.prelims}
+                      onChange={(v) => updateYear(idx, { prelims: v })}
+                    />
+                    <Toggle
+                      label="Mains"
+                      value={h.mains}
+                      onChange={(v) => updateYear(idx, { mains: v })}
+                    />
                     <Toggle
                       label="Interview"
                       value={h.interview}
@@ -120,6 +191,7 @@ export default function MentorOnboarding() {
                 </View>
               ))}
             </View>
+
             <Pressable
               onPress={() =>
                 setHistory([
@@ -127,29 +199,32 @@ export default function MentorOnboarding() {
                   { year: new Date().getFullYear(), prelims: false, mains: false, interview: false },
                 ])
               }
+              className="items-center rounded-xl border border-dashed border-primary py-3"
             >
-              <Text className="text-sm text-primary">+ Add another year</Text>
+              <Text className="text-sm font-medium text-primary">+ Add another year</Text>
             </Pressable>
+
             <Cta onPress={() => setStage('subjects')}>Next</Cta>
           </View>
         )}
 
         {stage === 'subjects' && (
           <View className="gap-4">
-            <Text className="text-xl font-semibold">Where you can guide</Text>
+            <Text className="text-xl font-semibold text-foreground">Where you can guide</Text>
             <ChipPicker
               options={GUIDANCE_CATEGORIES}
               selected={guidanceCategories}
               onChange={setGuidanceCategories}
             />
-            <Text className="mt-3 text-sm font-medium">Optional subject</Text>
+            <Text className="mt-3 text-sm font-medium text-foreground">Optional subject</Text>
             <TextInput
               value={optionalSubject}
               onChangeText={setOptionalSubject}
               placeholder="e.g. Sociology"
-              className="rounded-md border border-gray-200 px-3 py-3"
+              placeholderTextColor="#94a3b8"
+              className="rounded-xl border border-border bg-white px-3 py-3 text-foreground"
             />
-            <Text className="mt-3 text-sm font-medium">Languages</Text>
+            <Text className="mt-3 text-sm font-medium text-foreground">Languages</Text>
             <ChipPicker options={LANGUAGE_OPTIONS} selected={languages} onChange={setLanguages} />
             <Cta
               disabled={guidanceCategories.length === 0 || languages.length === 0}
@@ -162,23 +237,24 @@ export default function MentorOnboarding() {
 
         {stage === 'reach' && (
           <View className="gap-4">
-            <Text className="text-xl font-semibold">Reach &amp; rate</Text>
-            <Text className="text-sm font-medium">UPSC rank achieved (optional)</Text>
+            <Text className="text-xl font-semibold text-foreground">Reach &amp; rate</Text>
+            <Text className="text-sm font-medium text-foreground">UPSC rank achieved (optional)</Text>
             <TextInput
               value={rankAchieved}
               onChangeText={setRankAchieved}
               keyboardType="number-pad"
               placeholder="e.g. 142"
-              className="rounded-md border border-gray-200 px-3 py-3"
+              placeholderTextColor="#94a3b8"
+              className="rounded-xl border border-border bg-white px-3 py-3 text-foreground"
             />
-            <Text className="text-sm font-medium">Hourly rate (₹)</Text>
+            <Text className="text-sm font-medium text-foreground">Hourly rate (₹)</Text>
             <TextInput
               value={hourlyRate}
               onChangeText={setHourlyRate}
               keyboardType="number-pad"
-              className="rounded-md border border-gray-200 px-3 py-3"
+              className="rounded-xl border border-border bg-white px-3 py-3 text-foreground"
             />
-            {error && <Text className="text-sm text-red-600">{error}</Text>}
+            {error && <Text className="text-sm text-destructive">{error}</Text>}
             <Cta onPress={submit}>Submit for verification</Cta>
           </View>
         )}
@@ -206,9 +282,9 @@ function Cta({
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      className={`mt-6 rounded-md px-4 py-3 ${disabled ? 'bg-gray-300' : 'bg-primary'}`}
+      className={`mt-6 rounded-xl px-4 py-4 ${disabled ? 'bg-border' : 'bg-primary'}`}
     >
-      <Text className="text-center text-base font-medium text-white">{children}</Text>
+      <Text className="text-center text-base font-semibold text-white">{children}</Text>
     </Pressable>
   )
 }
@@ -225,11 +301,13 @@ function Toggle({
   return (
     <Pressable
       onPress={() => onChange(!value)}
-      className={`rounded-md border px-3 py-1.5 ${
-        value ? 'border-primary bg-primary' : 'border-gray-200 bg-white'
+      className={`flex-1 items-center rounded-lg border py-2 ${
+        value ? 'border-primary bg-primary' : 'border-border bg-white'
       }`}
     >
-      <Text className={value ? 'text-sm text-white' : 'text-sm'}>{label}</Text>
+      <Text className={`text-xs font-medium ${value ? 'text-white' : 'text-foreground'}`}>
+        {label}
+      </Text>
     </Pressable>
   )
 }

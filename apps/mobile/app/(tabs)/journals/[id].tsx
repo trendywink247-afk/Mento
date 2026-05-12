@@ -9,7 +9,8 @@ import {
   TextInput,
   View,
 } from 'react-native'
-import { useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
+import { Lock, Unlock, ChevronLeft } from 'lucide-react-native'
 import type { AvatarColor, AvatarLetter } from '@mento/types'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
@@ -32,6 +33,14 @@ type Detail = {
       avatarColor: AvatarColor
     }
   }>
+}
+
+function humanCategory(raw: string): string {
+  return raw
+    .replace(/^(PRELIMS|MAINS)_/, (_, prefix) => prefix.charAt(0) + prefix.slice(1).toLowerCase() + ' — ')
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 export default function JournalScreen() {
@@ -71,49 +80,68 @@ export default function JournalScreen() {
 
   if (!journal) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
         <Text className="text-sm text-muted">{error ?? 'Loading…'}</Text>
       </SafeAreaView>
     )
   }
 
+  const statusBg = journal.isLocked
+    ? '#f1f5f9'
+    : journal.canEdit
+    ? '#ecfdf5'
+    : '#fffbeb'
+
+  const statusText = journal.isLocked
+    ? 'Locked'
+    : journal.canEdit
+    ? 'Active — both online'
+    : 'Read-only — only one of you here'
+
+  const StatusIcon = journal.isLocked ? Lock : Unlock
+
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
       >
-        <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
-          {journal.isShared && (
-            <View
-              className={`self-start rounded-full px-2 py-0.5 ${
-                journal.isLocked
-                  ? 'bg-gray-200'
-                  : journal.canEdit
-                    ? 'bg-emerald-100'
-                    : 'bg-amber-100'
-              }`}
-            >
-              <Text
-                className={`text-xs ${
-                  journal.isLocked
-                    ? 'text-gray-700'
-                    : journal.canEdit
-                      ? 'text-emerald-700'
-                      : 'text-amber-800'
-                }`}
-              >
-                {journal.isLocked
-                  ? 'Locked'
-                  : journal.canEdit
-                    ? 'Active — both online'
-                    : 'Read-only — only one of you here'}
-              </Text>
-            </View>
-          )}
+        {/* Breadcrumb */}
+        <View className="flex-row items-center gap-2 border-b border-border px-4 py-3">
+          <Pressable onPress={() => router.back()} hitSlop={8} className="flex-row items-center gap-1">
+            <ChevronLeft size={16} color="#64748b" strokeWidth={2} />
+            <Text className="text-sm text-muted">Journals</Text>
+          </Pressable>
+          <Text className="text-sm text-muted">/</Text>
+          <Text className="text-sm font-medium text-foreground">{humanCategory(journal.category)}</Text>
+        </View>
 
+        {/* Status banner */}
+        {journal.isShared && (
+          <View
+            style={{ backgroundColor: statusBg }}
+            className="flex-row items-center gap-2 px-4 py-2.5"
+          >
+            <StatusIcon
+              size={13}
+              color={journal.isLocked ? '#64748b' : journal.canEdit ? '#065f46' : '#b45309'}
+              strokeWidth={2}
+            />
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: '500',
+                color: journal.isLocked ? '#64748b' : journal.canEdit ? '#065f46' : '#b45309',
+              }}
+            >
+              {statusText}
+            </Text>
+          </View>
+        )}
+
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
           {journal.entries.length === 0 ? (
-            <View className="rounded-2xl bg-gray-50 p-6">
+            <View className="rounded-2xl bg-accent p-6">
               <Text className="text-center text-sm text-muted">
                 {journal.canEdit
                   ? 'No entries yet. Start writing below.'
@@ -122,7 +150,7 @@ export default function JournalScreen() {
             </View>
           ) : (
             journal.entries.map((e) => (
-              <View key={e.id} className="rounded-2xl border border-gray-200 bg-white p-4">
+              <View key={e.id} className="rounded-2xl border border-border bg-white p-4">
                 <View className="mb-2 flex-row items-center gap-2">
                   <LetterAvatar
                     letter={e.author.avatarLetter}
@@ -133,29 +161,31 @@ export default function JournalScreen() {
                     {e.author.displayHandle} · {new Date(e.createdAt).toLocaleString()}
                   </Text>
                 </View>
-                <Text className="text-sm">{e.content}</Text>
+                <Text className="text-sm text-foreground">{e.content}</Text>
               </View>
             ))
           )}
         </ScrollView>
 
         {journal.canEdit && (
-          <View className="border-t border-gray-100 p-3 gap-2">
+          <View className="gap-2 border-t border-border p-3">
             <TextInput
               value={draft}
               onChangeText={setDraft}
               multiline
               placeholder="Write a reflection…"
-              className="min-h-[60px] rounded-md border border-gray-200 bg-white p-3 text-base"
+              placeholderTextColor="#94a3b8"
+              className="min-h-[60px] rounded-xl border border-border bg-white p-3 text-base text-foreground"
             />
+            {error && <Text className="text-xs text-destructive">{error}</Text>}
             <Pressable
               onPress={add}
               disabled={!draft.trim() || busy}
-              className={`rounded-md px-4 py-3 ${
-                !draft.trim() || busy ? 'bg-gray-300' : 'bg-primary'
+              className={`rounded-xl px-4 py-3 ${
+                !draft.trim() || busy ? 'bg-border' : 'bg-primary'
               }`}
             >
-              <Text className="text-center text-base font-medium text-white">
+              <Text className="text-center text-base font-semibold text-white">
                 {busy ? 'Saving…' : 'Add entry'}
               </Text>
             </Pressable>

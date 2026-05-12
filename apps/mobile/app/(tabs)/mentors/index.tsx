@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native'
 import { router } from 'expo-router'
+import { BadgeCheck, SlidersHorizontal } from 'lucide-react-native'
 import type { AvatarColor, AvatarLetter } from '@mento/types'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
@@ -31,6 +32,15 @@ type Mentor = {
   rankAchieved: number | null
 }
 
+function trustLine(m: Mentor): string {
+  if (m.interviewAttempts > 0) return `Interview · ${m.interviewAttempts}× attended`
+  if (m.mainsAttempts > 0) return `Mains · ${m.mainsAttempts}× written`
+  if (m.prelimsCleared) return 'Prelims cleared'
+  return 'Aspirant mentor'
+}
+
+const MUTED = '#64748b'
+
 export default function MentorsList() {
   const [mentors, setMentors] = useState<Mentor[] | null>(null)
   const [refreshing, setRefreshing] = useState(false)
@@ -50,27 +60,37 @@ export default function MentorsList() {
 
   if (!mentors) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator />
       </SafeAreaView>
     )
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <View className="px-4 pt-4">
-        <Text className="text-2xl font-bold tracking-tight">Mentors</Text>
+    <SafeAreaView className="flex-1 bg-background">
+      {/* Header */}
+      <View className="px-4 pt-4 pb-2">
+        <Text className="text-2xl font-bold tracking-tight text-foreground">Mentors</Text>
         <Text className="mt-1 text-xs text-muted">
           Verified, anonymous mentors who've walked the UPSC path.
         </Text>
-        <View className="mt-3 flex-row gap-2">
+
+        {/* Filter chips */}
+        <View className="mt-3 flex-row items-center gap-2">
           <Pressable
             onPress={() => setVerifiedOnly(!verifiedOnly)}
-            className={`rounded-full border px-3 py-1 ${
-              verifiedOnly ? 'border-primary bg-primary' : 'border-gray-300 bg-white'
+            className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${
+              verifiedOnly ? 'border-primary bg-primary' : 'border-border bg-white'
             }`}
           >
-            <Text className={verifiedOnly ? 'text-xs text-white' : 'text-xs'}>Verified only</Text>
+            <SlidersHorizontal
+              size={12}
+              color={verifiedOnly ? '#ffffff' : MUTED}
+              strokeWidth={2}
+            />
+            <Text className={`text-xs font-medium ${verifiedOnly ? 'text-white' : 'text-muted'}`}>
+              Verified only
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -98,8 +118,10 @@ export default function MentorsList() {
         )}
         renderItem={({ item }) => (
           <Pressable
-            onPress={() => router.push({ pathname: '/(tabs)/mentors/[id]', params: { id: item.userId } })}
-            className="rounded-2xl border border-gray-200 bg-white p-4 active:bg-gray-50"
+            onPress={() =>
+              router.push({ pathname: '/(tabs)/mentors/[id]', params: { id: item.userId } })
+            }
+            className="rounded-2xl border border-border bg-white p-4 active:bg-accent"
           >
             <View className="flex-row items-start gap-3">
               <LetterAvatar
@@ -109,30 +131,44 @@ export default function MentorsList() {
                 size={48}
               />
               <View className="flex-1">
+                {/* Name + verified badge */}
                 <View className="flex-row items-center gap-2">
-                  <Text className="text-base font-medium">{item.displayHandle}</Text>
+                  <Text className="text-base font-semibold text-foreground">
+                    {item.displayHandle}
+                  </Text>
                   {item.isVerified && (
-                    <View className="rounded-full bg-emerald-100 px-2 py-0.5">
-                      <Text className="text-[10px] font-medium text-emerald-700">Verified</Text>
+                    <BadgeCheck size={16} color="#059669" strokeWidth={2} />
+                  )}
+                  {item.isFoundingPartner && (
+                    <View className="rounded-full bg-amber-100 px-2 py-0.5">
+                      <Text className="text-[10px] font-medium text-amber-700">Founding</Text>
                     </View>
                   )}
                 </View>
-                <Text className="mt-1 text-xs text-muted">
-                  {item.interviewAttempts > 0
-                    ? `Interview · ${item.interviewAttempts}×`
-                    : item.mainsAttempts > 0
-                      ? `Mains · ${item.mainsAttempts}×`
-                      : item.prelimsCleared
-                        ? 'Prelims cleared'
-                        : 'Aspirant'}
-                  {item.rankAchieved ? ` · Rank ${item.rankAchieved}` : ''}
-                </Text>
-                {item.guidanceCategories.length > 0 && (
-                  <Text className="mt-1 text-xs text-muted">
-                    {item.guidanceCategories.slice(0, 4).join(' · ')}
+
+                {/* Trust line */}
+                <Text className="mt-0.5 text-xs text-muted">{trustLine(item)}</Text>
+
+                {/* Rank if present */}
+                {item.rankAchieved && (
+                  <Text className="mt-0.5 text-xs font-medium text-primary">
+                    Rank {item.rankAchieved}
                   </Text>
                 )}
-                <Text className="mt-1 text-xs text-muted">
+
+                {/* Guidance categories */}
+                {item.guidanceCategories.length > 0 && (
+                  <View className="mt-1.5 flex-row flex-wrap gap-1">
+                    {item.guidanceCategories.slice(0, 4).map((c) => (
+                      <View key={c} className="rounded-full bg-accent px-2 py-0.5">
+                        <Text className="text-[10px] text-muted">{c}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Rate + languages */}
+                <Text className="mt-1.5 text-xs text-muted">
                   ₹{item.hourlyRateInr}/hr · {item.languages.join(', ')}
                 </Text>
               </View>

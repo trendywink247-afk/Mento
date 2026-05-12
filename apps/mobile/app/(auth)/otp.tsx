@@ -29,7 +29,6 @@ export default function Otp() {
   const [countdown, setCountdown] = useState(30)
   const [resending, setResending] = useState(false)
   const inputRefs = useRef<Array<TextInput | null>>(Array(CELL_COUNT).fill(null))
-  const hiddenRef = useRef<TextInput>(null)
 
   // Countdown timer
   useEffect(() => {
