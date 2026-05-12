@@ -8,7 +8,9 @@ import {
   Patch,
   Post,
 } from '@nestjs/common'
+import { SubscriptionTier } from '@prisma/client'
 import { CurrentUser, type JwtUser } from '../auth/decorators/current-user.decorator'
+import { MinTier } from '../subscriptions/guards/min-tier.decorator'
 import { JournalsService } from './journals.service'
 import { UpsertJournalDto } from './dto/upsert-journal.dto'
 import { CreateEntryDto } from './dto/create-entry.dto'
@@ -64,6 +66,8 @@ export class JournalsController {
     return this.journals.deleteEntry(entryId, user.sub)
   }
 
+  // PRO-tier feature: save a chat message as a journal entry (spec § 1.12)
+  @MinTier(SubscriptionTier.PRO)
   @Post('save-from-chat')
   saveFromChat(@CurrentUser() user: JwtUser, @Body() body: SaveMessageToJournalDto) {
     return this.journals.saveMessageToJournal(body.messageId, user.sub, body.category)

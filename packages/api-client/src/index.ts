@@ -16,6 +16,8 @@ export interface ApiClientOptions {
   baseUrl: string
   getAccessToken?: () => string | null | Promise<string | null>
   onUnauthorized?: () => void
+  /** Called when a 402 Payment Required response is received. */
+  onPaymentRequired?: (requiredTier: string, currentTier: string) => void
 }
 
 export class ApiClient {
@@ -35,7 +37,22 @@ export class ApiClient {
         ],
         afterResponse: [
           async (_req, _opts, res) => {
-            if (res.status === 401) opts.onUnauthorized?.()
+            if (res.status === 401) {
+              opts.onUnauthorized?.()
+            } else if (res.status === 402) {
+              try {
+                const body = (await res.clone().json()) as {
+                  requiredTier?: string
+                  currentTier?: string
+                }
+                opts.onPaymentRequired?.(
+                  body.requiredTier ?? 'BASIC',
+                  body.currentTier ?? 'FREE',
+                )
+              } catch {
+                opts.onPaymentRequired?.('BASIC', 'FREE')
+              }
+            }
           },
         ],
       },
@@ -243,6 +260,72 @@ export class ApiClient {
 
     unregister: (token: string): Promise<void> =>
       this.http.delete(`push-tokens/${encodeURIComponent(token)}`).then(() => undefined),
+  }
+
+  sessions = {
+    getAvailability: (mentorId: string): Promise<{ availability: Record<string, unknown> | null; hourlyRateInr: number }> =>
+      this.http.get(`sessions/availability/${mentorId}`).json(),
+
+    createRequest: (body: {
+      mentorId: string
+      scheduledAt: string
+      durationMin?: number
+      message?: string
+    }): Promise<{ id: string; status: string; paymentStatus: string; amountInr: number }> =>
+      this.http.post('sessions/requests', { json: body }).json(),
+
+    listRequests: () =>
+      this.http.get('sessions/requests').json<
+        Array<{
+          id: string
+          scheduledAt: string
+          durationMin: number
+          hourlyRateInr: number
+          amountInr: number
+          status: string
+          paymentStatus: string
+          message: string | null
+          createdAt: string
+          respondedAt: string | null
+          expiresAt: string | null
+          session: { id: string } | null
+          counterpart: {
+            id: string
+            displayHandle: string
+            avatarLetter: AvatarLetter
+            avatarColor: AvatarColor
+            hasPurpleTick: boolean
+          }
+        }>
+      >(),
+
+    acceptRequest: (id: string): Promise<{ id: string; status: string }> =>
+      this.http.patch(`sessions/requests/${id}/accept`).json(),
+
+    declineRequest: (id: string, reason?: string): Promise<{ id: string; status: string }> =>
+      this.http.patch(`sessions/requests/${id}/decline`, { json: { reason } }).json(),
+
+    cancelRequest: (id: string): Promise<{ id: string; status: string }> =>
+      this.http.patch(`sessions/requests/${id}/cancel`).json(),
+
+    setAvailability: (availability: Record<string, unknown>): Promise<{ availability: Record<string, unknown> | null; hourlyRateInr: number }> =>
+      this.http.patch('me/mentor/availability', { json: { availability } }).json(),
+  }
+
+  wallet = {
+    list: (): Promise<
+      Array<{
+        id: string
+        type: string
+        amountInr: number
+        status: string
+        reference: string | null
+        sessionId: string | null
+        metadata: Record<string, unknown> | null
+        createdAt: string
+      }>
+    > =>
+      this.http.get('wallet').json(),
   }
 
   storage = {

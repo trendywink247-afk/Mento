@@ -15,7 +15,7 @@ Sentry.init({
 })
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true })
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true })
   app.useLogger(app.get(Logger))
 
   // Trust the first proxy hop (Caddy in prod) so req.ip is the real client IP.

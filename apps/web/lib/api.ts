@@ -16,6 +16,14 @@ export function getApiClient(): ApiClient {
       if (typeof window === 'undefined') return
       window.localStorage.removeItem('mento.access')
     },
+    onPaymentRequired: (requiredTier, currentTier) => {
+      if (typeof window === 'undefined') return
+      window.dispatchEvent(
+        new CustomEvent('mento:paywall', {
+          detail: { requiredTier, currentTier },
+        }),
+      )
+    },
   })
   return _client
 }

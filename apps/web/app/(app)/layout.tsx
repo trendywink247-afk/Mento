@@ -18,12 +18,16 @@ import {
   HelpCircle,
   ChevronUp,
   Globe,
+  Phone,
+  Wallet,
+  Calendar,
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@/lib/auth-store'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { PaywallModal } from '@/components/PaywallModal'
 import { LANGUAGE_OPTIONS } from '@/lib/copy'
 import { reset as analyticsReset } from '@/lib/analytics'
 import * as Sentry from '@sentry/nextjs'
@@ -43,11 +47,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const tCommon = useTranslations('common')
   const { user, profile, tokens, hasHydrated, clear } = useAuthStore()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [currentTier, setCurrentTier] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (hasHydrated && !tokens) router.replace('/login')
   }, [hasHydrated, tokens, router])
+
+  useEffect(() => {
+    if (!tokens) return
+    getApiClient()
+      .subscriptions.me()
+      .then((sub) => setCurrentTier(sub.tier))
+      .catch(() => setCurrentTier('FREE'))
+  }, [tokens])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -84,11 +97,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
   if (!tokens) return null
 
+  const isMentor = user?.role === 'MENTOR'
+
   const NAV_ITEMS_TRANSLATED = [
     { href: '/dashboard', label: t('dashboard'), Icon: LayoutDashboard },
     { href: '/journals', label: t('journals'), Icon: BookOpen },
     { href: '/chat', label: t('chats'), Icon: MessageSquare },
     { href: '/mentors', label: t('mentors'), Icon: Users },
+    { href: '/calls', label: t('calls'), Icon: Phone },
+    { href: '/wallet', label: t('wallet'), Icon: Wallet },
+    ...(isMentor ? [{ href: '/availability', label: 'Availability', Icon: Calendar }] : []),
     { href: '/profile', label: t('profile'), Icon: User },
   ]
 
@@ -97,6 +115,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     '/journals': t('journals'),
     '/chat': t('chats'),
     '/mentors': t('mentors'),
+    '/calls': t('calls'),
+    '/wallet': t('wallet'),
+    '/availability': 'Availability',
     '/profile': t('profile'),
     '/admin': t('admin'),
   }
@@ -226,9 +247,29 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             )}
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{profile?.displayHandle ?? '—'}</p>
-              <p className="text-xs capitalize text-muted-foreground">
-                {user?.role?.toLowerCase() ?? ''}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs capitalize text-muted-foreground">
+                  {user?.role?.toLowerCase() ?? ''}
+                </p>
+                {currentTier && currentTier !== 'FREE' && (
+                  <Link
+                    href="/upgrade"
+                    onClick={(e) => e.stopPropagation()}
+                    className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary hover:bg-primary/25"
+                  >
+                    {currentTier}
+                  </Link>
+                )}
+                {currentTier === 'FREE' && (
+                  <Link
+                    href="/upgrade"
+                    onClick={(e) => e.stopPropagation()}
+                    className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground hover:bg-accent"
+                  >
+                    Free
+                  </Link>
+                )}
+              </div>
             </div>
             <ChevronUp
               size={14}
@@ -266,6 +307,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Page content */}
         <main id="main" className="flex-1 overflow-y-auto p-8">{children}</main>
       </div>
+
+      {/* Global paywall modal — listens for mento:paywall events from api.ts */}
+      <PaywallModal />
     </div>
   )
 }
