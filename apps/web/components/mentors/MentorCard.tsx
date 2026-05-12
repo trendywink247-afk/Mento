@@ -26,9 +26,9 @@ export type MentorListItem = {
 function buildTrustLine(m: MentorListItem): string {
   const parts: string[] = []
   if (m.interviewAttempts > 0) {
-    parts.push(`Interview attended${m.interviewAttempts > 1 ? ` ${m.interviewAttempts}x` : ''}`)
+    parts.push(`Interview attended${m.interviewAttempts > 1 ? ` ${m.interviewAttempts}×` : ''}`)
   } else if (m.mainsAttempts > 0) {
-    parts.push(`Mains written${m.mainsAttempts > 1 ? ` ${m.mainsAttempts}x` : ''}`)
+    parts.push(`Mains written${m.mainsAttempts > 1 ? ` ${m.mainsAttempts}×` : ''}`)
   } else if (m.prelimsCleared) {
     parts.push('Prelims cleared')
   }
@@ -81,7 +81,8 @@ export function MentorCard({ m }: { m: MentorListItem }) {
                 </span>
               )}
             </div>
-            {/* Trust line */}
+
+            {/* Trust line — most credible signal */}
             <p className="mt-0.5 text-sm font-medium text-foreground/70">{trustLine}</p>
           </div>
         </div>
@@ -111,11 +112,11 @@ export function MentorCard({ m }: { m: MentorListItem }) {
         {/* Rate row */}
         <div className="mt-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
+            <span className="rounded-full bg-primary/8 px-2.5 py-1 text-[11px] font-medium text-primary">
               Chat free
             </span>
             <span className="rounded-full bg-muted/60 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-              {`1:1 ₹${m.hourlyRateInr}/hr`}
+              1:1 ₹{m.hourlyRateInr}/hr
             </span>
           </div>
           <span className="text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">

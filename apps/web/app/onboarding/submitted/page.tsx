@@ -22,7 +22,7 @@ export default function MentorSubmittedPage() {
           You will see your Mentor profile activate when verification completes.
         </p>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          {`We honour the time you've given to this preparation.`}
+          We honour the time you&apos;ve given to this preparation.
         </p>
         <button
           onClick={() => router.push('/dashboard')}

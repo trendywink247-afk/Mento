@@ -62,3 +62,4 @@ apps/mobile/web-build/
 # Local-only Caddy data
 infra/caddy/data/
 infra/caddy/config/
+.claude/
