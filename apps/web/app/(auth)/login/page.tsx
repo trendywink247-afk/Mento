@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getApiClient } from '@/lib/api'
+import { MotionTap } from '@/components/motion'
 
 // 10-digit India mobile number validation (client-side, user-facing)
 function validateIndianPhone(digits: string): string | null {
@@ -196,13 +197,15 @@ function LoginForm() {
       </label>
 
       {/* CTA */}
-      <button
-        type="submit"
-        disabled={loading || !agreed}
-        className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {loading ? 'Sending…' : 'Send OTP'}
-      </button>
+      <MotionTap disabled={loading || !agreed}>
+        <button
+          type="submit"
+          disabled={loading || !agreed}
+          className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? 'Sending…' : 'Send OTP'}
+        </button>
+      </MotionTap>
 
       {/* Trust strip */}
       <p className="text-center text-[11px] text-muted-foreground/70 pt-1">

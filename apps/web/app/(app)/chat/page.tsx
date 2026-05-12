@@ -8,6 +8,7 @@ import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
 import { ChatConversationSkeleton } from '@/components/skeletons/ChatConversationSkeleton'
 import { EmptyChat } from '@/components/illustrations/EmptyChat'
+import { MotionFade, MotionTap } from '@/components/motion'
 
 // ---- Types ----
 
@@ -46,20 +47,24 @@ function formatTime(iso: string) {
 
 function EmptyAllState() {
   return (
-    <div className="rounded-2xl border bg-card p-10 text-center shadow-sm">
-      <EmptyChat className="mx-auto mb-4 h-36 w-auto" />
-      <p className="mx-auto max-w-sm text-base font-medium">No conversations yet.</p>
-      <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-        Browse mentors and send your first 160-character intro. When a mentor accepts, your
-        conversation will appear here.
-      </p>
-      <Link
-        href="/mentors"
-        className="mt-6 inline-block rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-      >
-        Browse mentors
-      </Link>
-    </div>
+    <MotionFade>
+      <div className="rounded-2xl border bg-card p-10 text-center shadow-sm">
+        <EmptyChat className="mx-auto mb-4 h-36 w-auto" />
+        <p className="mx-auto max-w-sm text-base font-medium">No conversations yet.</p>
+        <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
+          Browse mentors and send your first 160-character intro. When a mentor accepts, your
+          conversation will appear here.
+        </p>
+        <MotionTap className="mt-6 inline-block">
+          <Link
+            href="/mentors"
+            className="inline-block rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+          >
+            Browse mentors
+          </Link>
+        </MotionTap>
+      </div>
+    </MotionFade>
   )
 }
 

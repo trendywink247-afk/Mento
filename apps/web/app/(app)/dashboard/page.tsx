@@ -5,8 +5,7 @@ import Link from 'next/link'
 import { Users, BookOpen, MessageSquare, ArrowRight, PenLine, RefreshCw } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth-store'
 import { getApiClient } from '@/lib/api'
-import { DashboardCardSkeleton } from '@/components/skeletons/DashboardCardSkeleton'
-import { EmptyDashboard } from '@/components/illustrations/EmptyDashboard'
+import { MotionFade, MotionStagger, MotionStaggerItem, MotionTap } from '@/components/motion'
 
 // ─── Static data ─────────────────────────────────────────────────────────────
 
@@ -55,6 +54,18 @@ interface ConversationSummary {
   id: string
 }
 
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function CardSkeleton() {
+  return (
+    <div className="animate-pulse rounded-2xl border bg-muted/30 p-6">
+      <div className="mb-3 h-4 w-1/3 rounded bg-muted" />
+      <div className="mb-2 h-3 w-2/3 rounded bg-muted" />
+      <div className="h-3 w-1/2 rounded bg-muted" />
+    </div>
+  )
+}
+
 // ─── Dashboard page ───────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -89,181 +100,188 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       {/* Welcome line */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Welcome, {displayHandle}.</h1>
-        <p className="mt-1 text-sm text-muted-foreground">It&apos;s good to see you again.</p>
-      </div>
+      <MotionFade>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Welcome, {displayHandle}.</h1>
+          <p className="mt-1 text-sm text-muted-foreground">It&apos;s good to see you again.</p>
+        </div>
+      </MotionFade>
 
       {/* Today's reflection prompt */}
-      <div className="rounded-2xl border bg-blue-50/60 p-6">
-        <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-600">
-          <PenLine size={13} />
-          Today&apos;s reflection
+      <MotionFade delay={0.08}>
+        <div className="rounded-2xl border bg-blue-50/60 p-6">
+          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-600">
+            <PenLine size={13} />
+            Today&apos;s reflection
+          </div>
+          <p className="mt-2 text-base font-medium text-foreground">{todayPrompt}</p>
+          <div className="mt-4">
+            <MotionTap>
+              <Link
+                href="/journals"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                Open Personal journal
+                <ArrowRight size={14} />
+              </Link>
+            </MotionTap>
+          </div>
         </div>
-        <p className="mt-2 text-base font-medium text-foreground">{todayPrompt}</p>
-        <div className="mt-4">
-          <Link
-            href="/journals"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            Open Personal journal
-            <ArrowRight size={14} />
-          </Link>
-        </div>
-      </div>
-
-      {/* Empty state — new user who hasn't started Mirror */}
-      {!loading && !isMirrorComplete && conversationCount === 0 && (journals ?? []).length === 0 && (
-        <div className="rounded-2xl border bg-card p-10 text-center shadow-sm">
-          <EmptyDashboard className="mx-auto mb-4 h-40 w-auto" />
-          <h2 className="text-xl font-semibold tracking-tight">Welcome to Mento.</h2>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-            You&apos;ve taken the first step. Tell us where you are on your journey so we can
-            connect you with a mentor who truly understands.
-          </p>
-          <Link
-            href="/onboarding/mirror"
-            className="mt-6 inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90"
-          >
-            Begin the Mirror <ArrowRight size={14} />
-          </Link>
-        </div>
-      )}
+      </MotionFade>
 
       {/* 3-column next-step cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {loading ? (
           <>
-            <DashboardCardSkeleton />
-            <DashboardCardSkeleton />
-            <DashboardCardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
           </>
         ) : (
-          <>
+          <MotionStagger staggerDelay={0.07} className="contents">
             {/* Card A — Find a mentor */}
-            <div className="flex flex-col rounded-2xl border bg-slate-50 p-6">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-600">
-                <Users size={20} />
-              </div>
-              <h2 className="text-base font-semibold">Find a mentor</h2>
-              <p className="mt-1 flex-1 text-sm text-muted-foreground">
-                Browse anonymous, verified mentors who&apos;ve walked your path.
-              </p>
-              <Link
-                href="/mentors"
-                className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
-              >
-                Browse mentors <ArrowRight size={13} />
-              </Link>
-            </div>
+            <MotionStaggerItem>
+              <MotionTap>
+                <div className="flex h-full flex-col rounded-2xl border bg-slate-50 p-6">
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-600">
+                    <Users size={20} />
+                  </div>
+                  <h2 className="text-base font-semibold">Find a mentor</h2>
+                  <p className="mt-1 flex-1 text-sm text-muted-foreground">
+                    Browse anonymous, verified mentors who&apos;ve walked your path.
+                  </p>
+                  <Link
+                    href="/mentors"
+                    className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
+                  >
+                    Browse mentors <ArrowRight size={13} />
+                  </Link>
+                </div>
+              </MotionTap>
+            </MotionStaggerItem>
 
             {/* Card B — Mirror status */}
-            {isMirrorComplete ? (
-              <div className="flex flex-col rounded-2xl border bg-violet-50 p-6">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-200 text-violet-700">
-                  <BookOpen size={20} />
-                </div>
-                <h2 className="text-base font-semibold">Your Mirror is complete</h2>
-                <p className="mt-1 flex-1 text-sm text-muted-foreground">
-                  Your journey profile is up to date. Mentors can see where you are.
-                </p>
-                <Link
-                  href="/onboarding/mirror"
-                  className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-violet-600 hover:underline"
-                >
-                  Update Mirror <RefreshCw size={13} />
-                </Link>
-              </div>
-            ) : (
-              <div className="flex flex-col rounded-2xl border bg-amber-50 p-6">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-amber-200 text-amber-700">
-                  <BookOpen size={20} />
-                </div>
-                <h2 className="text-base font-semibold">Complete your Mirror</h2>
-                <p className="mt-1 flex-1 text-sm text-muted-foreground">
-                  Tell us where you are in your journey so mentors can find the right words.
-                </p>
-                <Link
-                  href="/onboarding/mirror"
-                  className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-amber-700 hover:underline"
-                >
-                  Continue Mirror <ArrowRight size={13} />
-                </Link>
-              </div>
-            )}
+            <MotionStaggerItem>
+              <MotionTap>
+                {isMirrorComplete ? (
+                  <div className="flex h-full flex-col rounded-2xl border bg-violet-50 p-6">
+                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-200 text-violet-700">
+                      <BookOpen size={20} />
+                    </div>
+                    <h2 className="text-base font-semibold">Your Mirror is complete</h2>
+                    <p className="mt-1 flex-1 text-sm text-muted-foreground">
+                      Your journey profile is up to date. Mentors can see where you are.
+                    </p>
+                    <Link
+                      href="/onboarding/mirror"
+                      className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-violet-600 hover:underline"
+                    >
+                      Update Mirror <RefreshCw size={13} />
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="flex h-full flex-col rounded-2xl border bg-amber-50 p-6">
+                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-amber-200 text-amber-700">
+                      <BookOpen size={20} />
+                    </div>
+                    <h2 className="text-base font-semibold">Complete your Mirror</h2>
+                    <p className="mt-1 flex-1 text-sm text-muted-foreground">
+                      Tell us where you are in your journey so mentors can find the right words.
+                    </p>
+                    <Link
+                      href="/onboarding/mirror"
+                      className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-amber-700 hover:underline"
+                    >
+                      Continue Mirror <ArrowRight size={13} />
+                    </Link>
+                  </div>
+                )}
+              </MotionTap>
+            </MotionStaggerItem>
 
             {/* Card C — Conversations */}
-            <div className="flex flex-col rounded-2xl border bg-emerald-50 p-6">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-200 text-emerald-700">
-                <MessageSquare size={20} />
-              </div>
-              <h2 className="text-base font-semibold">
-                {conversationCount > 0
-                  ? `${conversationCount} conversation${conversationCount === 1 ? '' : 's'}`
-                  : 'Your conversations'}
-              </h2>
-              <p className="mt-1 flex-1 text-sm text-muted-foreground">
-                {conversationCount > 0
-                  ? 'Pick up where you left off.'
-                  : 'No conversations yet — say hi to a mentor.'}
-              </p>
-              <Link
-                href={conversationCount > 0 ? '/chat' : '/mentors'}
-                className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-emerald-700 hover:underline"
-              >
-                {conversationCount > 0 ? 'Go to chat' : 'Browse mentors'}{' '}
-                <ArrowRight size={13} />
-              </Link>
-            </div>
-          </>
+            <MotionStaggerItem>
+              <MotionTap>
+                <div className="flex h-full flex-col rounded-2xl border bg-emerald-50 p-6">
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-200 text-emerald-700">
+                    <MessageSquare size={20} />
+                  </div>
+                  <h2 className="text-base font-semibold">
+                    {conversationCount > 0
+                      ? `${conversationCount} conversation${conversationCount === 1 ? '' : 's'}`
+                      : 'Your conversations'}
+                  </h2>
+                  <p className="mt-1 flex-1 text-sm text-muted-foreground">
+                    {conversationCount > 0
+                      ? 'Pick up where you left off.'
+                      : 'No conversations yet — say hi to a mentor.'}
+                  </p>
+                  <Link
+                    href={conversationCount > 0 ? '/chat' : '/mentors'}
+                    className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-emerald-700 hover:underline"
+                  >
+                    {conversationCount > 0 ? 'Go to chat' : 'Browse mentors'}{' '}
+                    <ArrowRight size={13} />
+                  </Link>
+                </div>
+              </MotionTap>
+            </MotionStaggerItem>
+          </MotionStagger>
         )}
       </div>
 
       {/* Sample questions — only for aspirants with complete Mirror */}
       {!loading && isMirrorComplete && isAspirant && (
-        <div>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Questions to ask a mentor
-          </h2>
-          <div className="divide-y rounded-2xl border bg-card">
-            {SAMPLE_QUESTIONS.map((q) => (
-              <Link
-                key={q}
-                href="/mentors"
-                className="flex items-center justify-between px-5 py-3.5 text-sm hover:bg-accent"
-              >
-                <span>{q}</span>
-                <span className="ml-4 flex-shrink-0 text-xs text-muted-foreground">
-                  Send to a mentor &rarr;
-                </span>
-              </Link>
-            ))}
+        <MotionFade delay={0.15}>
+          <div>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Questions to ask a mentor
+            </h2>
+            <div className="divide-y rounded-2xl border bg-card">
+              {SAMPLE_QUESTIONS.map((q) => (
+                <Link
+                  key={q}
+                  href="/mentors"
+                  className="flex items-center justify-between px-5 py-3.5 text-sm hover:bg-accent"
+                >
+                  <span>{q}</span>
+                  <span className="ml-4 flex-shrink-0 text-xs text-muted-foreground">
+                    Send to a mentor &rarr;
+                  </span>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
+        </MotionFade>
       )}
 
       {/* Recent journal entries strip */}
       {!loading && recentJournals.length > 0 && (
-        <div>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Recent journal activity
-          </h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            {recentJournals.map((j) => (
-              <Link
-                key={j.id}
-                href={`/journals/${j.id}`}
-                className="rounded-xl border bg-card px-4 py-3.5 hover:bg-accent"
-              >
-                <p className="truncate text-sm font-medium">{j.title ?? j.category}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {j.entryCount} {j.entryCount === 1 ? 'entry' : 'entries'} &middot;{' '}
-                  {new Date(j.updatedAt).toLocaleDateString()}
-                </p>
-              </Link>
-            ))}
+        <MotionFade delay={0.2}>
+          <div>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Recent journal activity
+            </h2>
+            <MotionStagger staggerDelay={0.05} className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              {recentJournals.map((j) => (
+                <MotionStaggerItem key={j.id}>
+                  <MotionTap>
+                    <Link
+                      href={`/journals/${j.id}`}
+                      className="block rounded-xl border bg-card px-4 py-3.5 hover:bg-accent"
+                    >
+                      <p className="truncate text-sm font-medium">{j.title ?? j.category}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {j.entryCount} {j.entryCount === 1 ? 'entry' : 'entries'} &middot;{' '}
+                        {new Date(j.updatedAt).toLocaleDateString()}
+                      </p>
+                    </Link>
+                  </MotionTap>
+                </MotionStaggerItem>
+              ))}
+            </MotionStagger>
           </div>
-        </div>
+        </MotionFade>
       )}
     </div>
   )

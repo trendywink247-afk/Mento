@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import {
   LayoutDashboard,
   BookOpen,
@@ -126,7 +127,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 ].join(' ')}
               >
                 {isActive && (
-                  <span className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-blue-600" />
+                  <motion.span
+                    layoutId="sidebar-active-indicator"
+                    className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-blue-600"
+                    transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+                  />
                 )}
                 <Icon
                   size={18}

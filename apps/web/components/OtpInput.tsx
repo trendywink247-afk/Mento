@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, KeyboardEvent, ClipboardEvent, ChangeEvent } from 'react'
+import { motion } from 'framer-motion'
 
 interface OtpInputProps {
   value: string
@@ -11,6 +12,15 @@ interface OtpInputProps {
 }
 
 const CELL_COUNT = 6
+
+const cellVariant = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: (i: number) => ({
+    opacity: 1,
+    scale: 1,
+    transition: { delay: i * 0.05, duration: 0.2, ease: 'easeOut' },
+  }),
+}
 
 export function OtpInput({ value, onChange, onComplete, disabled, hasError }: OtpInputProps) {
   const refs = useRef<Array<HTMLInputElement | null>>(Array(CELL_COUNT).fill(null))
@@ -103,27 +113,34 @@ export function OtpInput({ value, onChange, onComplete, disabled, hasError }: Ot
       aria-label="One-time password input"
     >
       {Array.from({ length: CELL_COUNT }, (_, i) => (
-        <input
+        <motion.div
           key={i}
-          ref={(el) => { refs.current[i] = el }}
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          maxLength={1}
-          value={cells[i]}
-          autoComplete={i === 0 ? 'one-time-code' : 'off'}
-          aria-label={`Digit ${i + 1} of ${CELL_COUNT}`}
-          aria-invalid={hasError}
-          disabled={disabled}
-          className={[
-            cellBase,
-            hasError ? cellError : cells[i] ? cellFilled : cellNormal,
-          ].join(' ')}
-          onChange={(e) => handleChange(i, e)}
-          onKeyDown={(e) => handleKeyDown(i, e)}
-          onPaste={handlePaste}
-          onFocus={() => handleFocus(i)}
-        />
+          custom={i}
+          variants={cellVariant}
+          initial="hidden"
+          animate="visible"
+        >
+          <input
+            ref={(el) => { refs.current[i] = el }}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={1}
+            value={cells[i]}
+            autoComplete={i === 0 ? 'one-time-code' : 'off'}
+            aria-label={`Digit ${i + 1} of ${CELL_COUNT}`}
+            aria-invalid={hasError}
+            disabled={disabled}
+            className={[
+              cellBase,
+              hasError ? cellError : cells[i] ? cellFilled : cellNormal,
+            ].join(' ')}
+            onChange={(e) => handleChange(i, e)}
+            onKeyDown={(e) => handleKeyDown(i, e)}
+            onPaste={handlePaste}
+            onFocus={() => handleFocus(i)}
+          />
+        </motion.div>
       ))}
     </div>
   )

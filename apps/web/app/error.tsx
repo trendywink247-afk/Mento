@@ -25,7 +25,7 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
       <body className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 font-sans antialiased">
         <h1 className="text-xl font-semibold">Something went wrong</h1>
         <p className="max-w-sm text-center text-sm text-gray-500">
-          We've noted the issue and will look into it. Please try again.
+          We&apos;ve noted the issue and will look into it. Please try again.
         </p>
         <button
           onClick={reset}

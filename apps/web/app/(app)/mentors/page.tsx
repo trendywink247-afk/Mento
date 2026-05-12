@@ -5,8 +5,7 @@ import Link from 'next/link'
 import type { AvatarColor, AvatarLetter } from '@mento/types'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
-import { MentorCardSkeleton } from '@/components/mentors/MentorCardSkeleton'
-import { EmptyMentors } from '@/components/illustrations/EmptyMentors'
+import { MotionFade, MotionStagger, MotionStaggerItem, MotionTap } from '@/components/motion'
 
 type Mentor = {
   userId: string
@@ -50,93 +49,130 @@ export default function MentorsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Mentors</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Verified, anonymous mentors who&apos;ve walked the UPSC path.
-        </p>
-      </div>
+      <MotionFade>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Mentors</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Verified, anonymous mentors who&apos;ve walked the UPSC path.
+          </p>
+        </div>
+      </MotionFade>
 
-      <div className="flex flex-wrap gap-2">
-        <Toggle label="Verified only" value={verifiedOnly} onChange={setVerifiedOnly} />
-        <Toggle label="Interview-attempted" value={interviewOnly} onChange={setInterviewOnly} />
-      </div>
+      <MotionFade delay={0.06}>
+        <div className="flex flex-wrap gap-2">
+          <Toggle label="Verified only" value={verifiedOnly} onChange={setVerifiedOnly} />
+          <Toggle label="Interview-attempted" value={interviewOnly} onChange={setInterviewOnly} />
+        </div>
+      </MotionFade>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {mentors === null ? (
-        <ul className="grid gap-3 md:grid-cols-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <MentorCardSkeleton key={i} />
-          ))}
-        </ul>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : mentors.length === 0 ? (
-        <div className="rounded-2xl border bg-card p-10 text-center shadow-sm">
-          <EmptyMentors className="mx-auto mb-4 h-36 w-auto" />
-          <p className="mx-auto max-w-sm text-base font-medium">No mentors match your filters.</p>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-            Try clearing the filters — new verified mentors are joining every week.
-          </p>
-          {(verifiedOnly || interviewOnly) && (
-            <button
-              onClick={() => {
-                setVerifiedOnly(false)
-                setInterviewOnly(false)
-              }}
-              className="mt-6 inline-block rounded-md border px-5 py-2 text-sm font-medium hover:bg-accent"
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
+        <MotionFade>
+          <div className="rounded-lg border bg-muted/30 p-6 text-sm text-muted-foreground">
+            No mentors match your filters yet. Mentors are joining every week.
+          </div>
+        </MotionFade>
       ) : (
-        <ul className="grid gap-3 md:grid-cols-2">
-          {mentors.map((m) => (
-            <li key={m.userId}>
-              <Link
-                href={`/mentors/${m.userId}`}
-                className="block rounded-2xl border bg-card p-5 transition-shadow hover:shadow-sm"
-              >
-                <div className="flex items-start gap-4">
-                  <LetterAvatar
-                    letter={m.avatarLetter}
-                    color={m.avatarColor}
-                    hasPurpleTick={m.hasPurpleTick}
-                    size={48}
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-base font-medium">{m.displayHandle}</p>
-                      {m.isVerified && (
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
-                          Verified
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {m.interviewAttempts > 0
-                        ? `Interview · ${m.interviewAttempts}×`
-                        : m.mainsAttempts > 0
-                          ? `Mains · ${m.mainsAttempts}×`
-                          : m.prelimsCleared
-                            ? 'Prelims cleared'
-                            : 'Aspirant'}
-                      {m.rankAchieved && ` · Rank ${m.rankAchieved}`}
-                    </p>
-                    {m.guidanceCategories.length > 0 && (
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        {m.guidanceCategories.slice(0, 4).join(' · ')}
+        <MotionStagger staggerDelay={0.05} className="grid gap-3 md:grid-cols-2">
+          {mentors.slice(0, 12).map((m) => (
+            <MotionStaggerItem key={m.userId}>
+              <MotionTap>
+                <Link
+                  href={`/mentors/${m.userId}`}
+                  className="block rounded-2xl border bg-card p-5 transition-shadow hover:shadow-sm"
+                >
+                  <div className="flex items-start gap-4">
+                    <LetterAvatar
+                      letter={m.avatarLetter}
+                      color={m.avatarColor}
+                      hasPurpleTick={m.hasPurpleTick}
+                      size={48}
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-base font-medium">{m.displayHandle}</p>
+                        {m.isVerified && (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                            Verified
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {m.interviewAttempts > 0
+                          ? `Interview · ${m.interviewAttempts}×`
+                          : m.mainsAttempts > 0
+                            ? `Mains · ${m.mainsAttempts}×`
+                            : m.prelimsCleared
+                              ? 'Prelims cleared'
+                              : 'Aspirant'}
+                        {m.rankAchieved && ` · Rank ${m.rankAchieved}`}
                       </p>
-                    )}
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      ₹{m.hourlyRateInr}/hr · {m.languages.join(', ')}
-                    </p>
+                      {m.guidanceCategories.length > 0 && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {m.guidanceCategories.slice(0, 4).join(' · ')}
+                        </p>
+                      )}
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        ₹{m.hourlyRateInr}/hr · {m.languages.join(', ')}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            </li>
+                </Link>
+              </MotionTap>
+            </MotionStaggerItem>
           ))}
-        </ul>
+          {/* Remaining mentors beyond the first 12 fade in without stagger */}
+          {mentors.length > 12 && mentors.slice(12).map((m) => (
+            <MotionFade key={m.userId}>
+              <MotionTap>
+                <Link
+                  href={`/mentors/${m.userId}`}
+                  className="block rounded-2xl border bg-card p-5 transition-shadow hover:shadow-sm"
+                >
+                  <div className="flex items-start gap-4">
+                    <LetterAvatar
+                      letter={m.avatarLetter}
+                      color={m.avatarColor}
+                      hasPurpleTick={m.hasPurpleTick}
+                      size={48}
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-base font-medium">{m.displayHandle}</p>
+                        {m.isVerified && (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                            Verified
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {m.interviewAttempts > 0
+                          ? `Interview · ${m.interviewAttempts}×`
+                          : m.mainsAttempts > 0
+                            ? `Mains · ${m.mainsAttempts}×`
+                            : m.prelimsCleared
+                              ? 'Prelims cleared'
+                              : 'Aspirant'}
+                        {m.rankAchieved && ` · Rank ${m.rankAchieved}`}
+                      </p>
+                      {m.guidanceCategories.length > 0 && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {m.guidanceCategories.slice(0, 4).join(' · ')}
+                        </p>
+                      )}
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        ₹{m.hourlyRateInr}/hr · {m.languages.join(', ')}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              </MotionTap>
+            </MotionFade>
+          ))}
+        </MotionStagger>
       )}
     </div>
   )
@@ -152,13 +188,15 @@ function Toggle({
   onChange: (v: boolean) => void
 }) {
   return (
-    <button
-      onClick={() => onChange(!value)}
-      className={`rounded-full border px-3 py-1 text-xs ${
-        value ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-background'
-      }`}
-    >
-      {label}
-    </button>
+    <MotionTap>
+      <button
+        onClick={() => onChange(!value)}
+        className={`rounded-full border px-3 py-1 text-xs ${
+          value ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-background'
+        }`}
+      >
+        {label}
+      </button>
+    </MotionTap>
   )
 }
