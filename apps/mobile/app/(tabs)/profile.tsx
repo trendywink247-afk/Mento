@@ -3,11 +3,14 @@ import { router } from 'expo-router'
 import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { LetterAvatar } from '@/components/LetterAvatar'
+import { unregisterPushNotifications } from '@/lib/push'
 
 export default function Profile() {
   const { user, profile, tokens, clear } = useAuthStore()
 
   async function handleLogout() {
+    // Remove push token from server before clearing session.
+    await unregisterPushNotifications()
     if (tokens) {
       await getApiClient().auth.logout(tokens.refreshToken).catch(() => {})
     }

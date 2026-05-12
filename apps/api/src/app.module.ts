@@ -17,6 +17,10 @@ import { MentorsModule } from './modules/mentors/mentors.module'
 import { ChatRequestsModule } from './modules/chat-requests/chat-requests.module'
 import { JournalsModule } from './modules/journals/journals.module'
 import { StorageModule } from './modules/storage/storage.module'
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module'
+import { NotificationsModule } from './modules/notifications/notifications.module'
+import { PushTokensModule } from './modules/push-tokens/push-tokens.module'
+import { SessionsModule } from './modules/sessions/sessions.module'
 
 @Module({
   imports: [
@@ -81,6 +85,10 @@ import { StorageModule } from './modules/storage/storage.module'
     ChatRequestsModule,
     JournalsModule,
     StorageModule,
+    SubscriptionsModule,
+    NotificationsModule,
+    PushTokensModule,
+    SessionsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

@@ -17,6 +17,7 @@ import { Redis } from 'ioredis'
 import { Role } from '@prisma/client'
 import { ChatService } from './chat.service'
 import { JournalsService } from '../journals/journals.service'
+import { NotificationsService } from '../notifications/notifications.service'
 import type { SendMessageDto } from './dto/send-message.dto'
 
 interface AuthedSocketData {
@@ -48,6 +49,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     private readonly config: ConfigService,
     private readonly chat: ChatService,
     private readonly journals: JournalsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async afterInit(server: Server) {
@@ -124,6 +126,20 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       const conv = await this.chat.assertConversationParticipant(payload.conversationId, userId)
       const otherId = conv.mentorId === userId ? conv.aspirantId : conv.mentorId
       this.server.to(`user:${otherId}`).emit('message:new', dto)
+
+      // Send push notification only when the recipient has no active socket connections.
+      const recipientSockets = await this.server.in(`user:${otherId}`).fetchSockets()
+      if (recipientSockets.length === 0) {
+        // Look up the sender's displayHandle for the notification title.
+        const senderProfile = await this.chat.getSenderProfile(userId)
+        void this.notifications.send({
+          userId: otherId,
+          title: senderProfile ?? 'New message',
+          body: (payload.body ?? '').slice(0, 80),
+          data: { conversationId: payload.conversationId },
+        })
+      }
+
       return { ok: true as const, message: dto }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'send_failed'

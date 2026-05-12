@@ -166,6 +166,18 @@ export class ChatService {
     return { id: report.id }
   }
 
+  /**
+   * Returns the displayHandle for a given user, used as a push notification title.
+   * Falls back to a safe placeholder — never exposes phone or email.
+   */
+  async getSenderProfile(userId: string): Promise<string> {
+    const profile = await this.prisma.profile.findUnique({
+      where: { userId },
+      select: { displayHandle: true },
+    })
+    return profile?.displayHandle ?? `User_${userId.slice(0, 4)}`
+  }
+
   serialize = (m: Message) => ({
     id: m.id,
     conversationId: m.conversationId,

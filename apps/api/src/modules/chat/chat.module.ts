@@ -3,6 +3,7 @@ import { ChatController } from './chat.controller'
 import { ChatService } from './chat.service'
 import { ChatGateway } from './chat.gateway'
 import { JournalsModule } from '../journals/journals.module'
+// NotificationsModule is @Global() — no explicit import needed.
 
 @Module({
   imports: [forwardRef(() => JournalsModule)],

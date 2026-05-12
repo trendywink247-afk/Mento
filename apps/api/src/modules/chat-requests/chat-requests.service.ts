@@ -6,10 +6,14 @@ import {
 } from '@nestjs/common'
 import { ChatRequestStatus, MessageType, Role } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
+import { NotificationsService } from '../notifications/notifications.service'
 
 @Injectable()
 export class ChatRequestsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async create(menteeId: string, mentorId: string, intro: string) {
     if (menteeId === mentorId) {
@@ -52,7 +56,7 @@ export class ChatRequestsService {
     })
     if (existingPending) return existingPending
 
-    return this.prisma.chatRequest.create({
+    const created = await this.prisma.chatRequest.create({
       data: {
         menteeId,
         mentorId,
@@ -60,6 +64,16 @@ export class ChatRequestsService {
         expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 day TTL
       },
     })
+
+    // Push notification to the mentor — non-fatal, never blocks the response.
+    void this.notifications.send({
+      userId: mentorId,
+      title: 'New chat request',
+      body: intro.slice(0, 80),
+      data: { requestId: created.id },
+    })
+
+    return created
   }
 
   async listForUser(userId: string, role: Role) {

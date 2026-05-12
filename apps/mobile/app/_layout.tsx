@@ -1,12 +1,22 @@
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { ActivityIndicator, View } from 'react-native'
+import * as Notifications from 'expo-notifications'
 import { Providers } from '@/components/providers'
 import { useAuthStore } from '@/lib/auth-store'
 import { initAnalytics } from '@/lib/analytics'
 import '../global.css'
+
+// Show banner + play sound when a notification arrives while app is foregrounded.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+})
 
 // Initialise PostHog at module level so events during early startup are captured.
 // No-op when EXPO_PUBLIC_POSTHOG_KEY is absent.
@@ -52,6 +62,25 @@ function AuthGate() {
 
 export default function RootLayout() {
   const hydrated = useAuthStore((s) => s.hydrated)
+  const router = useRouter()
+  const notificationListener = useRef<Notifications.EventSubscription | null>(null)
+  const responseListener = useRef<Notifications.EventSubscription | null>(null)
+
+  useEffect(() => {
+    // Handle notification tap when app was backgrounded or closed.
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data as Record<string, string> | undefined
+        if (data?.conversationId) {
+          router.push(`/(tabs)/chat/${data.conversationId}`)
+        }
+      },
+    )
+    return () => {
+      notificationListener.current?.remove()
+      responseListener.current?.remove()
+    }
+  }, [router])
 
   return (
     <Providers>
