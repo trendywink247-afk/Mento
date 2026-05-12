@@ -20,14 +20,6 @@ interface AttemptYear {
 
 type Stage = 'journey' | 'history' | 'subjects' | 'reach' | 'submitting'
 
-const STAGE_ORDER: Stage[] = ['journey', 'history', 'subjects', 'reach']
-
-function getProgress(stage: Stage): { current: number; total: number } | null {
-  const idx = STAGE_ORDER.indexOf(stage)
-  if (idx === -1) return null
-  return { current: idx + 1, total: STAGE_ORDER.length }
-}
-
 export default function MentorOnboardingPage() {
   const router = useRouter()
   const tokens = useAuthStore((s) => s.tokens)
@@ -47,7 +39,7 @@ export default function MentorOnboardingPage() {
 
   useEffect(() => {
     if (hasHydrated && !tokens) router.replace('/login?role=MENTOR')
-  }, [hasHydrated, tokens, router])
+  }, [tokens, router])
 
   function addYear() {
     setHistory([...history, { year: new Date().getFullYear(), prelims: false, mains: false, interview: false }])
@@ -88,30 +80,8 @@ export default function MentorOnboardingPage() {
     }
   }
 
-  const progress = getProgress(stage)
-
   return (
     <div className="mx-auto flex min-h-screen max-w-xl flex-col px-6 py-12">
-      {/* Progress bar */}
-      {progress && (
-        <div className="mb-8 flex flex-col gap-1.5">
-          <span className="text-xs text-muted-foreground">
-            Step {progress.current} of {progress.total}
-          </span>
-          <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-500"
-              style={{ width: `${(progress.current / progress.total) * 100}%` }}
-              role="progressbar"
-              aria-valuenow={progress.current}
-              aria-valuemin={1}
-              aria-valuemax={progress.total}
-              aria-label={`Step ${progress.current} of ${progress.total}`}
-            />
-          </div>
-        </div>
-      )}
-
       {stage === 'journey' && (
         <div className="space-y-6">
           <div>
@@ -120,35 +90,20 @@ export default function MentorOnboardingPage() {
               Pick the description that fits you best.
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            {MENTOR_JOURNEY_OPTIONS.map((o) => {
-              const isSelected = journeyType === o.value
-              return (
-                <button
-                  key={o.value}
-                  onClick={() => setJourneyType(o.value)}
-                  aria-pressed={isSelected}
-                  className={`relative flex w-full items-center justify-between overflow-hidden rounded-lg border p-3 text-left transition-all ${
-                    isSelected
-                      ? 'border-primary bg-primary/5 font-medium shadow-sm'
-                      : 'border-input hover:bg-accent'
-                  }`}
-                >
-                  <span
-                    className={`absolute inset-y-0 left-0 w-[3px] rounded-l transition-all ${
-                      isSelected ? 'bg-primary' : 'bg-transparent'
-                    }`}
-                    aria-hidden="true"
-                  />
-                  <span className="pl-2">{o.label}</span>
-                  {isSelected && (
-                    <span className="ml-2 shrink-0 text-primary" aria-hidden="true">
-                      &#10003;
-                    </span>
-                  )}
-                </button>
-              )
-            })}
+          <div className="space-y-2">
+            {MENTOR_JOURNEY_OPTIONS.map((o) => (
+              <button
+                key={o.value}
+                onClick={() => setJourneyType(o.value)}
+                className={`w-full rounded-lg border p-3 text-left transition-colors ${
+                  journeyType === o.value
+                    ? 'border-primary bg-primary/5'
+                    : 'border-input hover:bg-accent'
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
           </div>
           <Cta disabled={!journeyType} onClick={() => setStage('history')}>
             Next
@@ -204,9 +159,7 @@ export default function MentorOnboardingPage() {
         <div className="space-y-6">
           <div>
             <h2 className="text-xl font-semibold">Where you can guide</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Pick the areas you&apos;re comfortable with.
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Pick the areas you&apos;re comfortable with.</p>
           </div>
           <ChipPicker
             options={GUIDANCE_CATEGORIES}
@@ -255,7 +208,7 @@ export default function MentorOnboardingPage() {
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Hourly rate (&#8377;)</label>
+            <label className="text-sm font-medium">Hourly rate (₹)</label>
             <input
               type="number"
               value={hourlyRate}
@@ -271,7 +224,7 @@ export default function MentorOnboardingPage() {
       )}
 
       {stage === 'submitting' && (
-        <p className="m-auto text-sm text-muted-foreground">Submitting...</p>
+        <p className="m-auto text-sm text-muted-foreground">Submitting…</p>
       )}
     </div>
   )
