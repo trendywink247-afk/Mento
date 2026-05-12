@@ -1,29 +1,44 @@
-import Link from 'next/link'
+import { Suspense } from 'react'
+import { LandingNav } from '@/components/landing/LandingNav'
+import { HeroSection } from '@/components/landing/HeroSection'
+import { ManifestoStrip } from '@/components/landing/ManifestoStrip'
+import { HowItWorks } from '@/components/landing/HowItWorks'
+import { MentorPreviewSection } from '@/components/landing/MentorPreviewSection'
+import { MentorPreviewSkeleton } from '@/components/landing/MentorPreviewSkeleton'
+import { WhatMentoIsNot } from '@/components/landing/WhatMentoIsNot'
+import { FaqSection } from '@/components/landing/FaqSection'
+import { FinalCta } from '@/components/landing/FinalCta'
+import { LandingFooter } from '@/components/landing/LandingFooter'
 
-export default function HomePage() {
+async function fetchCounts(): Promise<{ mentors: number; aspirants: number }> {
+  try {
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000'
+    const res = await fetch(`${base}/mentors?isVerified=true`, { next: { revalidate: 300 } })
+    if (!res.ok) return { mentors: 0, aspirants: 0 }
+    const data = (await res.json()) as unknown[]
+    return { mentors: Array.isArray(data) ? data.length : 0, aspirants: 0 }
+  } catch {
+    return { mentors: 0, aspirants: 0 }
+  }
+}
+
+export default async function HomePage() {
+  const { mentors, aspirants } = await fetchCounts()
   return (
-    <main className="container mx-auto flex min-h-screen flex-col items-center justify-center gap-10 py-12">
-      <div className="space-y-4 text-center">
-        <h1 className="text-5xl font-semibold tracking-tight">Mento</h1>
-        <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
-          Anonymous, peer-led mentorship for the UPSC journey. Built on the principle
-          that the person who almost cleared carries the same wisdom as the person who did.
-        </p>
-      </div>
-
-      <div className="flex flex-col items-center gap-3">
-        <Link
-          className="rounded-md bg-primary px-8 py-3 text-base font-medium text-primary-foreground hover:opacity-90"
-          href="/onboarding/role"
-        >
-          Get started
-        </Link>
-        <Link className="text-sm text-muted-foreground hover:underline" href="/login">
-          Already a member? Sign in
-        </Link>
-      </div>
-
-      <p className="absolute bottom-8 text-xs text-muted-foreground">We honour the struggle.</p>
-    </main>
+    <>
+      <LandingNav />
+      <main>
+        <HeroSection mentorCount={mentors} aspirantCount={aspirants} />
+        <ManifestoStrip />
+        <HowItWorks />
+        <Suspense fallback={<MentorPreviewSkeleton />}>
+          <MentorPreviewSection />
+        </Suspense>
+        <WhatMentoIsNot />
+        <FaqSection />
+        <FinalCta />
+      </main>
+      <LandingFooter />
+    </>
   )
 }
