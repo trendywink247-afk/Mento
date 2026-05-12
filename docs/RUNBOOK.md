@@ -107,6 +107,22 @@ pnpm prisma generate
 pnpm prisma migrate dev --name <descriptive_name>
 ```
 
+## Sentry CLI post-install scripts
+
+`@sentry/cli` requires a native binary download that pnpm's sandbox normally blocks.
+The root `package.json` now lists it (along with `esbuild`, `sharp`, `prisma`, and a
+few other packages that need post-install scripts) under `pnpm.onlyBuiltDependencies`.
+This allows their install scripts to run without disabling the full sandbox.
+
+If you see `@sentry/cli: command not found` after a fresh `pnpm install`:
+
+```bash
+cd /root/Mento
+pnpm rebuild @sentry/cli
+```
+
+This is safe — `onlyBuiltDependencies` explicitly permits it.
+
 ## Troubleshooting
 
 ### "Command 'prisma' not found"

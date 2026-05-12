@@ -471,7 +471,8 @@ export default function GetAppPage() {
             </div>
 
             {/* Scroll hint on mobile */}
-            <p className="mt-2 text-center text-xs text-muted-foreground/70 md:hidden">
+            {/* TODO(badges): replace inline-SVG approximations with official PNGs before app-store submission */}
+            <p className="mt-2 text-center text-xs text-muted-foreground md:hidden">
               Swipe to see more screens
             </p>
           </section>
@@ -495,7 +496,7 @@ export default function GetAppPage() {
 
       {/* ── Slim footer ─────────────────────────────────────────────────── */}
       <footer className="border-t border-border px-6 py-6">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-xs text-muted-foreground/70 sm:flex-row">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-xs text-muted-foreground sm:flex-row">
           <span>© {new Date().getFullYear()} Mento Technologies Pvt. Ltd.</span>
           <nav className="flex gap-4">
             <a href="/privacy" className="transition-colors hover:text-foreground">

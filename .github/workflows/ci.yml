@@ -1,0 +1,198 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "10"
+
+jobs:
+  # ─── Job 1: TypeScript type-check all apps ───────────────────────────────
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck api
+        run: cd apps/api && pnpm typecheck
+
+      - name: Typecheck web
+        run: cd apps/web && pnpm typecheck
+
+      - name: Typecheck mobile
+        run: cd apps/mobile && pnpm typecheck
+
+  # ─── Job 2: Build web (Next.js production build) ─────────────────────────
+  build-web:
+    name: Build web
+    runs-on: ubuntu-latest
+    env:
+      # Sentry source-map upload is skipped in CI unless SENTRY_AUTH_TOKEN is set.
+      # The token is optional — build still succeeds without it.
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+      NEXT_PUBLIC_SOCKET_URL: http://localhost:4000
+      NEXT_PUBLIC_APP_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages first
+        run: pnpm --filter @mento/types build || true && pnpm --filter @mento/validation build || true && pnpm --filter @mento/api-client build || true
+
+      - name: Build web
+        run: cd apps/web && pnpm build
+
+  # ─── Job 3: E2E tests (api + web + Playwright) ───────────────────────────
+  e2e:
+    name: E2E tests
+    runs-on: ubuntu-latest
+    needs: [typecheck]
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mento
+          POSTGRES_PASSWORD: mento
+          POSTGRES_DB: mento
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U mento -d mento"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://mento:mento@localhost:5433/mento
+      REDIS_URL: redis://localhost:6380
+      JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
+      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+      CORS_ORIGINS: http://localhost:3030
+      # Sentry disabled in CI to avoid spurious upload failures
+      SENTRY_AUTH_TOKEN: ""
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+      NEXT_PUBLIC_SOCKET_URL: http://localhost:4000
+      NEXT_PUBLIC_APP_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: cd apps/web && pnpm exec playwright install --with-deps chromium
+
+      - name: Build workspace packages
+        run: pnpm --filter @mento/types build || true && pnpm --filter @mento/validation build || true && pnpm --filter @mento/api-client build || true
+
+      - name: Apply DB schema
+        run: cd apps/api && pnpm exec prisma db push --accept-data-loss
+
+      - name: Build API
+        run: cd apps/api && pnpm build
+
+      - name: Start API in background
+        run: |
+          cd apps/api && node dist/main.js &
+          echo $! > /tmp/api.pid
+
+      - name: Build web (for production serve)
+        run: cd apps/web && pnpm build
+
+      - name: Start web in background
+        run: |
+          cd apps/web && pnpm start &
+          echo $! > /tmp/web.pid
+
+      - name: Wait for API /healthz
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:4000/healthz; then
+              echo "API is up"
+              break
+            fi
+            echo "Waiting for API... ($i/30)"
+            sleep 2
+          done
+
+      - name: Wait for web :3030
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3030; then
+              echo "Web is up"
+              break
+            fi
+            echo "Waiting for web... ($i/30)"
+            sleep 2
+          done
+
+      - name: Run API e2e tests
+        run: cd apps/web && pnpm test:e2e --project=api
+
+      - name: Run a11y e2e tests
+        run: cd apps/web && pnpm test:e2e e2e/a11y.spec.ts
+
+      - name: Stop background processes
+        if: always()
+        run: |
+          [ -f /tmp/api.pid ] && kill $(cat /tmp/api.pid) || true
+          [ -f /tmp/web.pid ] && kill $(cat /tmp/web.pid) || true
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7

@@ -49,7 +49,7 @@ export async function LandingFooter() {
           {/* Link columns */}
           {FOOTER_COLS.map((col) => (
             <div key={col.heading}>
-              <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
+              <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                 {col.heading}
               </p>
               <ul className="space-y-3">
