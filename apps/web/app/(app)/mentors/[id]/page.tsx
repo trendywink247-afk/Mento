@@ -6,6 +6,7 @@ import type { AvatarColor, AvatarLetter } from '@mento/types'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
 import { COPY } from '@/lib/copy'
+import { BookingSheet } from '@/components/sessions/BookingSheet'
 
 type AttemptYear = { year: number; prelims: boolean; mains: boolean; interview: boolean }
 type MentorDetail = {
@@ -43,6 +44,9 @@ export default function MentorProfilePage() {
   const [busy, setBusy] = useState(false)
   const [requestError, setRequestError] = useState<string | null>(null)
   const [requestSent, setRequestSent] = useState(false)
+  const [showBooking, setShowBooking] = useState(false)
+  const [bookingAvailability, setBookingAvailability] = useState<Record<string, unknown> | null>(null)
+  const [bookingSuccess, setBookingSuccess] = useState(false)
 
   useEffect(() => {
     if (!params.id) return
@@ -51,6 +55,17 @@ export default function MentorProfilePage() {
       .then(setMentor)
       .catch(() => {})
   }, [params.id])
+
+  async function openBooking() {
+    if (!mentor) return
+    try {
+      const avail = await getApiClient().sessions.getAvailability(mentor.userId)
+      setBookingAvailability(avail.availability)
+    } catch {
+      setBookingAvailability(null)
+    }
+    setShowBooking(true)
+  }
 
   async function send() {
     if (!mentor) return
@@ -159,9 +174,8 @@ export default function MentorProfilePage() {
             Initiate connection
           </button>
           <button
-            disabled
-            className="rounded-md bg-amber-500/80 px-5 py-2 text-sm font-medium text-white opacity-60"
-            title="1:1 sessions ship in v1.1"
+            onClick={openBooking}
+            className="rounded-md bg-amber-500 px-5 py-2 text-sm font-medium text-white hover:opacity-90"
           >
             Request 1-on-1 session
           </button>
@@ -249,6 +263,37 @@ export default function MentorProfilePage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 1-on-1 booking sheet */}
+      {showBooking && mentor && !bookingSuccess && (
+        <BookingSheet
+          mentorId={mentor.userId}
+          mentorHandle={mentor.displayHandle}
+          hourlyRateInr={mentor.hourlyRateInr}
+          availability={bookingAvailability}
+          onClose={() => setShowBooking(false)}
+          onSuccess={() => {
+            setBookingSuccess(true)
+            setTimeout(() => {
+              setShowBooking(false)
+              setBookingSuccess(false)
+              router.push('/calls')
+            }, 2000)
+          }}
+        />
+      )}
+
+      {/* Booking success overlay */}
+      {showBooking && bookingSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
+          <div className="w-full max-w-md rounded-2xl bg-background p-6 text-center">
+            <p className="text-base font-medium">Session request sent.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              The mentor will accept or decline within 48 hours. Redirecting to Calls…
+            </p>
           </div>
         </div>
       )}
