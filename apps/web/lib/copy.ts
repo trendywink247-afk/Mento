@@ -132,6 +132,20 @@ export const LANGUAGE_OPTIONS = [
   { value: 'gu', label: 'Gujarati' },
 ] as const
 
+// Journals copy (§ 1.10 + UX audit J5)
+export const JOURNALS_COPY = {
+  subtitle:
+    "Where you write down what you can't tell anyone else. Some pages stay with you. Others, you and your mentor write together.",
+  personalQuote:
+    'Some pages stay with you. Others, you and your mentor write together.',
+  firstEntryPrompt:
+    "Your first reflection in this category. There's no template. Write what you can't say out loud.",
+  lockedBanner: (handle: string) =>
+    `This journal is locked. Your shared history with ${handle} is preserved here.`,
+  readOnlyBanner:
+    'Both of you must be active in the chat to write here. Currently read-only.',
+} as const
+
 // Auth flow copy (login + OTP)
 export const AUTH_COPY = {
   loginLeftPanelQuote: 'We honour the struggle.',
