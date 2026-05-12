@@ -6,6 +6,7 @@ import { Inbox, Clock, Send, Archive } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { ConversationSummary, AvatarLetter, AvatarColor } from '@mento/types'
 import { getApiClient } from '@/lib/api'
+import { useAuthStore } from '@/lib/auth-store'
 import { LetterAvatar } from '@/components/LetterAvatar'
 import { ChatConversationSkeleton } from '@/components/skeletons/ChatConversationSkeleton'
 import { EmptyChat } from '@/components/illustrations/EmptyChat'
@@ -407,6 +408,7 @@ function ArchivedTab({
 
 export default function ChatListPage() {
   const t = useTranslations('chat')
+  const role = useAuthStore((s) => s.user?.role)
   const [convs, setConvs] = useState<ConversationSummary[] | null>(null)
   const [requests, setRequests] = useState<ChatRequest[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -455,16 +457,22 @@ export default function ChatListPage() {
     )
   }
 
-  const pendingRequests = requests.filter((r) => r.status === 'PENDING')
-  const sentRequests = requests.filter((r) => r.status === 'PENDING')
+  // The api returns chat-requests filtered by role on the server:
+  //   MENTOR → requests addressed TO them (incoming pending)
+  //   ASPIRANT/MENTEE → requests they originated (outgoing pending)
+  // So the SAME `requests` array means different things by role; tabs reflect that.
+  const isMentor = role === 'MENTOR'
+  const pendingRequests = isMentor ? requests.filter((r) => r.status === 'PENDING') : []
+  const sentRequests = !isMentor ? requests.filter((r) => r.status === 'PENDING') : []
   const archivedRequests = requests.filter(
     (r) => r.status === 'ARCHIVED' || r.status === 'DECLINED',
   )
 
   const TABS: { id: Tab; label: string; Icon: React.ElementType; count?: number }[] = [
     { id: 'all', label: t('tabs.all'), Icon: Inbox, count: convs.length },
-    { id: 'pending', label: t('tabs.pending'), Icon: Clock, count: pendingRequests.length },
-    { id: 'sent', label: t('tabs.sent'), Icon: Send, count: sentRequests.length },
+    ...(isMentor
+      ? [{ id: 'pending' as const, label: t('tabs.pending'), Icon: Clock, count: pendingRequests.length }]
+      : [{ id: 'sent' as const, label: t('tabs.sent'), Icon: Send, count: sentRequests.length }]),
     { id: 'archived', label: t('tabs.archived'), Icon: Archive, count: archivedRequests.length },
   ]
 

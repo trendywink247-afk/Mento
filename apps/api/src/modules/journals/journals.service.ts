@@ -254,12 +254,28 @@ export class JournalsService {
       (journal.conversation.mentorId === userId || journal.conversation.aspirantId === userId)
     if (!isOwner && !isCounterpart) throw new ForbiddenException('Not your journal')
 
-    return this.prisma.journalAuditLog.findMany({
+    const rows = await this.prisma.journalAuditLog.findMany({
       where: { journalId },
       orderBy: { timestamp: 'desc' },
       take: 200,
       include: { user: { include: { profile: true } } },
     })
+
+    // SECURITY: never return the raw User row — strip phone, email, googleSub, passwordHash.
+    return rows.map((r) => ({
+      id: r.id,
+      journalId: r.journalId,
+      action: r.action,
+      diff: r.diff as Record<string, unknown> | null,
+      timestamp: r.timestamp.toISOString(),
+      author: {
+        id: r.userId,
+        displayHandle: r.user.profile?.displayHandle ?? `User_${r.userId.slice(0, 4)}`,
+        avatarLetter: r.user.profile?.avatarLetter ?? 'B',
+        avatarColor: r.user.profile?.avatarColor ?? 'SLATE',
+        hasPurpleTick: r.user.profile?.hasPurpleTick ?? false,
+      },
+    }))
   }
 
   /** Long-press save: copies a message into a category journal. */
