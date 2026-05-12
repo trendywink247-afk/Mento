@@ -62,22 +62,28 @@ export class JournalsService {
   }
 
   async upsert(userId: string, category: JournalCategory, conversationId?: string, title?: string) {
-    return this.prisma.journal.upsert({
-      where: {
-        ownerId_category_conversationId: {
-          ownerId: userId,
-          category,
-          conversationId: conversationId ?? null,
-        } as never,
-      },
-      create: {
+    // Postgres treats NULLs as not-equal-to-each-other inside unique indexes, so
+    // `prisma.upsert` on a compound key that contains a nullable column will
+    // happily create duplicates AND fail to match the existing row.
+    // findFirst + create/update sidesteps that — at the small cost of a non-atomic
+    // 2-statement path, which is fine for journals (no contention).
+    const existing = await this.prisma.journal.findFirst({
+      where: { ownerId: userId, category, conversationId: conversationId ?? null },
+    })
+    if (existing) {
+      if (title && title !== existing.title) {
+        return this.prisma.journal.update({ where: { id: existing.id }, data: { title } })
+      }
+      return existing
+    }
+    return this.prisma.journal.create({
+      data: {
         ownerId: userId,
         category,
         conversationId: conversationId ?? null,
         isShared: !!conversationId,
         title,
       },
-      update: { title },
     })
   }
 

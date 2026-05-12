@@ -112,10 +112,42 @@ export class OnboardingService {
         },
       })
 
-      await tx.profile.update({
-        where: { userId },
-        data: { avatarLetter: letter, avatarColor: color },
-      })
+      // Reallocate display handle so a mentor doesn't keep their `Aspirant_NNNN`
+      // identity after promotion. Tries up to 5 randomised suffixes to dodge the
+      // unique constraint.
+      const { generateDisplayHandle } = await import('../../common/anonymity')
+      let attempt = 0
+      while (attempt < 5) {
+        try {
+          await tx.profile.update({
+            where: { userId },
+            data: {
+              avatarLetter: letter,
+              avatarColor: color,
+              displayHandle: generateDisplayHandle(letter),
+            },
+          })
+          break
+        } catch (err) {
+          if (
+            err &&
+            typeof err === 'object' &&
+            'code' in err &&
+            (err as { code?: string }).code === 'P2002'
+          ) {
+            attempt += 1
+            continue
+          }
+          throw err
+        }
+      }
+      if (attempt >= 5) {
+        // Fall back to just updating letter+color if we exhausted handle attempts.
+        await tx.profile.update({
+          where: { userId },
+          data: { avatarLetter: letter, avatarColor: color },
+        })
+      }
 
       return tx.mentorProfile.findUnique({ where: { userId } })
     })

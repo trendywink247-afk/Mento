@@ -63,17 +63,23 @@ export default {
         sm: 'calc(var(--radius) - 8px)',
       },
       fontFamily: {
+        // Inter (via next/font) is exposed as --font-sans on <html>.
         sans: [
+          'var(--font-sans)',
           'ui-sans-serif',
           'system-ui',
           '-apple-system',
           'BlinkMacSystemFont',
           '"Segoe UI"',
           'Roboto',
-          '"Helvetica Neue"',
-          'Arial',
           'sans-serif',
         ],
+      },
+      fontSize: {
+        // B2C-tuned scale — slightly larger body than Tailwind default.
+        'display-2xl': ['4.5rem', { lineHeight: '1.05', letterSpacing: '-0.03em', fontWeight: '700' }],
+        'display-xl': ['3.5rem', { lineHeight: '1.1', letterSpacing: '-0.03em', fontWeight: '700' }],
+        'display-lg': ['2.5rem', { lineHeight: '1.15', letterSpacing: '-0.02em', fontWeight: '600' }],
       },
     },
   },

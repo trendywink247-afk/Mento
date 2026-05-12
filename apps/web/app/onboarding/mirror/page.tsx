@@ -20,6 +20,7 @@ type Stage = 'intro' | 'journey' | 'background' | 'reflection' | 'knowledge' | '
 export default function MirrorPage() {
   const router = useRouter()
   const tokens = useAuthStore((s) => s.tokens)
+  const hasHydrated = useAuthStore((s) => s.hasHydrated)
   const [stage, setStage] = useState<Stage>('intro')
   const [journeyStage, setJourneyStage] = useState<string>('')
   const [background, setBackground] = useState<string>('')
@@ -30,8 +31,8 @@ export default function MirrorPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!tokens) router.replace('/login?role=ASPIRANT')
-  }, [tokens, router])
+    if (hasHydrated && !tokens) router.replace('/login?role=ASPIRANT')
+  }, [hasHydrated, tokens, router])
 
   useEffect(() => {
     void getApiClient()

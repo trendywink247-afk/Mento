@@ -8,8 +8,11 @@ interface AuthState {
   user: User | null
   profile: Profile | null
   tokens: AuthTokens | null
+  /** True once the persisted store has been read from localStorage. */
+  hasHydrated: boolean
   setSession: (s: { user: User; profile: Profile | null; tokens: AuthTokens }) => void
   clear: () => void
+  _setHasHydrated: (v: boolean) => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -18,6 +21,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       profile: null,
       tokens: null,
+      hasHydrated: false,
       setSession: (s) => {
         set({ user: s.user, profile: s.profile, tokens: s.tokens })
         if (typeof window !== 'undefined') {
@@ -30,10 +34,18 @@ export const useAuthStore = create<AuthState>()(
           window.localStorage.removeItem('mento.access')
         }
       },
+      _setHasHydrated: (v) => set({ hasHydrated: v }),
     }),
     {
       name: 'mento.auth',
-      storage: createJSONStorage(() => (typeof window !== 'undefined' ? window.localStorage : undefined as never)),
+      storage: createJSONStorage(() =>
+        typeof window !== 'undefined' ? window.localStorage : (undefined as never),
+      ),
+      // Don't persist the hydration flag itself.
+      partialize: (s) => ({ user: s.user, profile: s.profile, tokens: s.tokens }),
+      onRehydrateStorage: () => (state) => {
+        state?._setHasHydrated(true)
+      },
     },
   ),
 )

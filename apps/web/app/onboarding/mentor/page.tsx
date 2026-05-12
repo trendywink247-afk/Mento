@@ -23,6 +23,7 @@ type Stage = 'journey' | 'history' | 'subjects' | 'reach' | 'submitting'
 export default function MentorOnboardingPage() {
   const router = useRouter()
   const tokens = useAuthStore((s) => s.tokens)
+  const hasHydrated = useAuthStore((s) => s.hasHydrated)
   const [stage, setStage] = useState<Stage>('journey')
 
   const [journeyType, setJourneyType] = useState<string>('')
@@ -37,7 +38,7 @@ export default function MentorOnboardingPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!tokens) router.replace('/login?role=MENTOR')
+    if (hasHydrated && !tokens) router.replace('/login?role=MENTOR')
   }, [tokens, router])
 
   function addYear() {

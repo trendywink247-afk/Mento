@@ -7,10 +7,11 @@ import { useAuthStore } from '@/lib/auth-store'
 export default function MentorSubmittedPage() {
   const router = useRouter()
   const tokens = useAuthStore((s) => s.tokens)
+  const hasHydrated = useAuthStore((s) => s.hasHydrated)
 
   useEffect(() => {
-    if (!tokens) router.replace('/login?role=MENTOR')
-  }, [tokens, router])
+    if (hasHydrated && !tokens) router.replace('/login?role=MENTOR')
+  }, [hasHydrated, tokens, router])
 
   return (
     <div className="flex min-h-screen items-center justify-center px-6">

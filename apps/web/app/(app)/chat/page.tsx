@@ -27,8 +27,20 @@ export default function ChatListPage() {
   if (!convs) return <p className="text-sm text-muted-foreground">Loading conversations…</p>
   if (convs.length === 0) {
     return (
-      <div className="rounded-lg border bg-muted/30 p-6 text-sm text-muted-foreground">
-        No conversations yet. An admin will assign you a mentor or aspirant soon.
+      <div className="rounded-2xl border bg-card p-10 text-center shadow-card">
+        <p className="mx-auto max-w-sm text-base font-medium">
+          No conversations yet.
+        </p>
+        <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
+          Browse mentors and send your first 160-character intro. When a mentor accepts,
+          your conversation will appear here.
+        </p>
+        <Link
+          href="/mentors"
+          className="mt-6 inline-block rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+        >
+          Browse mentors
+        </Link>
       </div>
     )
   }

@@ -9,13 +9,12 @@ import { getApiClient } from '@/lib/api'
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const { user, profile, tokens, clear } = useAuthStore()
+  const { user, profile, tokens, hasHydrated, clear } = useAuthStore()
 
   useEffect(() => {
-    if (!tokens) {
-      router.replace('/login')
-    }
-  }, [tokens, router])
+    // Wait for the persisted store to hydrate before deciding to redirect.
+    if (hasHydrated && !tokens) router.replace('/login')
+  }, [hasHydrated, tokens, router])
 
   async function handleLogout() {
     if (tokens) {
@@ -25,6 +24,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     router.replace('/login')
   }
 
+  if (!hasHydrated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Loading your session…
+      </div>
+    )
+  }
   if (!tokens) return null
 
   return (
