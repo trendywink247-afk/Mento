@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
 import { MotionFade, MotionStagger, MotionStaggerItem, MotionTap } from '@/components/motion'
+import { CategoryIconBadge } from '@/components/journals/category-icons'
+import { relativeTime } from '@/components/journals/relative-time'
 
 const CATEGORIES = [
   {
@@ -125,34 +127,59 @@ export default function JournalsPage() {
         </MotionFade>
       )}
 
-      {CATEGORIES.map((group, groupIdx) => (
-        <MotionFade key={group.label} delay={0.05 * (groupIdx + 1)}>
-          <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">{group.label}</h2>
-            <MotionStagger staggerDelay={0.04} className="grid gap-2 md:grid-cols-3">
-              {group.items.map((it) => {
-                const exists = existing.find((j) => j.category === it.key && !j.isShared)
-                return (
-                  <MotionStaggerItem key={it.key}>
-                    <MotionTap disabled={busy}>
-                      <button
-                        disabled={busy}
-                        onClick={() => open(it.key)}
-                        className="w-full rounded-xl border bg-card p-4 text-left transition-colors hover:bg-accent disabled:opacity-50"
-                      >
-                        <p className="text-sm font-medium">{it.name}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {exists ? `${exists.entryCount} entries` : 'Start your first entry'}
-                        </p>
-                      </button>
-                    </MotionTap>
-                  </MotionStaggerItem>
-                )
-              })}
-            </MotionStagger>
-          </section>
-        </MotionFade>
-      ))}
+      {CATEGORIES.map((group, groupIdx) => {
+        const activeInGroup = group.items.filter(
+          (it) => existing.find((j) => j.category === it.key && !j.isShared && j.entryCount > 0),
+        ).length
+        return (
+          <MotionFade key={group.label} delay={0.05 * (groupIdx + 1)}>
+            <section>
+              <div className="mb-3 flex items-baseline justify-between border-b pb-2">
+                <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                  {group.label} <span className="text-foreground/70">({group.items.length})</span>
+                </h2>
+                {activeInGroup > 0 && (
+                  <span className="text-xs text-muted-foreground">{activeInGroup} active</span>
+                )}
+              </div>
+              <MotionStagger staggerDelay={0.04} className="grid gap-2 md:grid-cols-3">
+                {group.items.map((it) => {
+                  const exists = existing.find((j) => j.category === it.key && !j.isShared)
+                  const hasEntries = exists && exists.entryCount > 0
+                  return (
+                    <MotionStaggerItem key={it.key}>
+                      <MotionTap disabled={busy}>
+                        <button
+                          disabled={busy}
+                          onClick={() => open(it.key)}
+                          className={`flex w-full items-start gap-3 rounded-xl border bg-card p-4 text-left transition-all hover:border-input hover:shadow-card disabled:opacity-50 ${
+                            !hasEntries ? 'border-dashed opacity-80' : ''
+                          }`}
+                        >
+                          <CategoryIconBadge category={it.key} size={32} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium">{it.name}</p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {exists
+                                ? `${exists.entryCount} ${exists.entryCount === 1 ? 'entry' : 'entries'}`
+                                : 'Start your first entry'}
+                            </p>
+                            {hasEntries && exists && (
+                              <p className="mt-0.5 text-[11px] text-muted-foreground/80">
+                                Updated {relativeTime(exists.updatedAt)}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      </MotionTap>
+                    </MotionStaggerItem>
+                  )
+                })}
+              </MotionStagger>
+            </section>
+          </MotionFade>
+        )
+      })}
     </div>
   )
 }
