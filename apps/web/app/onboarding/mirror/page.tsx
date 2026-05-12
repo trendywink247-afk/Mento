@@ -264,6 +264,8 @@ export default function MirrorPage() {
             options={CHALLENGE_OPTIONS}
             selected={challenges}
             onChange={setChallenges}
+            showCount
+            gridCols
           />
           <Cta disabled={challenges.length === 0} onClick={() => setStage('privacy')}>
             Next
