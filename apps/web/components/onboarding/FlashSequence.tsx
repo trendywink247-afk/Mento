@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 
 interface Props {
   lines: readonly string[]
@@ -63,7 +64,8 @@ export function FlashSequence({
 
   return (
     <div
-      className="relative flex min-h-screen flex-col items-center justify-center bg-background p-8"
+      className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-8"
+      style={{ background: 'var(--background)' }}
       onClick={advance}
       role="button"
       tabIndex={0}
@@ -72,6 +74,56 @@ export function FlashSequence({
       }}
       aria-label="Flash introduction. Click or tap to advance."
     >
+      {/* ── Animated background layer ── */}
+      {/* Slow-rotating conic gradient overlay */}
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(147,197,253,0.07) 60deg, transparent 120deg, rgba(167,139,250,0.06) 180deg, transparent 240deg, rgba(147,197,253,0.05) 300deg, transparent 360deg)',
+        }}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 60, ease: 'linear', repeat: Infinity }}
+      />
+
+      {/* Blob 1 — blue tint, upper-left drift */}
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none absolute h-80 w-80 rounded-full"
+        style={{
+          background:
+            'radial-gradient(circle, rgba(147,197,253,0.18) 0%, transparent 70%)',
+          top: '10%',
+          left: '5%',
+        }}
+        animate={{ x: [-60, 80, -60], y: [-30, 50, -30] }}
+        transition={{ duration: 35, ease: 'easeInOut', repeat: Infinity }}
+      />
+
+      {/* Blob 2 — violet tint, lower-right drift */}
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none absolute h-96 w-96 rounded-full"
+        style={{
+          background:
+            'radial-gradient(circle, rgba(167,139,250,0.14) 0%, transparent 70%)',
+          bottom: '8%',
+          right: '3%',
+        }}
+        animate={{ x: [60, -80, 60], y: [30, -60, 30] }}
+        transition={{ duration: 40, ease: 'easeInOut', repeat: Infinity }}
+      />
+
+      {/* ── Mento wordmark (faded) ── */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute left-6 top-6 select-none text-sm font-semibold tracking-widest text-foreground"
+        style={{ opacity: 0.4 }}
+      >
+        Mento
+      </span>
+
       {/* Skip button — stopPropagation so the outer click handler does not also fire */}
       <button
         onClick={(e) => {
@@ -89,7 +141,7 @@ export function FlashSequence({
         role="region"
         aria-live="polite"
         aria-label="Introduction phrase"
-        className="flex flex-col items-center"
+        className="relative z-10 flex flex-col items-center"
       >
         <p
           key={idx}
@@ -102,7 +154,7 @@ export function FlashSequence({
 
       {/* Dot progress strip */}
       <div
-        className="absolute bottom-10 flex items-center gap-2"
+        className="absolute bottom-10 z-10 flex items-center gap-2"
         aria-hidden="true"
         role="presentation"
       >
@@ -120,7 +172,7 @@ export function FlashSequence({
         ))}
       </div>
 
-      <p className="absolute bottom-5 text-xs text-muted-foreground/50" aria-hidden="true">
+      <p className="absolute bottom-5 z-10 text-xs text-muted-foreground/50" aria-hidden="true">
         Tap anywhere to advance
       </p>
     </div>
