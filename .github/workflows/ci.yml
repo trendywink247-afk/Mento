@@ -160,22 +160,26 @@ jobs:
           for i in $(seq 1 30); do
             if curl -sf http://localhost:4000/healthz; then
               echo "API is up"
-              break
+              exit 0
             fi
             echo "Waiting for API... ($i/30)"
             sleep 2
           done
+          echo "API did not become ready in 60s" >&2
+          exit 1
 
       - name: Wait for web :3030
         run: |
           for i in $(seq 1 30); do
             if curl -sf http://localhost:3030; then
               echo "Web is up"
-              break
+              exit 0
             fi
             echo "Waiting for web... ($i/30)"
             sleep 2
           done
+          echo "Web did not become ready in 60s" >&2
+          exit 1
 
       - name: Run API e2e tests
         run: cd apps/web && pnpm test:e2e --project=api

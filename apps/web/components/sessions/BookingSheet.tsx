@@ -17,9 +17,7 @@ interface BookingSheetProps {
 
 type DayAvailability = { enabled?: boolean; start?: string; end?: string }
 
-function getDefaultHours(day: number): { start: string; end: string } {
-  // Mon-Fri: 9am-6pm. Weekend: closed.
-  if (day === 0 || day === 6) return { start: '09:00', end: '18:00' }
+function getDefaultHours(): { start: string; end: string } {
   return { start: '09:00', end: '18:00' }
 }
 
@@ -34,7 +32,7 @@ function getDayHours(
   avail: Record<string, unknown> | null,
   day: number,
 ): { start: string; end: string } {
-  const defaults = getDefaultHours(day)
+  const defaults = getDefaultHours()
   if (!avail) return defaults
   const d = avail[day.toString()] as DayAvailability | undefined
   if (!d) return defaults

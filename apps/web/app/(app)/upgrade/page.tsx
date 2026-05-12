@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Check, Loader2, Minus, AlertCircle } from 'lucide-react'
+import { Check, Loader2, AlertCircle } from 'lucide-react'
 import { getApiClient } from '@/lib/api'
 
 type Tier = 'FREE' | 'BASIC' | 'PRO' | 'MAX'
@@ -121,8 +121,7 @@ export default function UpgradePage() {
     const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
     if (!key) return
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const Razorpay = (window as any).Razorpay
+    const Razorpay = (window as unknown as { Razorpay?: new (opts: Record<string, unknown>) => { open: () => void } }).Razorpay
     if (!Razorpay) {
       setError('Payment SDK failed to load. Please refresh and try again.')
       return

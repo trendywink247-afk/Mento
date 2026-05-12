@@ -82,6 +82,14 @@ export class SessionsService {
     if (isNaN(scheduled.getTime())) throw new BadRequestException('Invalid scheduledAt date')
     if (scheduled < new Date()) throw new BadRequestException('Scheduled time must be in the future')
 
+    // Cap concurrent PENDING requests per mentee to prevent inbox spam.
+    const pendingCount = await this.prisma.sessionRequest.count({
+      where: { menteeId, status: SessionRequestStatus.PENDING },
+    })
+    if (pendingCount >= 5) {
+      throw new BadRequestException('Maximum 5 pending session requests at a time')
+    }
+
     const hourlyRateInr = mentorProfile.hourlyRateInr
     const amountInr = Math.ceil((hourlyRateInr * durationMin) / 60)
 

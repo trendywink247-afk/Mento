@@ -67,6 +67,11 @@ export default function RootLayout() {
   const responseListener = useRef<Notifications.EventSubscription | null>(null)
 
   useEffect(() => {
+    // Foreground delivery — keeps the system banner visible even with the app open.
+    notificationListener.current = Notifications.addNotificationReceivedListener(() => {
+      // setNotificationHandler above handles the banner/sound; this listener is a hook
+      // for future in-app toasts or unread badges.
+    })
     // Handle notification tap when app was backgrounded or closed.
     responseListener.current = Notifications.addNotificationResponseReceivedListener(
       (response) => {

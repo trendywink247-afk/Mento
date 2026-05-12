@@ -65,13 +65,22 @@ export default function AvailabilityPage() {
       router.replace('/dashboard')
       return
     }
-    // To read existing availability we fetch from mentors endpoint — we need mentorId.
-    // Since we don't have it directly, we use the /me endpoint which has user id,
-    // then fetch mentor detail. Actually let's read from sessions/availability/:id
-    // but we don't have a "self" endpoint for that. We'll just start from defaults
-    // and load from user id via profile if available.
-    setLoading(false)
-  }, [isMentor, router])
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
+    // Self-availability: read the mentor's own row to hydrate the form.
+    getApiClient()
+      .sessions.getAvailability(user.id)
+      .then((data) => {
+        setAvail(mergeAvailability(data.availability as Record<string, unknown> | null))
+        if (typeof data.hourlyRateInr === 'number') setHourlyRate(data.hourlyRateInr)
+      })
+      .catch(() => {
+        // Fall back to defaults — user can still save.
+      })
+      .finally(() => setLoading(false))
+  }, [isMentor, router, user?.id])
 
   function toggleDay(idx: number) {
     setAvail((prev) => ({

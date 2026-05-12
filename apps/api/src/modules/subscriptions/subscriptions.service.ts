@@ -10,13 +10,6 @@ import { ConfigService } from '@nestjs/config'
 import { SubscriptionStatus, SubscriptionTier } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
 
-// Plan IDs keyed by tier — loaded from env (RAZORPAY_PLAN_BASIC / PRO / MAX)
-const TIER_PRICE_INR: Record<Exclude<SubscriptionTier, 'FREE'>, number> = {
-  BASIC: 39900,   // paise
-  PRO: 59900,
-  MAX: 99900,
-}
-
 @Injectable()
 export class SubscriptionsService {
   private readonly logger = new Logger(SubscriptionsService.name)
@@ -29,6 +22,9 @@ export class SubscriptionsService {
   // ─── Internal helpers ──────────────────────────────────────────────────────
 
   private isDev(): boolean {
+    // Only treat the absence of RAZORPAY_KEY_ID as "dev mode" outside production.
+    // In production a missing key indicates a config outage, not a license to bypass payments.
+    if (process.env.NODE_ENV === 'production') return false
     return !this.config.get<string>('RAZORPAY_KEY_ID')
   }
 
