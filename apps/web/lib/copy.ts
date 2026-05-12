@@ -132,6 +132,13 @@ export const LANGUAGE_OPTIONS = [
   { value: 'gu', label: 'Gujarati' },
 ] as const
 
+// Mentees copy (§ 1.6, § 1.10)
+export const MENTEES_COPY = {
+  myMenteesEmpty: 'No conversations yet — aspirants you accept will appear here.',
+  savedToJournal: (category: string) => `Saved to ${category}.`,
+  saveJournalProRequired: 'Saving chat to journal needs PRO.',
+} as const
+
 // Journals copy (§ 1.10 + UX audit J5)
 export const JOURNALS_COPY = {
   subtitle:
@@ -144,6 +151,14 @@ export const JOURNALS_COPY = {
     `This journal is locked. Your shared history with ${handle} is preserved here.`,
   readOnlyBanner:
     'Both of you must be active in the chat to write here. Currently read-only.',
+} as const
+
+// Moderation copy (Phase G)
+export const MODERATION_COPY = {
+  accountSuspended:
+    'This account has been suspended for violating community guidelines. Email support@mento.in to appeal.',
+  confirmBan:
+    'Banning is permanent — the user and their Aadhaar will be denylisted from re-applying as a mentor.',
 } as const
 
 // Auth flow copy (login + OTP)

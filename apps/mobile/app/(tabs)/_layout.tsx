@@ -1,10 +1,14 @@
 import { Tabs } from 'expo-router'
-import { LayoutDashboard, BookOpen, MessageSquare, Users, User } from 'lucide-react-native'
+import { BookOpen, LayoutDashboard, MessageSquare, User, UserCheck, Users } from 'lucide-react-native'
+import { useAuthStore } from '@/lib/auth-store'
 
 const PRIMARY = '#2563eb'
 const MUTED = '#94a3b8'
 
 export default function TabsLayout() {
+  const user = useAuthStore((s) => s.user)
+  const isMentor = user?.role === 'MENTOR'
+
   return (
     <Tabs
       screenOptions={{
@@ -48,10 +52,22 @@ export default function TabsLayout() {
           ),
         }}
       />
+      {/* Mentor tab: Mentees | Aspirant tab: Mentors */}
+      <Tabs.Screen
+        name="mentees"
+        options={{
+          title: 'Mentees',
+          href: isMentor ? undefined : null,
+          tabBarIcon: ({ focused, color }) => (
+            <UserCheck size={22} color={color} strokeWidth={focused ? 2.5 : 2} />
+          ),
+        }}
+      />
       <Tabs.Screen
         name="mentors"
         options={{
           title: 'Mentors',
+          href: isMentor ? null : undefined,
           tabBarIcon: ({ focused, color }) => (
             <Users size={22} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),

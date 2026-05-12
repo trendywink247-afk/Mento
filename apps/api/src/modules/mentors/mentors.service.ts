@@ -64,6 +64,59 @@ export class MentorsService {
     }))
   }
 
+  /** Mentor-only: list all accepted aspirants this mentor has a conversation with. */
+  async listMentees(mentorId: string) {
+    const conversations = await this.prisma.conversation.findMany({
+      where: { mentorId },
+      orderBy: [{ lastMessageAt: 'desc' }, { createdAt: 'desc' }],
+      include: {
+        aspirant: { include: { profile: true } },
+        sharedJournal: true,
+      },
+    })
+
+    // Fetch last message + unread count per conversation separately (avoids take inside include)
+    const results = await Promise.all(
+      conversations.map(async (c) => {
+        const lastMessages = await this.prisma.message.findMany({
+          where: { conversationId: c.id, deletedAt: null },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        })
+        const unreadCount = await this.prisma.message.count({
+          where: {
+            conversationId: c.id,
+            deletedAt: null,
+            senderId: { not: mentorId },
+            readAt: null,
+          },
+        })
+
+        const last = lastMessages[0]
+        const aspirant = c.aspirant
+
+        return {
+          conversationId: c.id,
+          lastMessageAt: c.lastMessageAt?.toISOString() ?? c.createdAt.toISOString(),
+          unreadCount,
+          sharedJournalId: c.sharedJournal?.id ?? null,
+          aspirant: {
+            id: aspirant.id,
+            displayHandle: aspirant.profile?.displayHandle ?? `User_${aspirant.id.slice(0, 4)}`,
+            avatarLetter: aspirant.profile?.avatarLetter ?? 'B',
+            avatarColor: aspirant.profile?.avatarColor ?? 'SLATE',
+            hasPurpleTick: aspirant.profile?.hasPurpleTick ?? false,
+          },
+          lastMessage: last
+            ? { id: last.id, body: last.body, senderId: last.senderId, createdAt: last.createdAt.toISOString() }
+            : null,
+        }
+      }),
+    )
+
+    return results
+  }
+
   async detail(userId: string) {
     const mentor = await this.prisma.mentorProfile.findUnique({
       where: { userId },

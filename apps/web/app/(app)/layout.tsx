@@ -21,6 +21,7 @@ import {
   Phone,
   Wallet,
   Calendar,
+  UserCheck,
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@/lib/auth-store'
@@ -107,6 +108,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/calls', label: t('calls'), Icon: Phone },
     { href: '/wallet', label: t('wallet'), Icon: Wallet },
     ...(isMentor ? [{ href: '/availability', label: 'Availability', Icon: Calendar }] : []),
+    ...(isMentor ? [{ href: '/mentees', label: 'My mentees', Icon: UserCheck }] : []),
     { href: '/profile', label: t('profile'), Icon: User },
   ]
 
@@ -118,6 +120,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     '/calls': t('calls'),
     '/wallet': t('wallet'),
     '/availability': 'Availability',
+    '/mentees': 'My mentees',
     '/profile': t('profile'),
     '/admin': t('admin'),
   }

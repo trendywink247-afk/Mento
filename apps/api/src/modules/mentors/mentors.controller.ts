@@ -1,9 +1,18 @@
 import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common'
+import { Role } from '@prisma/client'
+import { CurrentUser, type JwtUser } from '../auth/decorators/current-user.decorator'
+import { Roles } from '../auth/decorators/roles.decorator'
 import { MentorsService, type MentorListFilters } from './mentors.service'
 
 @Controller('mentors')
 export class MentorsController {
   constructor(private readonly mentors: MentorsService) {}
+
+  @Roles(Role.MENTOR)
+  @Get('/mentees')
+  listMentees(@CurrentUser() user: JwtUser) {
+    return this.mentors.listMentees(user.sub)
+  }
 
   @Get()
   list(

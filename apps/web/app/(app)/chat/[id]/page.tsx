@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { MoreVertical, X } from 'lucide-react'
+import { BookOpen, Copy, MoreVertical, X } from 'lucide-react'
 import { v4 as uuid } from '@/lib/uuid'
 import type { Message } from '@mento/types'
 import { getApiClient } from '@/lib/api'
 import { getSocket } from '@/lib/socket'
 import { useAuthStore } from '@/lib/auth-store'
+import { MENTEES_COPY } from '@/lib/copy'
 
 // ---- Inline toast ----
 
@@ -163,6 +164,107 @@ function ReportDialog({
   )
 }
 
+// ---- Save to journal dialog ----
+
+interface JournalItem {
+  id: string
+  category: string
+  title: string | null
+}
+
+function SaveToJournalDialog({
+  messageId,
+  onClose,
+  onSuccess,
+  onError,
+}: {
+  messageId: string
+  onClose: () => void
+  onSuccess: (category: string) => void
+  onError: (msg: string) => void
+}) {
+  const [journals, setJournals] = useState<JournalItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    getApiClient()
+      .journals.list()
+      .then((data) =>
+        setJournals(
+          data
+            .filter((j) => !j.isShared && !j.isLocked)
+            .map((j) => ({ id: j.id, category: j.category, title: j.title })),
+        ),
+      )
+      .catch(() => setJournals([]))
+      .finally(() => setLoading(false))
+  }, [])
+
+  async function handlePick(category: string) {
+    setSaving(true)
+    try {
+      await getApiClient().journals.saveFromChat(messageId, category)
+      onSuccess(category)
+      onClose()
+    } catch (err: unknown) {
+      // 402 is handled globally (paywall modal triggers). Just close.
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 402) {
+        onClose()
+      } else {
+        onError(err instanceof Error ? err.message : 'Failed to save')
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-full max-w-xs rounded-xl border bg-background p-5 shadow-xl">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BookOpen size={16} className="text-primary" />
+            <h2 className="text-sm font-semibold">Save to journal</h2>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X size={16} />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="space-y-2 py-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-9 animate-pulse rounded-md bg-muted" />
+            ))}
+          </div>
+        ) : journals.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">
+            No personal journals yet. Create one from the Journals page first.
+          </p>
+        ) : (
+          <div className="space-y-1">
+            {journals.map((j) => (
+              <button
+                key={j.id}
+                disabled={saving}
+                onClick={() => handlePick(j.category)}
+                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-left text-sm text-foreground hover:bg-accent disabled:opacity-50"
+              >
+                <BookOpen size={13} className="shrink-0 text-muted-foreground" />
+                <span className="flex-1 capitalize">
+                  {j.title ?? j.category.replace(/_/g, ' ').toLowerCase()}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ---- Message bubble with more-menu ----
 
 interface MessageBubbleProps {
@@ -170,11 +272,13 @@ interface MessageBubbleProps {
   mine: boolean
   reported: boolean
   onReport: (id: string) => void
+  onSaveToJournal: (id: string) => void
 }
 
-function MessageBubble({ m, mine, reported, onReport }: MessageBubbleProps) {
+function MessageBubble({ m, mine, reported, onReport, onSaveToJournal }: MessageBubbleProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!menuOpen) return
@@ -187,12 +291,43 @@ function MessageBubble({ m, mine, reported, onReport }: MessageBubbleProps) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [menuOpen])
 
+  // Right-click context menu
+  function handleContextMenu(e: React.MouseEvent) {
+    e.preventDefault()
+    setMenuOpen(true)
+  }
+
+  // Long-press via pointer events (500ms)
+  function handlePointerDown() {
+    longPressTimer.current = setTimeout(() => {
+      setMenuOpen(true)
+    }, 500)
+  }
+
+  function handlePointerUp() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }
+
+  function handleCopy() {
+    if (m.body) {
+      navigator.clipboard.writeText(m.body).catch(() => {})
+    }
+    setMenuOpen(false)
+  }
+
   return (
     <div className={`group flex ${mine ? 'justify-end' : 'justify-start'}`}>
       <div className="relative flex max-w-[70%] flex-col">
         <div
+          onContextMenu={handleContextMenu}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerUp}
           className={[
-            'rounded-lg px-3 py-2 text-sm',
+            'rounded-lg px-3 py-2 text-sm select-none',
             mine ? 'bg-primary text-primary-foreground' : 'bg-muted',
             reported ? 'ring-1 ring-red-400' : '',
           ].join(' ')}
@@ -212,7 +347,7 @@ function MessageBubble({ m, mine, reported, onReport }: MessageBubbleProps) {
           </span>
         )}
 
-        {/* More menu — visible on hover, not shown for own messages */}
+        {/* More menu button — visible on hover for non-mine messages */}
         {!mine && (
           <div
             className="absolute -right-7 top-1 opacity-0 group-hover:opacity-100"
@@ -226,7 +361,25 @@ function MessageBubble({ m, mine, reported, onReport }: MessageBubbleProps) {
               <MoreVertical size={14} />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-7 z-10 min-w-[10rem] rounded-lg border bg-background py-1 shadow-lg">
+              <div className="absolute right-0 top-7 z-10 min-w-[11rem] rounded-lg border bg-background py-1 shadow-lg">
+                <button
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onSaveToJournal(m.id)
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-accent"
+                >
+                  <BookOpen size={13} className="text-primary" />
+                  Save to journal
+                </button>
+                <button
+                  onClick={handleCopy}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-accent"
+                >
+                  <Copy size={13} className="text-muted-foreground" />
+                  Copy text
+                </button>
+                <div className="border-t my-0.5" />
                 <button
                   onClick={() => {
                     setMenuOpen(false)
@@ -236,14 +389,34 @@ function MessageBubble({ m, mine, reported, onReport }: MessageBubbleProps) {
                 >
                   Report message
                 </button>
-                <button
-                  onClick={() => setMenuOpen(false)}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-accent"
-                >
-                  Save to journal
-                </button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Own messages also get a context menu for save/copy (right-click / long-press only) */}
+        {mine && menuOpen && (
+          <div
+            ref={menuRef}
+            className="absolute right-0 top-full z-10 mt-1 min-w-[11rem] rounded-lg border bg-background py-1 shadow-lg"
+          >
+            <button
+              onClick={() => {
+                setMenuOpen(false)
+                onSaveToJournal(m.id)
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-accent"
+            >
+              <BookOpen size={13} className="text-primary" />
+              Save to journal
+            </button>
+            <button
+              onClick={handleCopy}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-accent"
+            >
+              <Copy size={13} className="text-muted-foreground" />
+              Copy text
+            </button>
           </div>
         )}
       </div>
@@ -262,6 +435,7 @@ export default function ChatThreadPage() {
   const [status, setStatus] = useState<'connecting' | 'open' | 'closed'>('connecting')
   const [otherTyping, setOtherTyping] = useState(false)
   const [reportingMessageId, setReportingMessageId] = useState<string | null>(null)
+  const [savingMessageId, setSavingMessageId] = useState<string | null>(null)
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set())
   const [toasts, setToasts] = useState<ToastState[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -378,6 +552,14 @@ export default function ChatThreadPage() {
     pushToast('Reported. Our team will review.', 'success')
   }
 
+  function handleSaveSuccess(category: string) {
+    pushToast(MENTEES_COPY.savedToJournal(category), 'success')
+  }
+
+  function handleSaveError(msg: string) {
+    pushToast(msg, 'error')
+  }
+
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
       <header className="flex items-center justify-between border-b pb-3">
@@ -394,6 +576,7 @@ export default function ChatThreadPage() {
               mine={mine}
               reported={reportedIds.has(m.id)}
               onReport={(id) => setReportingMessageId(id)}
+              onSaveToJournal={(id) => setSavingMessageId(id)}
             />
           )
         })}
@@ -428,6 +611,15 @@ export default function ChatThreadPage() {
           messageId={reportingMessageId}
           onClose={() => setReportingMessageId(null)}
           onSuccess={handleReportSuccess}
+        />
+      )}
+
+      {savingMessageId && (
+        <SaveToJournalDialog
+          messageId={savingMessageId}
+          onClose={() => setSavingMessageId(null)}
+          onSuccess={handleSaveSuccess}
+          onError={handleSaveError}
         />
       )}
 

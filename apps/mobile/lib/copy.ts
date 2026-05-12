@@ -103,6 +103,13 @@ export const GUIDANCE_CATEGORIES = [
   'Optional',
 ] as const
 
+// Mentees copy (§ 1.6, § 1.10)
+export const MENTEES_COPY = {
+  myMenteesEmpty: 'No conversations yet — aspirants you accept will appear here.',
+  savedToJournal: (category: string) => `Saved to ${category}.`,
+  saveJournalProRequired: 'Saving chat to journal needs PRO.',
+} as const
+
 export const LANGUAGE_OPTIONS = [
   { value: 'en', label: 'English' },
   { value: 'hi', label: 'Hindi' },

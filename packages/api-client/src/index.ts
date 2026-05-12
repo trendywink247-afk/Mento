@@ -85,6 +85,28 @@ export class ApiClient {
   }
 
   mentors = {
+    listMentees: (): Promise<
+      Array<{
+        conversationId: string
+        lastMessageAt: string
+        unreadCount: number
+        sharedJournalId: string | null
+        aspirant: {
+          id: string
+          displayHandle: string
+          avatarLetter: AvatarLetter
+          avatarColor: AvatarColor
+          hasPurpleTick: boolean
+        }
+        lastMessage: {
+          id: string
+          body: string | null
+          senderId: string
+          createdAt: string
+        } | null
+      }>
+    > => this.http.get('mentors/mentees').json(),
+
     list: (filters?: {
       prelimsCleared?: boolean
       mainsAttempts?: number
@@ -444,6 +466,92 @@ export class ApiClient {
   }
 
   admin = {
+    // ─── Moderation ──────────────────────────────────────────────────────
+
+    moderation: {
+      list: (params?: {
+        status?: 'PENDING' | 'REVIEWED_NO_ACTION' | 'REVIEWED_BANNED'
+        limit?: number
+        cursor?: string
+      }) =>
+        this.http
+          .get('admin/moderation/reports', {
+            searchParams: {
+              ...(params?.status ? { status: params.status } : {}),
+              ...(params?.limit ? { limit: params.limit } : {}),
+              ...(params?.cursor ? { cursor: params.cursor } : {}),
+            },
+          })
+          .json<{
+            items: Array<{
+              id: string
+              createdAt: string
+              status: string
+              reason: string
+              reporter: { id: string; displayHandle: string; avatarLetter: string; avatarColor: string }
+              target: { id: string; displayHandle: string; avatarLetter: string; avatarColor: string }
+              messageSnippet: string
+              conversationId: string
+            }>
+            nextCursor: string | null
+          }>(),
+
+      detail: (id: string) =>
+        this.http.get(`admin/moderation/reports/${id}`).json<{
+          id: string
+          createdAt: string
+          status: string
+          reason: string
+          outcome: string | null
+          reviewedAt: string | null
+          reporter: { id: string; displayHandle: string; avatarLetter: string; avatarColor: string }
+          target: { id: string; displayHandle: string; avatarLetter: string; avatarColor: string }
+          targetUserId: string
+          message: { id: string; body: string | null; type: string; createdAt: string }
+          conversationId: string
+          contextMessages: Array<{ id: string; body: string | null; type: string; createdAt: string }>
+        }>(),
+
+      resolve: (id: string, action: 'DISMISS' | 'WARN' | 'SUSPEND' | 'BAN', notes?: string) =>
+        this.http
+          .patch(`admin/moderation/reports/${id}/resolve`, { json: { action, notes } })
+          .json<{ ok: boolean; action: string }>(),
+    },
+
+    users: {
+      get: (id: string) =>
+        this.http.get(`admin/users/${id}`).json<{
+          id: string
+          phone: string | null
+          email: string | null
+          role: string
+          status: string
+          createdAt: string
+          bannedAt: string | null
+          profile: {
+            displayHandle: string
+            avatarLetter: string
+            avatarColor: string
+            hasPurpleTick: boolean
+          } | null
+          mentorProfile: { isVerified: boolean; journeyType: string } | null
+          verification: {
+            submittedAt: string
+            reviewedAt: string | null
+            aadhaarHashSuffix: string | null
+            hasAadhaar: boolean
+          } | null
+          actionHistory: Array<{ id: string; action: string; reason: string; createdAt: string }>
+        }>(),
+
+      setStatus: (id: string, status: string, reason?: string) =>
+        this.http
+          .patch(`admin/users/${id}/status`, { json: { status, reason } })
+          .json<{ ok: boolean; status: string }>(),
+    },
+
+    // ─── Existing ────────────────────────────────────────────────────────
+
     listUsers: (filters?: { role?: Role; status?: string }) =>
       this.http
         .get('admin/users', {

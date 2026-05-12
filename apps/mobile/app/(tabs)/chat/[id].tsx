@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  Alert,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   SafeAreaView,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
@@ -15,6 +18,86 @@ import { getApiClient } from '@/lib/api'
 import { getSocket } from '@/lib/socket'
 import { useAuthStore } from '@/lib/auth-store'
 import { uuid } from '@/lib/uuid'
+import { MENTEES_COPY } from '@/lib/copy'
+
+interface JournalItem {
+  id: string
+  category: string
+  title: string | null
+}
+
+// ---- Category picker bottom sheet ----
+
+function CategoryPicker({
+  visible,
+  onClose,
+  onPick,
+}: {
+  visible: boolean
+  onClose: () => void
+  onPick: (journal: JournalItem) => void
+}) {
+  const [journals, setJournals] = useState<JournalItem[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!visible) return
+    setLoading(true)
+    getApiClient()
+      .journals.list()
+      .then((data) =>
+        setJournals(
+          data
+            .filter((j) => !j.isShared && !j.isLocked)
+            .map((j) => ({ id: j.id, category: j.category, title: j.title })),
+        ),
+      )
+      .catch(() => setJournals([]))
+      .finally(() => setLoading(false))
+  }, [visible])
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <Pressable
+        className="flex-1 bg-black/40"
+        onPress={onClose}
+      />
+      <View className="rounded-t-2xl bg-white px-4 pb-8 pt-4">
+        <View className="mb-4 flex-row items-center justify-between">
+          <Text className="text-base font-semibold text-gray-900">Save to journal</Text>
+          <TouchableOpacity onPress={onClose}>
+            <Text className="text-sm text-blue-600">Cancel</Text>
+          </TouchableOpacity>
+        </View>
+
+        {loading ? (
+          <Text className="py-4 text-center text-sm text-gray-400">Loading…</Text>
+        ) : journals.length === 0 ? (
+          <Text className="py-4 text-center text-sm text-gray-400">
+            No personal journals. Create one from the Journals tab first.
+          </Text>
+        ) : (
+          journals.map((j) => (
+            <TouchableOpacity
+              key={j.id}
+              onPress={() => onPick(j)}
+              className="border-b border-gray-100 py-3"
+            >
+              <Text className="text-sm capitalize text-gray-900">
+                {j.title ?? j.category.replace(/_/g, ' ').toLowerCase()}
+              </Text>
+            </TouchableOpacity>
+          ))
+        )}
+      </View>
+    </Modal>
+  )
+}
 
 export default function ChatThread() {
   const params = useLocalSearchParams<{ id: string }>()
@@ -23,6 +106,8 @@ export default function ChatThread() {
   const [messages, setMessages] = useState<Message[]>([])
   const [draft, setDraft] = useState('')
   const [otherTyping, setOtherTyping] = useState(false)
+  const [pickerVisible, setPickerVisible] = useState(false)
+  const [pendingMessageId, setPendingMessageId] = useState<string | null>(null)
   const listRef = useRef<FlatList<Message>>(null)
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -112,6 +197,57 @@ export default function ChatThread() {
     }, 1500)
   }
 
+  function openMessageOptions(messageId: string) {
+    Alert.alert('Message options', undefined, [
+      {
+        text: 'Save to journal',
+        onPress: () => {
+          setPendingMessageId(messageId)
+          setPickerVisible(true)
+        },
+      },
+      {
+        text: 'Report message',
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert('Report', 'Are you sure you want to report this message?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Report',
+              style: 'destructive',
+              onPress: () => {
+                getApiClient()
+                  .chat.reportMessage(messageId, 'Inappropriate', undefined)
+                  .catch(() => {})
+              },
+            },
+          ])
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ])
+  }
+
+  async function handleJournalPick(journal: JournalItem) {
+    setPickerVisible(false)
+    if (!pendingMessageId) return
+    try {
+      await getApiClient().journals.saveFromChat(pendingMessageId, journal.category)
+      Alert.alert('Saved', MENTEES_COPY.savedToJournal(
+        journal.title ?? journal.category.replace(/_/g, ' ').toLowerCase(),
+      ))
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 402) {
+        Alert.alert('PRO required', MENTEES_COPY.saveJournalProRequired)
+      } else {
+        Alert.alert('Error', 'Could not save to journal. Please try again.')
+      }
+    } finally {
+      setPendingMessageId(null)
+    }
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       <KeyboardAvoidingView
@@ -127,31 +263,36 @@ export default function ChatThread() {
           renderItem={({ item }) => {
             const mine = item.senderId === me?.id
             return (
-              <View className={mine ? 'items-end' : 'items-start'}>
-                <View
-                  className={`max-w-[80%] rounded-2xl px-3 py-2 ${
-                    mine ? 'bg-primary' : 'bg-gray-100'
-                  }`}
-                >
-                  <Text className={mine ? 'text-white' : 'text-gray-900'}>{item.body}</Text>
-                  <Text
-                    className={`mt-1 text-[10px] ${
-                      mine ? 'text-white/70' : 'text-gray-500'
+              <Pressable
+                onLongPress={() => openMessageOptions(item.id)}
+                delayLongPress={500}
+              >
+                <View className={mine ? 'items-end' : 'items-start'}>
+                  <View
+                    className={`max-w-[80%] rounded-2xl px-3 py-2 ${
+                      mine ? 'bg-primary' : 'bg-gray-100'
                     }`}
                   >
-                    {new Date(item.createdAt).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                    {mine &&
-                      (item.readAt
-                        ? ' · read'
-                        : item.deliveredAt
-                          ? ' · delivered'
-                          : ' · sent')}
-                  </Text>
+                    <Text className={mine ? 'text-white' : 'text-gray-900'}>{item.body}</Text>
+                    <Text
+                      className={`mt-1 text-[10px] ${
+                        mine ? 'text-white/70' : 'text-gray-500'
+                      }`}
+                    >
+                      {new Date(item.createdAt).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                      {mine &&
+                        (item.readAt
+                          ? ' · read'
+                          : item.deliveredAt
+                            ? ' · delivered'
+                            : ' · sent')}
+                    </Text>
+                  </View>
                 </View>
-              </View>
+              </Pressable>
             )
           }}
         />
@@ -175,6 +316,15 @@ export default function ChatThread() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <CategoryPicker
+        visible={pickerVisible}
+        onClose={() => {
+          setPickerVisible(false)
+          setPendingMessageId(null)
+        }}
+        onPick={handleJournalPick}
+      />
     </SafeAreaView>
   )
 }
