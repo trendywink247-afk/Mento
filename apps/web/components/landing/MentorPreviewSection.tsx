@@ -34,14 +34,14 @@ export async function MentorPreviewSection() {
   const isLoaded = true // always show something — skeleton only if array empty
 
   return (
-    <section className="bg-slate-50 py-24">
+    <section className="bg-muted/30 py-24">
       <div className="mx-auto max-w-6xl px-6">
         <div className="mb-10 flex items-end justify-between">
           <div>
-            <h2 className="text-display-lg font-semibold text-slate-900">
+            <h2 className="text-display-lg font-semibold text-foreground">
               Real mentors who&apos;ve cleared the journey.
             </h2>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-muted-foreground">
               Verified by us. Anonymous to everyone else.
             </p>
           </div>

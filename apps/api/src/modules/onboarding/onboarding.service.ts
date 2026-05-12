@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable } from '@nestjs/common'
+import * as crypto from 'node:crypto'
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common'
 import { Role } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
 import { PostHogService } from '../../common/posthog.service'
@@ -9,6 +10,7 @@ import {
 } from '../../common/anonymity'
 import type { MirrorSubmitDto } from './dto/mirror-submit.dto'
 import type { MentorOnboardingSubmitDto } from './dto/mentor-onboarding-submit.dto'
+import type { MentorVerificationDto } from './dto/mentor-verification.dto'
 
 @Injectable()
 export class OnboardingService {
@@ -165,6 +167,72 @@ export class OnboardingService {
 
       return tx.mentorProfile.findUnique({ where: { userId } })
     })
+  }
+
+  async submitVerification(userId: string, body: MentorVerificationDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { mentorProfile: true },
+    })
+    if (!user) throw new BadRequestException('User not found')
+    if (user.role !== Role.MENTOR) {
+      throw new BadRequestException('Only mentors can submit verification documents')
+    }
+    if (!user.mentorProfile) {
+      throw new BadRequestException(
+        'Complete mentor onboarding (journey form) before submitting documents',
+      )
+    }
+
+    /**
+     * aadhaarHash: SHA-256 of `${userId}:${aadhaarLast4}`.
+     *
+     * We prefix with userId so that the denylist check is based purely on the
+     * hash of the (user, last-4) pair. In production this would be SHA-256 of
+     * the full verified Aadhaar number; for MVP we use last-4 only because we
+     * never collect the full number. This is documented in the DTO as well.
+     */
+    const aadhaarHash = crypto
+      .createHash('sha256')
+      .update(`${userId}:${body.aadhaarLast4}`)
+      .digest('hex')
+
+    // Check denylist before persisting anything.
+    const denied = await this.prisma.mentorDenylist.findUnique({
+      where: { aadhaarHash },
+    })
+    if (denied) {
+      throw new ForbiddenException(
+        'This Aadhaar is banned from mentoring on Mento.',
+      )
+    }
+
+    await this.prisma.verificationDocument.upsert({
+      where: { userId },
+      create: {
+        userId,
+        aadhaarUrl: body.aadhaarKey,
+        aadhaarHash,
+        hallTicketUrl: body.hallTicketKey,
+        marksSheetUrl: body.marksSheetKey ?? null,
+        bankAccount: body.bankAccount as never,
+        submittedAt: new Date(),
+      },
+      update: {
+        aadhaarUrl: body.aadhaarKey,
+        aadhaarHash,
+        hallTicketUrl: body.hallTicketKey,
+        marksSheetUrl: body.marksSheetKey ?? null,
+        bankAccount: body.bankAccount as never,
+        submittedAt: new Date(),
+        // Reset review fields on re-submission.
+        reviewedAt: null,
+        reviewedBy: null,
+        reviewNote: null,
+      },
+    })
+
+    return { status: 'submitted', nextStep: 'mentor.waiting_verification' }
   }
 
   async getOnboardingState(userId: string) {

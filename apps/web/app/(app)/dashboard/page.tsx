@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Users, BookOpen, MessageSquare, ArrowRight, PenLine, RefreshCw } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@/lib/auth-store'
 import { getApiClient } from '@/lib/api'
 import { MotionFade, MotionStagger, MotionStaggerItem, MotionTap } from '@/components/motion'
@@ -70,6 +71,7 @@ function CardSkeleton() {
 
 export default function DashboardPage() {
   const { user, profile } = useAuthStore()
+  const t = useTranslations('dashboard')
 
   const [onboarding, setOnboarding] = useState<OnboardingState | null>(null)
   const [journals, setJournals] = useState<JournalSummary[] | null>(null)
@@ -102,26 +104,26 @@ export default function DashboardPage() {
       {/* Welcome line */}
       <MotionFade>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Welcome, {displayHandle}.</h1>
-          <p className="mt-1 text-sm text-muted-foreground">It&apos;s good to see you again.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('welcome', { handle: displayHandle })}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t('subline')}</p>
         </div>
       </MotionFade>
 
       {/* Today's reflection prompt */}
       <MotionFade delay={0.08}>
-        <div className="rounded-2xl border bg-blue-50/60 p-6">
-          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-600">
+        <div className="rounded-2xl border bg-primary/5 p-6">
+          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
             <PenLine size={13} />
-            Today&apos;s reflection
+            {t('todayReflection')}
           </div>
           <p className="mt-2 text-base font-medium text-foreground">{todayPrompt}</p>
           <div className="mt-4">
             <MotionTap>
               <Link
                 href="/journals"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
               >
-                Open Personal journal
+                {t('openPersonalJournal')}
                 <ArrowRight size={14} />
               </Link>
             </MotionTap>
@@ -142,19 +144,19 @@ export default function DashboardPage() {
             {/* Card A — Find a mentor */}
             <MotionStaggerItem>
               <MotionTap>
-                <div className="flex h-full flex-col rounded-2xl border bg-slate-50 p-6">
-                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-600">
+                <div className="flex h-full flex-col rounded-2xl border bg-muted/30 p-6">
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
                     <Users size={20} />
                   </div>
-                  <h2 className="text-base font-semibold">Find a mentor</h2>
+                  <h2 className="text-base font-semibold">{t('findMentor.title')}</h2>
                   <p className="mt-1 flex-1 text-sm text-muted-foreground">
-                    Browse anonymous, verified mentors who&apos;ve walked your path.
+                    {t('findMentor.description')}
                   </p>
                   <Link
                     href="/mentors"
-                    className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
+                    className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
                   >
-                    Browse mentors <ArrowRight size={13} />
+                    {t('findMentor.link')} <ArrowRight size={13} />
                   </Link>
                 </div>
               </MotionTap>
@@ -164,35 +166,35 @@ export default function DashboardPage() {
             <MotionStaggerItem>
               <MotionTap>
                 {isMirrorComplete ? (
-                  <div className="flex h-full flex-col rounded-2xl border bg-violet-50 p-6">
-                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-200 text-violet-700">
+                  <div className="flex h-full flex-col rounded-2xl border bg-violet-50 dark:bg-violet-950/30 p-6">
+                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-200 dark:bg-violet-900/60 text-violet-700 dark:text-violet-300">
                       <BookOpen size={20} />
                     </div>
-                    <h2 className="text-base font-semibold">Your Mirror is complete</h2>
+                    <h2 className="text-base font-semibold">{t('mirrorComplete.title')}</h2>
                     <p className="mt-1 flex-1 text-sm text-muted-foreground">
-                      Your journey profile is up to date. Mentors can see where you are.
+                      {t('mirrorComplete.description')}
                     </p>
                     <Link
                       href="/onboarding/mirror"
-                      className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-violet-600 hover:underline"
+                      className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-violet-600 dark:text-violet-400 hover:underline"
                     >
-                      Update Mirror <RefreshCw size={13} />
+                      {t('mirrorComplete.link')} <RefreshCw size={13} />
                     </Link>
                   </div>
                 ) : (
-                  <div className="flex h-full flex-col rounded-2xl border bg-amber-50 p-6">
-                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-amber-200 text-amber-700">
+                  <div className="flex h-full flex-col rounded-2xl border bg-amber-50 dark:bg-amber-950/30 p-6">
+                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-amber-200 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300">
                       <BookOpen size={20} />
                     </div>
-                    <h2 className="text-base font-semibold">Complete your Mirror</h2>
+                    <h2 className="text-base font-semibold">{t('mirrorIncomplete.title')}</h2>
                     <p className="mt-1 flex-1 text-sm text-muted-foreground">
-                      Tell us where you are in your journey so mentors can find the right words.
+                      {t('mirrorIncomplete.description')}
                     </p>
                     <Link
                       href="/onboarding/mirror"
-                      className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-amber-700 hover:underline"
+                      className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-amber-700 dark:text-amber-400 hover:underline"
                     >
-                      Continue Mirror <ArrowRight size={13} />
+                      {t('mirrorIncomplete.link')} <ArrowRight size={13} />
                     </Link>
                   </div>
                 )}
@@ -202,25 +204,25 @@ export default function DashboardPage() {
             {/* Card C — Conversations */}
             <MotionStaggerItem>
               <MotionTap>
-                <div className="flex h-full flex-col rounded-2xl border bg-emerald-50 p-6">
-                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-200 text-emerald-700">
+                <div className="flex h-full flex-col rounded-2xl border bg-emerald-50 dark:bg-emerald-950/30 p-6">
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-200 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">
                     <MessageSquare size={20} />
                   </div>
                   <h2 className="text-base font-semibold">
                     {conversationCount > 0
-                      ? `${conversationCount} conversation${conversationCount === 1 ? '' : 's'}`
-                      : 'Your conversations'}
+                      ? t('conversations.titleWithCount', { count: conversationCount })
+                      : t('conversations.titleEmpty')}
                   </h2>
                   <p className="mt-1 flex-1 text-sm text-muted-foreground">
                     {conversationCount > 0
-                      ? 'Pick up where you left off.'
-                      : 'No conversations yet — say hi to a mentor.'}
+                      ? t('conversations.descWithCount')
+                      : t('conversations.descEmpty')}
                   </p>
                   <Link
                     href={conversationCount > 0 ? '/chat' : '/mentors'}
-                    className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-emerald-700 hover:underline"
+                    className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:underline"
                   >
-                    {conversationCount > 0 ? 'Go to chat' : 'Browse mentors'}{' '}
+                    {conversationCount > 0 ? t('conversations.linkChat') : t('conversations.linkMentors')}{' '}
                     <ArrowRight size={13} />
                   </Link>
                 </div>
@@ -235,7 +237,7 @@ export default function DashboardPage() {
         <MotionFade delay={0.15}>
           <div>
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Questions to ask a mentor
+              {t('questionsToAskMentor')}
             </h2>
             <div className="divide-y rounded-2xl border bg-card">
               {SAMPLE_QUESTIONS.map((q) => (
@@ -246,7 +248,7 @@ export default function DashboardPage() {
                 >
                   <span>{q}</span>
                   <span className="ml-4 flex-shrink-0 text-xs text-muted-foreground">
-                    Send to a mentor &rarr;
+                    {t('sendToMentor')} &rarr;
                   </span>
                 </Link>
               ))}
@@ -260,7 +262,7 @@ export default function DashboardPage() {
         <MotionFade delay={0.2}>
           <div>
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Recent journal activity
+              {t('recentJournalActivity')}
             </h2>
             <MotionStagger staggerDelay={0.05} className="grid grid-cols-1 gap-3 md:grid-cols-3">
               {recentJournals.map((j) => (
@@ -272,7 +274,7 @@ export default function DashboardPage() {
                     >
                       <p className="truncate text-sm font-medium">{j.title ?? j.category}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        {j.entryCount} {j.entryCount === 1 ? 'entry' : 'entries'} &middot;{' '}
+                        {t('journalEntry', { count: j.entryCount })} &middot;{' '}
                         {new Date(j.updatedAt).toLocaleDateString()}
                       </p>
                     </Link>

@@ -60,14 +60,14 @@ export function CategoryIconBadge({ category, size = 32 }: CategoryIconBadgeProp
 
   return (
     <div
-      className="relative flex flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-700"
+      className="relative flex flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
       style={{ width: size, height: size }}
       aria-hidden="true"
     >
       <Icon size={iconSize} strokeWidth={1.75} />
       {overlay && (
         <span
-          className="absolute bottom-0 right-0 flex items-center justify-center rounded-full bg-blue-700 text-white"
+          className="absolute bottom-0 right-0 flex items-center justify-center rounded-full bg-primary text-primary-foreground"
           style={{ width: size * 0.38, height: size * 0.38, fontSize: size * 0.22 }}
         >
           {overlay}

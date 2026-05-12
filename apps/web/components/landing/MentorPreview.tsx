@@ -31,7 +31,7 @@ interface Props {
 export function MentorPreview({ mentors }: Props) {
   if (mentors.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-slate-400">
+      <p className="py-8 text-center text-sm text-muted-foreground">
         Mentors are joining. Be among the first.
       </p>
     )
@@ -42,7 +42,7 @@ export function MentorPreview({ mentors }: Props) {
       {mentors.slice(0, 6).map((mentor) => (
         <div
           key={mentor.userId}
-          className="flex items-center gap-4 rounded-xl border border-slate-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+          className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
         >
           <LetterAvatar
             letter={mentor.avatarLetter}
@@ -51,11 +51,11 @@ export function MentorPreview({ mentors }: Props) {
             size={44}
           />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-900">{mentor.displayHandle}</p>
-            <p className="mt-0.5 truncate text-xs text-slate-500">{buildJourneyLabel(mentor)}</p>
+            <p className="truncate text-sm font-semibold text-foreground">{mentor.displayHandle}</p>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">{buildJourneyLabel(mentor)}</p>
           </div>
           {mentor.guidanceCategories.length > 0 && (
-            <span className="flex-shrink-0 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+            <span className="flex-shrink-0 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
               {mentor.guidanceCategories[0]}
             </span>
           )}

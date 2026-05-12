@@ -392,25 +392,25 @@ function JournalMockup() {
 
 export default function GetAppPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       {/* ── Brand band ──────────────────────────────────────────────────── */}
-      <header className="flex h-16 items-center justify-between border-b border-slate-100 px-6">
+      <header className="flex h-16 items-center justify-between border-b border-border px-6">
         <div className="flex items-center gap-2">
-          <span className="text-xl font-bold tracking-tight text-slate-900">Mento</span>
+          <span className="text-xl font-bold tracking-tight text-foreground">Mento</span>
         </div>
-        <p className="hidden text-sm text-slate-500 sm:block">We honour the struggle.</p>
+        <p className="hidden text-sm text-muted-foreground sm:block">We honour the struggle.</p>
       </header>
 
       {/* ── Main content ────────────────────────────────────────────────── */}
-      <main className="mx-auto max-w-6xl px-6 py-12 md:py-20">
+      <main id="main" className="mx-auto max-w-6xl px-6 py-12 md:py-20">
         <div className="flex flex-col gap-12 md:flex-row md:items-center md:gap-16">
           {/* Hero — left on md+ */}
           <section className="flex-1 text-center md:text-left">
-            <h1 className="text-display-lg font-bold tracking-tight text-slate-900">
+            <h1 className="text-display-lg font-bold tracking-tight text-foreground">
               Get Mento on your phone.
             </h1>
 
-            <p className="mt-4 text-base leading-relaxed text-slate-600 md:text-lg">
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground md:text-lg">
               Real-time chat with your mentor. Push notifications when they reply. Offline access to
               your journals.
             </p>
@@ -423,7 +423,7 @@ export default function GetAppPage() {
 
             {/* QR code — for desktop visitors */}
             <div className="mt-10 hidden md:block">
-              <p className="mb-3 text-sm font-medium text-slate-500">Scan to install</p>
+              <p className="mb-3 text-sm font-medium text-muted-foreground">Scan to install</p>
               {/* QR code via free QR Server API — no external dependency, just an img */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -431,7 +431,7 @@ export default function GetAppPage() {
                 alt="QR code — scan with your phone camera to install Mento"
                 width={160}
                 height={160}
-                className="rounded-xl border border-slate-200 shadow-card"
+                className="rounded-xl border border-border shadow-card"
                 loading="lazy"
                 decoding="async"
               />
@@ -451,27 +451,27 @@ export default function GetAppPage() {
               <div className="flex-none snap-center">
                 <div className="flex flex-col items-center gap-3">
                   <ChatMockup />
-                  <p className="text-xs font-medium text-slate-500">Real-time chat</p>
+                  <p className="text-xs font-medium text-muted-foreground">Real-time chat</p>
                 </div>
               </div>
               {/* Card 2 — Mentor profile */}
               <div className="flex-none snap-center">
                 <div className="flex flex-col items-center gap-3">
                   <MentorMockup />
-                  <p className="text-xs font-medium text-slate-500">Verified mentors</p>
+                  <p className="text-xs font-medium text-muted-foreground">Verified mentors</p>
                 </div>
               </div>
               {/* Card 3 — Journal */}
               <div className="flex-none snap-center">
                 <div className="flex flex-col items-center gap-3">
                   <JournalMockup />
-                  <p className="text-xs font-medium text-slate-500">Private journals</p>
+                  <p className="text-xs font-medium text-muted-foreground">Private journals</p>
                 </div>
               </div>
             </div>
 
             {/* Scroll hint on mobile */}
-            <p className="mt-2 text-center text-xs text-slate-400 md:hidden">
+            <p className="mt-2 text-center text-xs text-muted-foreground/70 md:hidden">
               Swipe to see more screens
             </p>
           </section>
@@ -479,14 +479,14 @@ export default function GetAppPage() {
 
         {/* QR code repeated on mobile (below fold) */}
         <div className="mt-12 flex flex-col items-center gap-3 md:hidden">
-          <p className="text-sm font-medium text-slate-500">Scan to install</p>
+          <p className="text-sm font-medium text-muted-foreground">Scan to install</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https%3A%2F%2Fmento.app%2Finstall&color=1e293b&bgcolor=ffffff&margin=10"
             alt="QR code — scan with your phone camera to install Mento"
             width={160}
             height={160}
-            className="rounded-xl border border-slate-200 shadow-card"
+            className="rounded-xl border border-border shadow-card"
             loading="lazy"
             decoding="async"
           />
@@ -494,17 +494,17 @@ export default function GetAppPage() {
       </main>
 
       {/* ── Slim footer ─────────────────────────────────────────────────── */}
-      <footer className="border-t border-slate-100 px-6 py-6">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-xs text-slate-400 sm:flex-row">
+      <footer className="border-t border-border px-6 py-6">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-xs text-muted-foreground/70 sm:flex-row">
           <span>© {new Date().getFullYear()} Mento Technologies Pvt. Ltd.</span>
           <nav className="flex gap-4">
-            <a href="/privacy" className="transition-colors hover:text-slate-700">
+            <a href="/privacy" className="transition-colors hover:text-foreground">
               Privacy
             </a>
-            <a href="/terms" className="transition-colors hover:text-slate-700">
+            <a href="/terms" className="transition-colors hover:text-foreground">
               Terms
             </a>
-            <a href="mailto:hello@mento.app" className="transition-colors hover:text-slate-700">
+            <a href="mailto:hello@mento.app" className="transition-colors hover:text-foreground">
               Contact
             </a>
           </nav>

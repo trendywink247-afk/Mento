@@ -95,7 +95,8 @@ export default function MentorOnboardingPage() {
         hourlyRateInr: hourlyRate,
       })
       capture('onboarding.mentor.submitted', { journeyType })
-      router.replace('/onboarding/submitted')
+      // After journey form, mentor must upload credentials before manual review.
+      router.replace('/onboarding/credentials')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save')
       setStage('reach')

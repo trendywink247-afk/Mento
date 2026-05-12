@@ -234,6 +234,15 @@ export class ApiClient {
     archive: (id: string) => this.http.patch(`chat-requests/${id}/archive`).json<unknown>(),
   }
 
+  storage = {
+    presignUpload: (body: {
+      kind: 'aadhaar' | 'hall_ticket' | 'marks_sheet' | 'avatar'
+      mime: string
+      sizeBytes: number
+    }): Promise<{ uploadUrl: string; publicKey: string; expiresIn: number }> =>
+      this.http.post('storage/presign', { json: body }).json(),
+  }
+
   onboarding = {
     pickRole: (sessionId: string, role: Role): Promise<void> =>
       this.http.post('onboarding/role', { json: { sessionId, role } }).then(() => undefined),
@@ -275,6 +284,20 @@ export class ApiClient {
       languages: string[]
       hourlyRateInr?: number
     }) => this.http.post('onboarding/mentor', { json: body }).json(),
+
+    submitVerification: (body: {
+      aadhaarKey: string
+      hallTicketKey: string
+      marksSheetKey?: string
+      aadhaarLast4: string
+      bankAccount: {
+        accountNumber: string
+        ifsc: string
+        beneficiaryName: string
+        upiId?: string
+      }
+    }): Promise<{ status: string; nextStep: string }> =>
+      this.http.post('onboarding/mentor/verification', { json: body }).json(),
   }
 
   chat = {
@@ -328,8 +351,46 @@ export class ApiClient {
     setUserRole: (userId: string, role: Role) =>
       this.http.patch(`admin/users/${userId}/role`, { json: { role } }).json(),
 
-    approveMentor: (userId: string) =>
-      this.http.post(`admin/mentors/${userId}/approve`).json(),
+    listPendingMentors: () =>
+      this.http
+        .get('admin/mentors/pending')
+        .json<
+          Array<{
+            id: string
+            displayHandle: string | null
+            avatarLetter: AvatarLetter | null
+            avatarColor: AvatarColor | null
+            hasPurpleTick: boolean
+            status: string
+            createdAt: string
+            mentorProfile: {
+              journeyType: string
+              prelimsCleared: boolean
+              mainsAttempts: number
+              interviewAttempts: number
+              isVerified: boolean
+            } | null
+            verification: {
+              submittedAt: string
+              reviewedAt: string | null
+              reviewNote: string | null
+              aadhaarSignedUrl: string | null
+              hallTicketSignedUrl: string | null
+              marksSheetSignedUrl: string | null
+              hasBankAccount: boolean
+              hasMarksSheet: boolean
+            } | null
+          }>
+        >(),
+
+    approveMentor: (userId: string, reviewNote?: string) =>
+      this.http.post(`admin/mentors/${userId}/approve`, { json: { reviewNote } }).json(),
+
+    rejectMentor: (userId: string, reason: string) =>
+      this.http.post(`admin/mentors/${userId}/reject`, { json: { reason } }).json(),
+
+    banMentor: (userId: string, reason: string) =>
+      this.http.post(`admin/mentors/${userId}/ban`, { json: { reason } }).json(),
 
     listAuditLogs: (limit = 50) =>
       this.http

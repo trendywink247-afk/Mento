@@ -26,7 +26,7 @@ export function DeepLinkBanner() {
     <div className="mt-6 text-center">
       <a
         href="mento://home"
-        className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 active:bg-blue-200"
+        className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 active:bg-primary/25"
         /* If the scheme isn't registered the browser shows no error — the link
            simply does nothing, which is acceptable per spec. */
         rel="noreferrer"

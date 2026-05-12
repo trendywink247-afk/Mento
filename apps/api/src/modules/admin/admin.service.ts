@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { Role, UserStatus } from '@prisma/client'
+import { ModerationAction, Role, UserStatus } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
+import { StorageService } from '../storage/storage.service'
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   async listUsers(role?: Role, status?: UserStatus) {
     const rows = await this.prisma.user.findMany({
@@ -68,25 +72,236 @@ export class AdminService {
     })
   }
 
-  async approveMentor(userId: string, actorId: string) {
+  async listPendingMentors() {
+    const rows = await this.prisma.user.findMany({
+      where: {
+        role: Role.MENTOR,
+        deletedAt: null,
+        mentorProfile: { isVerified: false },
+        verification: { submittedAt: { not: undefined } },
+      },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        profile: true,
+        mentorProfile: true,
+        verification: true,
+      },
+    })
+
+    // Generate signed read URLs for each document (admin-only, 5-min TTL).
+    const result = await Promise.all(
+      rows.map(async (u) => {
+        const v = u.verification
+        const [aadhaarSignedUrl, hallTicketSignedUrl, marksSheetSignedUrl] =
+          await Promise.all([
+            v?.aadhaarUrl ? this.storage.presignRead(v.aadhaarUrl) : Promise.resolve(null),
+            v?.hallTicketUrl ? this.storage.presignRead(v.hallTicketUrl) : Promise.resolve(null),
+            v?.marksSheetUrl ? this.storage.presignRead(v.marksSheetUrl) : Promise.resolve(null),
+          ])
+
+        return {
+          id: u.id,
+          displayHandle: u.profile?.displayHandle ?? null,
+          avatarLetter: u.profile?.avatarLetter ?? null,
+          avatarColor: u.profile?.avatarColor ?? null,
+          hasPurpleTick: u.profile?.hasPurpleTick ?? false,
+          status: u.status,
+          createdAt: u.createdAt.toISOString(),
+          mentorProfile: u.mentorProfile
+            ? {
+                journeyType: u.mentorProfile.journeyType,
+                prelimsCleared: u.mentorProfile.prelimsCleared,
+                mainsAttempts: u.mentorProfile.mainsAttempts,
+                interviewAttempts: u.mentorProfile.interviewAttempts,
+                isVerified: u.mentorProfile.isVerified,
+              }
+            : null,
+          verification: v
+            ? {
+                submittedAt: v.submittedAt.toISOString(),
+                reviewedAt: v.reviewedAt?.toISOString() ?? null,
+                reviewNote: v.reviewNote ?? null,
+                // Signed read URLs (5 min TTL). Raw storage keys are NOT exposed.
+                aadhaarSignedUrl,
+                hallTicketSignedUrl,
+                marksSheetSignedUrl,
+                hasBankAccount: !!v.bankAccount,
+                hasMarksSheet: !!v.marksSheetUrl,
+              }
+            : null,
+        }
+      }),
+    )
+
+    return result
+  }
+
+  async approveMentor(userId: string, actorId: string, reviewNote?: string) {
     const mentor = await this.prisma.mentorProfile.findUnique({ where: { userId } })
     if (!mentor) {
       throw new NotFoundException('Mentor profile not found (set role to MENTOR first)')
     }
+
+    const verification = await this.prisma.verificationDocument.findUnique({
+      where: { userId },
+    })
+
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.mentorProfile.update({
+      // If marks_sheet was uploaded, grant purple tick.
+      const grantPurpleTick = !!verification?.marksSheetUrl
+
+      await tx.mentorProfile.update({
         where: { userId },
         data: { isVerified: true, approvedAt: new Date(), approvedBy: actorId },
       })
+
+      await tx.profile.update({
+        where: { userId },
+        data: { hasPurpleTick: grantPurpleTick },
+      })
+
+      await tx.user.update({
+        where: { id: userId },
+        data: { status: UserStatus.ACTIVE },
+      })
+
+      if (verification) {
+        await tx.verificationDocument.update({
+          where: { userId },
+          data: {
+            reviewedAt: new Date(),
+            reviewedBy: actorId,
+            reviewNote: reviewNote ?? null,
+          },
+        })
+      }
+
       await tx.auditLog.create({
         data: {
           actorId,
           action: 'mentor.approved',
           targetType: 'User',
           targetId: userId,
+          metadata: { grantedPurpleTick: grantPurpleTick, reviewNote: reviewNote ?? null },
         },
       })
-      return updated
+
+      return { approved: true, hasPurpleTick: grantPurpleTick }
+    })
+  }
+
+  /**
+   * Reject a mentor's verification submission.
+   * Sets user status to SUSPENDED so they cannot operate, but does NOT ban
+   * the Aadhaar. The mentor can re-submit with corrected documents.
+   */
+  async rejectMentor(userId: string, actorId: string, reason: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { verification: true },
+    })
+    if (!user) throw new NotFoundException('User not found')
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { status: UserStatus.SUSPENDED },
+      })
+
+      if (user.verification) {
+        await tx.verificationDocument.update({
+          where: { userId },
+          data: {
+            reviewedAt: new Date(),
+            reviewedBy: actorId,
+            reviewNote: reason,
+          },
+        })
+      }
+
+      await tx.auditLog.create({
+        data: {
+          actorId,
+          action: 'mentor.rejected',
+          targetType: 'User',
+          targetId: userId,
+          metadata: { reason },
+        },
+      })
+
+      return { rejected: true }
+    })
+  }
+
+  /**
+   * Ban a mentor permanently.
+   * Adds the Aadhaar hash to MentorDenylist so future sign-ups with the same
+   * (userId, last-4) pair are blocked at verification submission.
+   * Sets User.status = BANNED and writes a ModerationActionLog entry.
+   */
+  async banMentor(userId: string, actorId: string, reason: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { verification: true },
+    })
+    if (!user) throw new NotFoundException('User not found')
+
+    return this.prisma.$transaction(async (tx) => {
+      // Add to denylist if we have an Aadhaar hash.
+      if (user.verification?.aadhaarHash) {
+        await tx.mentorDenylist.upsert({
+          where: { aadhaarHash: user.verification.aadhaarHash },
+          create: {
+            aadhaarHash: user.verification.aadhaarHash,
+            reason,
+            bannedBy: actorId,
+          },
+          update: {
+            reason,
+            bannedBy: actorId,
+            bannedAt: new Date(),
+          },
+        })
+      }
+
+      await tx.user.update({
+        where: { id: userId },
+        data: { status: UserStatus.BANNED, bannedAt: new Date() },
+      })
+
+      // Update verification review fields.
+      if (user.verification) {
+        await tx.verificationDocument.update({
+          where: { userId },
+          data: {
+            reviewedAt: new Date(),
+            reviewedBy: actorId,
+            reviewNote: `BANNED: ${reason}`,
+          },
+        })
+      }
+
+      await tx.moderationActionLog.create({
+        data: {
+          targetUserId: userId,
+          reason,
+          action: ModerationAction.BAN_MENTOR,
+          bannedByAdmin: actorId,
+          evidenceMessageIds: [],
+        },
+      })
+
+      await tx.auditLog.create({
+        data: {
+          actorId,
+          action: 'mentor.banned',
+          targetType: 'User',
+          targetId: userId,
+          metadata: { reason, aadhaarHashed: !!user.verification?.aadhaarHash },
+        },
+      })
+
+      return { banned: true }
     })
   }
 

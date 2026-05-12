@@ -4,6 +4,7 @@ import { Public } from '../auth/decorators/public.decorator'
 import { OnboardingService } from './onboarding.service'
 import { MirrorSubmitDto } from './dto/mirror-submit.dto'
 import { MentorOnboardingSubmitDto } from './dto/mentor-onboarding-submit.dto'
+import { MentorVerificationDto } from './dto/mentor-verification.dto'
 import { TrackEventDto } from './dto/track-event.dto'
 import { RolePickDto } from './dto/role-pick.dto'
 
@@ -47,5 +48,11 @@ export class OnboardingController {
   @HttpCode(200)
   submitMentor(@CurrentUser() user: JwtUser, @Body() body: MentorOnboardingSubmitDto) {
     return this.onboarding.submitMentorOnboarding(user.sub, body)
+  }
+
+  @Post('mentor/verification')
+  @HttpCode(200)
+  submitVerification(@CurrentUser() user: JwtUser, @Body() body: MentorVerificationDto) {
+    return this.onboarding.submitVerification(user.sub, body)
   }
 }

@@ -16,6 +16,7 @@ import { OnboardingModule } from './modules/onboarding/onboarding.module'
 import { MentorsModule } from './modules/mentors/mentors.module'
 import { ChatRequestsModule } from './modules/chat-requests/chat-requests.module'
 import { JournalsModule } from './modules/journals/journals.module'
+import { StorageModule } from './modules/storage/storage.module'
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { JournalsModule } from './modules/journals/journals.module'
     MentorsModule,
     ChatRequestsModule,
     JournalsModule,
+    StorageModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

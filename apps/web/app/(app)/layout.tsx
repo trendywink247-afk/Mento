@@ -21,6 +21,7 @@ import {
 import { useAuthStore } from '@/lib/auth-store'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { reset as analyticsReset } from '@/lib/analytics'
 import * as Sentry from '@sentry/nextjs'
 
@@ -108,7 +109,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="flex w-64 flex-shrink-0 flex-col border-r bg-background">
         {/* Brand block */}
         <div className="flex h-14 items-center border-b px-5">
-          <span className="text-lg font-bold tracking-tight text-blue-600">Mento</span>
+          <span className="text-lg font-bold tracking-tight text-primary">Mento</span>
         </div>
 
         {/* Nav items */}
@@ -122,14 +123,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 className={[
                   'group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
                   isActive
-                    ? 'bg-blue-50 text-blue-700'
+                    ? 'bg-primary/10 text-primary'
                     : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                 ].join(' ')}
               >
                 {isActive && (
                   <motion.span
                     layoutId="sidebar-active-indicator"
-                    className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-blue-600"
+                    className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-primary"
                     transition={{ type: 'spring', stiffness: 400, damping: 35 }}
                   />
                 )}
@@ -137,7 +138,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   size={18}
                   className={
                     isActive
-                      ? 'text-blue-600'
+                      ? 'text-primary'
                       : 'text-muted-foreground group-hover:text-foreground'
                   }
                   strokeWidth={isActive ? 2.5 : 2}
@@ -188,7 +189,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <div className="border-t" />
               <button
                 onClick={handleLogout}
-                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"
+                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10"
               >
                 <LogOut size={14} />
                 Sign out
@@ -232,7 +233,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main content column */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top header bar */}
-        <header className="flex h-14 flex-shrink-0 items-center justify-between border-b bg-white px-6">
+        <header className="flex h-14 flex-shrink-0 items-center justify-between border-b bg-background px-6">
           <span className="text-sm font-semibold text-foreground">{pageTitle}</span>
           <div className="flex items-center gap-2">
             <button
@@ -247,11 +248,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             >
               <Bell size={18} />
             </button>
+            <ThemeToggle />
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-8">{children}</main>
+        <main id="main" className="flex-1 overflow-y-auto p-8">{children}</main>
       </div>
     </div>
   )
