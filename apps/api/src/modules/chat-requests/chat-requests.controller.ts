@@ -19,6 +19,7 @@ export class ChatRequestsController {
     return this.requests.create(user.sub, body.mentorId, body.intro)
   }
 
+  @Roles(Role.MENTOR, Role.ASPIRANT)
   @Get()
   async list(@CurrentUser() user: JwtUser) {
     const dbUser = await this.prisma.user.findUnique({ where: { id: user.sub } })

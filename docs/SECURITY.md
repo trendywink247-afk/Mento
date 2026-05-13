@@ -139,6 +139,35 @@ Per-phone limits are unambiguous: each victim is isolated.
 
 ---
 
+## Closed findings (Wave 19)
+
+### MINOR-2 — Declarative role gates on list endpoints (closed 2026-05-13)
+
+`GET /chat-requests` and `GET /sessions/requests` previously had no `@Roles()` decorator.
+Role branching was done inside the service by reading the caller's DB role. This was
+functionally correct but opaque — an admin calling either endpoint would silently receive
+an empty aspirant-branch response.
+
+**Fix applied:**
+- Added `@Roles(Role.MENTOR, Role.ASPIRANT)` to `ChatRequestsController.list()`
+- Added `@Roles(Role.MENTOR, Role.ASPIRANT)` to `SessionsController.listRequests()`
+
+The `RolesGuard` has no admin super-role bypass, so admins calling these endpoints now
+receive 403. Admins do not need role-branched user data — their visibility is via `/admin/*`.
+
+### MINOR-3 — Push-token cross-user deletion (closed 2026-05-13)
+
+`DELETE /push-tokens/:token` previously used `deleteMany({ where: { token } })`, allowing
+any authenticated user to delete any push token if they knew the Expo token string.
+
+**Fix applied:**
+- `PushTokensService.unregister()` now accepts `userId` and adds `userId` to the `WHERE`
+  clause: `deleteMany({ where: { token, userId } })`.
+- `PushTokensController.unregister()` passes `req.user.sub` as the owner.
+- PUSH-7 E2E test added in `apps/web/e2e/api/push-tokens.spec.ts` — verifies that user B
+  calling `DELETE /push-tokens/<token-owned-by-A>` returns 204 (idempotent) but does not
+  actually delete the token.
+
 ## Fix order (this session)
 
 1. SEC-1 — refresh token HMAC
@@ -148,3 +177,4 @@ Per-phone limits are unambiguous: each victim is isolated.
 5. SEC-5 — throttler
 6. SEC-6 — pino redact + helmet hardening
 7. Test all fixes (curl) + Playwright E2E
+8. MINOR-2, MINOR-3 — declarative role gates + push-token ownership check

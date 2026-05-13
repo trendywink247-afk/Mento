@@ -6,6 +6,7 @@
  *  - Same token registered twice → idempotent (204 both times)
  *  - DELETE /push-tokens/:token → 204
  *  - Unauthenticated POST → 401
+ *  - Cross-user delete → token survives (ownership check, MINOR-3 fix)
  *
  * Preconditions:
  *  - API running on API_BASE_URL (default http://localhost:4000)
@@ -114,5 +115,47 @@ test.describe('Push Tokens: register / unregister', () => {
       data: { token: 'short', platform: 'ANDROID' },
     })
     expect(res.status(), 'Short token must fail validation: 400').toBe(400)
+  })
+
+  test('PUSH-7: cross-user DELETE is a no-op — token owned by user A survives when user B deletes it', async ({
+    request,
+  }) => {
+    // MINOR-3 security regression test.
+    // User A registers a push token. User B (a different account) sends DELETE
+    // for that exact token string. The ownership check (WHERE userId = B.sub)
+    // means nothing is deleted — the token still belongs to A.
+    const userA = await requestOtpAndVerify(request, uniquePhone())
+    const userB = await requestOtpAndVerify(request, uniquePhone())
+    const token = uniquePushToken()
+
+    // User A registers the token.
+    const reg = await request.post(`${API}/push-tokens`, {
+      headers: authHeader(userA),
+      data: { token, platform: 'ANDROID' },
+    })
+    expect(reg.status(), `register body: ${await reg.text()}`).toBe(204)
+
+    // User B tries to delete user A's token — should return 204 (idempotent)
+    // but must NOT actually remove the token (WHERE userId = B.id matches 0 rows).
+    const crossDel = await request.delete(`${API}/push-tokens/${encodeURIComponent(token)}`, {
+      headers: authHeader(userB),
+    })
+    expect(crossDel.status(), `cross-user delete body: ${await crossDel.text()}`).toBe(204)
+
+    // User A can still delete their own token (proves it was not removed by B).
+    const ownDel = await request.delete(`${API}/push-tokens/${encodeURIComponent(token)}`, {
+      headers: authHeader(userA),
+    })
+    expect(
+      ownDel.status(),
+      `owner delete body: ${await ownDel.text()} — token should still exist`,
+    ).toBe(204)
+
+    // Re-register to confirm the upsert path still works after ownership-scoped delete.
+    const rereg = await request.post(`${API}/push-tokens`, {
+      headers: authHeader(userA),
+      data: { token, platform: 'ANDROID' },
+    })
+    expect(rereg.status()).toBe(204)
   })
 })

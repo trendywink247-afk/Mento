@@ -50,6 +50,7 @@ export class SessionsController {
     )
   }
 
+  @Roles(Role.MENTOR, Role.ASPIRANT)
   @Get('sessions/requests')
   async listRequests(@CurrentUser() user: JwtUser) {
     const dbUser = await this.prisma.user.findUnique({

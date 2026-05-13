@@ -14,8 +14,9 @@ export class PushTokensService {
     })
   }
 
-  async unregister(token: string): Promise<void> {
-    // Delete only — no error if the token doesn't exist.
-    await this.prisma.pushToken.deleteMany({ where: { token } })
+  async unregister(token: string, userId: string): Promise<void> {
+    // Scoped to the calling user — prevents cross-user token deletion.
+    // deleteMany is used for idempotency: no error if the token doesn't exist.
+    await this.prisma.pushToken.deleteMany({ where: { token, userId } })
   }
 }

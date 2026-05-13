@@ -30,10 +30,14 @@ export class PushTokensController {
 
   /**
    * Unregister a push token — call on logout.
+   * Only deletes the token if it belongs to the calling user (ownership check).
    */
   @Delete(':token')
   @HttpCode(204)
-  async unregister(@Param('token') token: string): Promise<void> {
-    await this.pushTokens.unregister(token)
+  async unregister(
+    @Req() req: Request & { user: { sub: string } },
+    @Param('token') token: string,
+  ): Promise<void> {
+    await this.pushTokens.unregister(token, req.user.sub)
   }
 }

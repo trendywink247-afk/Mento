@@ -69,15 +69,16 @@ Guards are registered in `apps/api/src/modules/auth/auth.module.ts` as global `A
 
 | Route | Note |
 |---|---|
-| GET /chat-requests | Role-based branching done in service; no decorator — MINOR |
+| GET /chat-requests | `@Roles(MENTOR, ASPIRANT)` added in Wave 19 — MINOR-2 closed |
 | PATCH /chat-requests/:id/archive | Any authenticated user can archive — intentional |
-| GET /sessions/requests | Role-based branching done in service; no decorator — MINOR |
+| GET /sessions/requests | `@Roles(MENTOR, ASPIRANT)` added in Wave 19 — MINOR-2 closed |
 | GET /sessions/availability/:mentorId | Public-facing availability read — intentional |
 | GET /wallet | Any authenticated user sees own wallet — intentional |
 | GET /conversations, GET /conversations/:id/messages | Any authenticated user — intentional |
 | PATCH /conversations/:id/archive | Any authenticated user — intentional |
 | POST /chat/messages/:messageId/report | Any authenticated user — intentional |
-| POST /push-tokens, DELETE /push-tokens/:token | Any authenticated user — intentional |
+| POST /push-tokens | Any authenticated user — intentional |
+| DELETE /push-tokens/:token | Ownership-scoped in Wave 19 — MINOR-3 closed |
 | GET /journals/* (all) | Any authenticated user owns their journals — intentional |
 | GET /onboarding/state, POST /onboarding/mirror, POST /onboarding/mentor* | Any authenticated user — intentional |
 | GET /me, POST /storage/presign, GET /subscriptions/me, POST /subscriptions/checkout, POST /subscriptions/cancel | Any authenticated user — intentional |
@@ -113,12 +114,14 @@ All are correctly marked `@Public()` for legitimate reasons.
   - File: `/root/Mento/apps/api/src/modules/subscriptions/subscriptions.controller.ts` line 49–51
   - File: `/root/Mento/apps/api/src/modules/subscriptions/subscriptions.service.ts` line 229
 
-- **(MINOR-2) `GET /chat-requests` and `GET /sessions/requests` have no `@Roles()` decorator.** Role branching is done inside the service layer (checking the DB user's role). This is functionally correct but means an ADMIN calling either endpoint gets the aspirant-branch response (empty array or fallback). There is no security risk — admins cannot impersonate other users via these routes — but the lack of an explicit guard makes the intent opaque and could silently break if the service role-check logic is ever refactored. Recommend adding `@Roles(Role.MENTOR, Role.ASPIRANT)` to exclude admins and make intent explicit.
-  - File: `/root/Mento/apps/api/src/modules/chat-requests/chat-requests.controller.ts` line 23–27
-  - File: `/root/Mento/apps/api/src/modules/sessions/sessions.controller.ts` line 53–60
+- **(MINOR-2) ~~`GET /chat-requests` and `GET /sessions/requests` have no `@Roles()` decorator.`~~ CLOSED in Wave 19 (2026-05-13).** `@Roles(Role.MENTOR, Role.ASPIRANT)` added to both list endpoints. Admins now receive 403 on these role-branching endpoints, which is correct — they use `/admin/*` for data visibility.
+  - Fixed in: `apps/api/src/modules/chat-requests/chat-requests.controller.ts`
+  - Fixed in: `apps/api/src/modules/sessions/sessions.controller.ts`
 
-- **(MINOR-3) `DELETE /push-tokens/:token` has no ownership check.** Any authenticated user can delete any push token by guessing the token string. Push tokens are Expo random strings (unguessable in practice), so exploitation requires the attacker to already know a victim's exact push token. Low severity, but a `WHERE userId = req.user.sub` filter in the service would close it.
-  - File: `/root/Mento/apps/api/src/modules/push-tokens/push-tokens.controller.ts` line 32–37
+- **(MINOR-3) ~~`DELETE /push-tokens/:token` has no ownership check.~~ CLOSED in Wave 19 (2026-05-13).** `PushTokensService.unregister()` now scopes the delete to `{ token, userId }`. Controller passes `req.user.sub`. PUSH-7 E2E test validates cross-user no-op behaviour.
+  - Fixed in: `apps/api/src/modules/push-tokens/push-tokens.service.ts`
+  - Fixed in: `apps/api/src/modules/push-tokens/push-tokens.controller.ts`
+  - Test: `apps/web/e2e/api/push-tokens.spec.ts` PUSH-7
 
 ### DOCUMENTATION / COVERAGE GAPS
 
@@ -136,9 +139,9 @@ All are correctly marked `@Public()` for legitimate reasons.
 
 1. **MINOR-1 — simulate-success:** Wrap the endpoint in a guard that checks `process.env.NODE_ENV !== 'production'` at the NestJS layer (not inside the service), or conditionally exclude the route via module-level logic. Service-level guard is a single point of failure.
 
-2. **MINOR-2 — list routes without @Roles:** Add `@Roles(Role.MENTOR, Role.ASPIRANT)` to `GET /chat-requests` and `GET /sessions/requests` to make role intent declarative and prevent admin access to role-branched service logic.
+2. ~~**MINOR-2 — list routes without @Roles:** Add `@Roles(Role.MENTOR, Role.ASPIRANT)` to `GET /chat-requests` and `GET /sessions/requests` to make role intent declarative and prevent admin access to role-branched service logic.~~ DONE (Wave 19).
 
-3. **MINOR-3 — push-token deletion:** Add `WHERE userId = authenticatedUserId` to the `unregister()` service call so only the token owner can delete it.
+3. ~~**MINOR-3 — push-token deletion:** Add `WHERE userId = authenticatedUserId` to the `unregister()` service call so only the token owner can delete it.~~ DONE (Wave 19).
 
 4. **GAP-2 — MENTOR-only 403 tests:** Add Playwright tests asserting ASPIRANT receives 403 on `PATCH /sessions/requests/:id/decline`, `PATCH /chat-requests/:id/accept`, `PATCH /chat-requests/:id/decline`, and `GET /mentors/mentees`.
 
@@ -146,4 +149,16 @@ All are correctly marked `@Public()` for legitimate reasons.
 
 ---
 
+---
+
+## Closed in Wave 19 (2026-05-13)
+
+| Finding | Status | Commit |
+|---------|--------|--------|
+| MINOR-2 — No `@Roles()` on list endpoints | CLOSED | `security: declarative role gates + push-token ownership` |
+| MINOR-3 — Push-token cross-user deletion | CLOSED | `security: declarative role gates + push-token ownership` |
+
+Both fixes verified via TypeScript typecheck (`cd apps/api && pnpm typecheck`). PUSH-7 E2E spec added to confirm MINOR-3 ownership behaviour is regression-proof.
+
 *Audit performed: 2026-05-13. Auditor: reviewer agent. Read-only — no files modified.*
+*Wave 19 fixes applied: 2026-05-13. Engineer: backend agent.*
