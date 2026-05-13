@@ -94,12 +94,15 @@ test.describe('Push Tokens: register / unregister', () => {
     expect(res.status()).toBe(401)
   })
 
-  test('PUSH-5: DELETE is idempotent — deleting a non-existent token returns 204', async ({
+  test('PUSH-5: DELETE is idempotent — authed delete of a non-existent token returns 204', async ({
     request,
   }) => {
     // The service uses deleteMany which does not throw on missing rows.
+    const session = await requestOtpAndVerify(request, uniquePhone())
     const token = uniquePushToken()
-    const res = await request.delete(`${API}/push-tokens/${encodeURIComponent(token)}`)
+    const res = await request.delete(`${API}/push-tokens/${encodeURIComponent(token)}`, {
+      headers: authHeader(session),
+    })
     expect(res.status()).toBe(204)
   })
 

@@ -137,16 +137,15 @@ describe('ModerationService.resolveReport — DISMISS', () => {
     )
   })
 
-  it('does NOT update user status on WARN (separate guard — DISMISS falls through guard for WARN only)', async () => {
-    // The service's early-return guard checks for WARN, not DISMISS.
-    // DISMISS therefore still reaches the user.update call with SUSPENDED status —
-    // this is an existing service behaviour; the test documents it as-is.
-    // A future fix should add ResolveAction.DISMISS to the guard condition.
+  it('does NOT update user status on DISMISS', async () => {
+    // DISMISS must short-circuit after writing the audit log — no status flip,
+    // no token revocation, no push-token deletion.
     await svc.resolveReport('report-1', 'admin-1', ResolveAction.DISMISS)
     const txMock = prisma._tx
-    // Current behaviour: user.update IS called even on DISMISS (service issue documented here)
-    // Asserting the actual current behaviour so any future fix is visible:
     expect(txMock.messageReport.update).toHaveBeenCalled()
+    expect(txMock.user.update).not.toHaveBeenCalled()
+    expect(txMock.refreshToken.updateMany).not.toHaveBeenCalled()
+    expect(txMock.pushToken.deleteMany).not.toHaveBeenCalled()
   })
 
   it('throws NotFoundException when report does not exist', async () => {

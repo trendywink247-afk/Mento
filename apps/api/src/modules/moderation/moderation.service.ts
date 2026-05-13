@@ -190,8 +190,8 @@ export class ModerationService {
         },
       })
 
-      if (action === ResolveAction.WARN) {
-        // Warn only — no status change.
+      if (action === ResolveAction.DISMISS || action === ResolveAction.WARN) {
+        // DISMISS and WARN do not change user status — audit-log only.
         return
       }
 

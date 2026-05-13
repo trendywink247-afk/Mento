@@ -15,7 +15,17 @@ async function main() {
     where: { OR: [email ? { email } : {}, phone ? { phone } : {}].filter(Boolean) as never },
   })
   if (existing) {
-    console.log('[seed] Admin user already exists, skipping.')
+    if (existing.role === Role.ADMIN && existing.status === UserStatus.ACTIVE) {
+      console.log(`[seed] Admin user already correctly configured (${existing.id})`)
+      return
+    }
+    // The user exists but isn't ADMIN — most commonly because OTP-verify created them
+    // as ASPIRANT first. Promote idempotently so e2e tests can rely on /admin/* access.
+    const promoted = await prisma.user.update({
+      where: { id: existing.id },
+      data: { role: Role.ADMIN, status: UserStatus.ACTIVE },
+    })
+    console.log(`[seed] Promoted existing user ${promoted.id} → ADMIN`)
     return
   }
   const admin = await prisma.user.create({
