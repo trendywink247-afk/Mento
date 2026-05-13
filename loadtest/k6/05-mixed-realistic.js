@@ -267,7 +267,7 @@ function doJournalWrite(state) {
 
         const entryRes = http.post(
           `${BASE_URL}/journals/${journalId}/entries`,
-          JSON.stringify({ content: 'Load test entry — GS revision notes for today.' }),
+          JSON.stringify({ type: 'MANUAL_TEXT', content: 'Load test entry — GS revision notes for today.' }),
           { headers, ...tagParams('journal_entry') },
         )
         const ok2 = check(entryRes, { 'journal entry 200/201': (r) => r.status === 200 || r.status === 201 })

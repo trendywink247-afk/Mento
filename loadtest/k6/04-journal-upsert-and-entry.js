@@ -182,6 +182,7 @@ export default function () {
   // --- Step 3: Create an entry ---
   const content = randomElement(ENTRY_CONTENTS)
   const entryPayload = {
+    type: 'MANUAL_TEXT',
     content,
     // Optional mood tag — 50% chance of including
     ...(Math.random() < 0.5 ? { mood: randomElement(['FOCUSED', 'TIRED', 'MOTIVATED', 'ANXIOUS']) } : {}),

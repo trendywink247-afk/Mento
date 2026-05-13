@@ -106,14 +106,18 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      # SELECT 1 routed through PgBouncer to Postgres proves the pool is up AND
-      # forwarding correctly — stronger than just TCP-open (nc -z). We avoid
-      # `SHOW POOLS` because that requires connecting to the virtual `pgbouncer`
-      # admin DB and being listed in admin_users (smoke caught this in Wave 18).
+      # `pg_isready` performs the Postgres startup-packet handshake against
+      # PgBouncer's listen port — confirms the pool is up AND forwarding to
+      # postgres in one shot. Three other approaches were tried and failed:
+      #   - `SHOW POOLS` requires the admin DB + admin_users (Wave 18 W77)
+      #   - `psql -c 'SELECT 1'` requires the psql client binary, which the
+      #     edoburu/pgbouncer:latest Alpine image does NOT ship (Wave 19 W78)
+      #   - `nc -z` only proves the TCP port is bound, not that auth works
+      # pg_isready IS present in the image — verified by image inspection.
       # $$VAR escapes the $ so Docker Compose doesn't interpolate at parse time.
       test:
         - CMD-SHELL
-        - "PGPASSWORD=$$DB_PASSWORD psql -h localhost -p 6432 -U $$DB_USER -d $$DB_NAME -c 'SELECT 1' >/dev/null 2>&1"
+        - "pg_isready -h localhost -p 6432 -U $$DB_USER -d $$DB_NAME"
       interval: 10s
       timeout: 5s
       retries: 5
