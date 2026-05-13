@@ -284,6 +284,38 @@ reachable and `SOCKET_REDIS_ADAPTER` is literally the string `"true"`.
   redis-cli -p 6380 KEYS 'mentors:list:*' | xargs redis-cli -p 6380 DEL
   ```
 
+## Releasing mobile updates
+
+Full walkthrough: **[docs/DEPLOY.md §9](./DEPLOY.md#9-mobile-builds-eas)**
+
+Quick reference:
+
+```bash
+# Preview build (Android APK — for internal QA)
+cd /root/Mento/apps/mobile && pnpm dlx eas-cli build --profile preview --platform android
+
+# Production build (both platforms — submits to EAS queue)
+pnpm dlx eas-cli build --profile production --platform all
+
+# Submit to stores after a successful production build
+pnpm dlx eas-cli submit --profile production --platform ios
+pnpm dlx eas-cli submit --profile production --platform android
+
+# OTA JS-only update (no store review needed)
+pnpm dlx eas-cli update --channel production --message "Describe what changed"
+
+# Check build status
+pnpm dlx eas-cli build:list --limit 5
+```
+
+Key files:
+- `apps/mobile/eas.json` — EAS build profiles
+- `apps/mobile/app.json` — app identifiers, plugins, runtime version
+- `apps/mobile/STORE.md` — App Store / Play Store listing copy
+- `apps/mobile/store-screenshots/README.md` — screenshot spec for designer
+
+---
+
 ## Backup local DB
 
 ```bash

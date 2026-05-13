@@ -267,3 +267,155 @@ ufw enable
 ```
 
 All internal ports (5432, 6379, 4000, 3000) must remain closed to the internet. They are only reachable within the `mento_internal` Docker network.
+
+---
+
+## 9. Mobile builds (EAS)
+
+Mento's iOS and Android apps are built via **Expo Application Services (EAS)**. You do not need Xcode or Android Studio on the build machine — EAS builds remotely.
+
+Config file: `apps/mobile/eas.json`  
+App metadata: `apps/mobile/app.json`  
+Store copy: `apps/mobile/STORE.md`  
+Screenshot spec: `apps/mobile/store-screenshots/README.md`
+
+### 9a. One-time EAS account setup
+
+1. Create a free Expo account at https://expo.dev if you don't have one.
+2. Install the EAS CLI (no global install required — use `pnpm dlx`):
+
+```bash
+pnpm dlx eas-cli --version   # verify it works
+```
+
+3. Log in:
+
+```bash
+pnpm dlx eas-cli login
+# Enter your Expo username + password
+```
+
+4. Link the project to EAS and get a real project ID:
+
+```bash
+cd /root/Mento/apps/mobile
+pnpm dlx eas-cli init
+# Follow prompts. This writes the real projectId into app.json automatically.
+```
+
+5. After `eas init` completes, update `EXPO_PUBLIC_EAS_PROJECT_ID` in `.env` to match:
+
+```bash
+# In /root/Mento/.env (and .env.prod):
+EXPO_PUBLIC_EAS_PROJECT_ID=<the-uuid-eas-init-printed>
+```
+
+Also update `apps/mobile/app.json` → `expo.extra.eas.projectId` with the same UUID.
+
+6. Update `expo.owner` in `app.json` from `"mento"` to your actual Expo account slug.
+
+### 9b. Required secrets (add via EAS dashboard or CLI)
+
+| Secret | Where to get it |
+|---|---|
+| Apple App Store Connect API key (P8 file + Key ID + Issuer ID) | App Store Connect → Users & Access → Integrations → App Store Connect API |
+| Apple Developer Team ID | developer.apple.com → Membership |
+| App Store Connect App ID (numeric) | App Store Connect → My Apps → App Information |
+| Google Play service account JSON | Google Play Console → Setup → API access → Service accounts |
+
+Add secrets to EAS:
+
+```bash
+pnpm dlx eas-cli secret:create --scope project --name APPLE_API_KEY_P8 --value "$(cat AuthKey_XXXXXXXXXX.p8)"
+```
+
+Or upload them in the EAS dashboard at https://expo.dev/accounts/<org>/projects/mento/secrets.
+
+Also fill in the TODO placeholders in `apps/mobile/eas.json` → `submit.production.ios`:
+- `ascAppId` — numeric App Store Connect App ID
+- `appleId` — Apple ID email for App Store Connect
+- `appleTeamId` — 10-character Apple Developer Team ID
+
+### 9c. First preview build (smoke test — no store submission)
+
+```bash
+cd /root/Mento/apps/mobile
+pnpm dlx eas-cli build --profile preview --platform android
+```
+
+This produces a `.apk` you can install directly on a physical Android device or share via the EAS dashboard. Good for QA before going to store.
+
+For iOS preview (requires Apple provisioning — easier to start with Android):
+
+```bash
+pnpm dlx eas-cli build --profile preview --platform ios
+```
+
+### 9d. Production store builds
+
+```bash
+# Build for both platforms (queues two EAS build jobs)
+pnpm dlx eas-cli build --profile production --platform all
+```
+
+Monitor build progress at https://expo.dev/accounts/<org>/projects/mento/builds or in the terminal output.
+
+Build outputs:
+- iOS: `.ipa` file (automatically signed)
+- Android: `.aab` (Android App Bundle — required for Play Store)
+
+### 9e. Submit to stores
+
+After a production build succeeds, submit it:
+
+```bash
+# Submit iOS to TestFlight / App Store
+pnpm dlx eas-cli submit --profile production --platform ios
+
+# Submit Android to Play Store internal track
+pnpm dlx eas-cli submit --profile production --platform android
+```
+
+For Android, place the Google service account JSON at `apps/mobile/google-service-account.json` (gitignored — never commit this file).
+
+### 9f. OTA (over-the-air) updates via EAS Update
+
+OTA updates let you ship JS/asset changes without a full store build. They respect `runtimeVersion.policy: "appVersion"` — an OTA update for `0.1.0` only reaches devices running `0.1.0`.
+
+```bash
+# Push an OTA update to the preview channel
+pnpm dlx eas-cli update --channel preview --message "Fix chat timestamp display"
+
+# Push to production channel (reaches all production users)
+pnpm dlx eas-cli update --channel production --message "Patch journal sync edge case"
+```
+
+Use OTA for: JS bug fixes, copy changes, minor UI tweaks.
+Use a full store build for: native module changes, new permissions, SDK upgrades.
+
+### 9g. Development builds (on-device debugging)
+
+```bash
+# Build a dev client for iOS simulator
+pnpm dlx eas-cli build --profile development --platform ios
+
+# Build a dev APK for Android (install directly)
+pnpm dlx eas-cli build --profile development --platform android
+```
+
+Then start the local dev server:
+
+```bash
+cd /root/Mento && pnpm --filter @mento/mobile dev
+```
+
+The dev client will connect to your local Expo server instead of loading a bundled app.
+
+### 9h. Notification icon
+
+Before the first build, create `apps/mobile/assets/notification-icon.png`:
+- 96 × 96 px
+- White icon on transparent background (Android requirement)
+- Simple silhouette of the Mento mark — no text at this size
+
+This path is referenced in `app.json` → `expo.notification.icon`.

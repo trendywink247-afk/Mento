@@ -2,34 +2,46 @@
   "expo": {
     "name": "Mento",
     "slug": "mento",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "mento",
+    "owner": "mento",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "privacy": "unlisted",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#6C47FF"
+    },
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.mento",
-      "associatedDomains": ["applinks:mento.app"]
+      "bundleIdentifier": "in.mento.app",
+      "buildNumber": "1",
+      "associatedDomains": ["applinks:mento.in"]
     },
     "android": {
-      "package": "app.mento",
+      "package": "in.mento.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "permissions": ["POST_NOTIFICATIONS"],
       "intentFilters": [
         {
           "action": "VIEW",
           "autoVerify": true,
-          "data": [{ "scheme": "https", "host": "mento.app" }],
+          "data": [{ "scheme": "https", "host": "mento.in" }],
           "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
@@ -43,6 +55,15 @@
       "expo-router",
       "expo-secure-store",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#6C47FF",
+          "sounds": []
+        }
+      ],
+      "expo-linear-gradient",
+      [
         "expo-splash-screen",
         {
           "image": "./assets/splash.png",
@@ -52,10 +73,20 @@
         }
       ]
     ],
-    "experiments": { "typedRoutes": true },
+    "experiments": {
+      "typedRoutes": true
+    },
     "extra": {
       "router": { "origin": false },
-      "eas": { "projectId": "TO_BE_FILLED_AFTER_eas-init" }
+      "eas": {
+        "projectId": "00000000-0000-0000-0000-000000000000"
+      }
+    },
+    "_comments": {
+      "owner": "TODO: replace 'mento' with the actual Expo account username after running 'eas init'",
+      "extra.eas.projectId": "TODO: replace placeholder UUID with real project ID from 'pnpm dlx eas-cli init'",
+      "notification.icon": "TODO: create ./assets/notification-icon.png (96x96 white-on-transparent PNG) before first build",
+      "ios.associatedDomains": "TODO: confirm domain is mento.in not mento.app — update if needed"
     }
   }
 }
