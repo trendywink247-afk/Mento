@@ -26,10 +26,10 @@ export async function LandingFooter() {
     {
       heading: t('legal'),
       links: [
-        { label: t('privacy'), href: '#' },
-        { label: t('terms'), href: '#' },
-        { label: t('refunds'), href: '#' },
-        { label: t('anonymityPolicy'), href: '#' },
+        { label: t('privacy'), href: '/privacy' },
+        { label: t('terms'), href: '/terms' },
+        { label: t('refunds'), href: '/refund-policy' },
+        { label: t('anonymityPolicy'), href: '/privacy#anonymity' },
       ],
     },
   ]

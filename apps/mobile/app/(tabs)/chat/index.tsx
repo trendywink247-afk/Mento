@@ -610,8 +610,11 @@ export default function ChatList() {
               refreshing={refreshing}
               onRefresh={async () => {
                 setRefreshing(true)
-                load()
-                setRefreshing(false)
+                try {
+                  await load()
+                } finally {
+                  setRefreshing(false)
+                }
               }}
             />
           }
@@ -635,8 +638,11 @@ export default function ChatList() {
               refreshing={refreshing}
               onRefresh={async () => {
                 setRefreshing(true)
-                load()
-                setRefreshing(false)
+                try {
+                  await load()
+                } finally {
+                  setRefreshing(false)
+                }
               }}
             />
           }
@@ -661,8 +667,11 @@ export default function ChatList() {
               refreshing={refreshing}
               onRefresh={async () => {
                 setRefreshing(true)
-                load()
-                setRefreshing(false)
+                try {
+                  await load()
+                } finally {
+                  setRefreshing(false)
+                }
               }}
             />
           }
@@ -690,8 +699,11 @@ export default function ChatList() {
               refreshing={refreshing}
               onRefresh={async () => {
                 setRefreshing(true)
-                load()
-                setRefreshing(false)
+                try {
+                  await load()
+                } finally {
+                  setRefreshing(false)
+                }
               }}
             />
           }

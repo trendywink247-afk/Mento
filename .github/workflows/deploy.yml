@@ -101,7 +101,7 @@ jobs:
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
           build-args: |
-            NEXT_PUBLIC_API_URL=https://api.mento.in
+            NEXT_PUBLIC_API_BASE_URL=https://api.mento.in
             NEXT_PUBLIC_SOCKET_URL=https://api.mento.in
             NEXT_PUBLIC_APP_ENV=production
             SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
