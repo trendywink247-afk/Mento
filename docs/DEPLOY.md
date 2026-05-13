@@ -223,33 +223,66 @@ No schema rollback is needed unless the migration was destructive. If you need t
 
 ---
 
+## 2h. Install backup scripts and cron
+
+```bash
+# Make the scripts executable (already committed as +x; double-check on server)
+chmod +x /srv/mento/scripts/backup-pg.sh
+chmod +x /srv/mento/scripts/restore-pg.sh
+
+# Create the local backup directory
+mkdir -p /srv/mento/backups
+
+# Install the daily cron job (runs at 02:00 UTC as root)
+cat > /etc/cron.d/mento-backup <<'EOF'
+0 2 * * * root /srv/mento/scripts/backup-pg.sh >> /var/log/mento-backup.log 2>&1
+EOF
+chmod 644 /etc/cron.d/mento-backup
+
+# Test the backup script immediately (must complete without errors)
+/srv/mento/scripts/backup-pg.sh
+ls -lh /srv/mento/backups/
+```
+
+### R2 / S3 remote backup (optional but strongly recommended)
+
+Decide on a backup bucket before first deploy. You can reuse the verification-doc R2 bucket credentials or create a dedicated bucket.
+
+In `.env.prod`, set:
+
+```
+BACKUP_S3_BUCKET=mento-pg-backups         # R2 bucket name
+BACKUP_S3_REGION=auto                      # "auto" for R2; use "us-east-1" for AWS
+AWS_ACCESS_KEY_ID=<r2-api-key-id>          # Can reuse AWS_ACCESS_KEY_ID if same creds
+AWS_SECRET_ACCESS_KEY=<r2-api-key-secret>  # Same
+AWS_ENDPOINT_URL=https://<account>.r2.cloudflarestorage.com
+```
+
+If `BACKUP_S3_BUCKET` is left empty, the script skips the upload step and keeps only local copies.
+
+After setting these, verify upload works:
+
+```bash
+/srv/mento/scripts/backup-pg.sh
+# Should print: Upload OK: s3://mento-pg-backups/postgres/mento-....sql.gz
+```
+
+---
+
 ## 5. Backups
 
-### Automated pg_dump (recommended: cron on the server)
+Backups are handled by `scripts/backup-pg.sh`. See the full runbook (restore procedure, fresh-server recovery, monthly test-restore) in **[docs/RUNBOOK.md §Backups](./RUNBOOK.md#backups)**.
 
-```bash
-# Add to /etc/cron.d/mento-backup
-0 2 * * * root docker exec mento-postgres-prod \
-  pg_dump -U mento mento | gzip > /backups/mento-$(date +\%Y\%m\%d).sql.gz
+Quick reference:
 
-# Keep 30 days
-0 3 * * * root find /backups -name "mento-*.sql.gz" -mtime +30 -delete
-```
+| Task | Command |
+|---|---|
+| Run manual backup | `/srv/mento/scripts/backup-pg.sh` |
+| List local backups | `ls -lh /srv/mento/backups/` |
+| Restore from backup | `/srv/mento/scripts/restore-pg.sh <file.sql.gz>` |
+| Non-interactive restore | `/srv/mento/scripts/restore-pg.sh -y <file.sql.gz>` |
 
-### Off-site copy
-
-Sync `/backups/` to an S3 bucket or Cloudflare R2 using `rclone`:
-
-```bash
-rclone sync /backups/ r2:mento-backups/pg/ --progress
-```
-
-### Restore
-
-```bash
-gunzip -c /backups/mento-YYYYMMDD.sql.gz | \
-  docker exec -i mento-postgres-prod psql -U mento -d mento
-```
+Backups are written to `/srv/mento/backups/mento-YYYYMMDD-HHMMSS.sql.gz` and pruned after 7 days. Remote copies go to `s3://$BACKUP_S3_BUCKET/postgres/` when configured.
 
 ---
 

@@ -327,3 +327,161 @@ docker exec mento-postgres-local pg_dump -U mento mento | gzip > mento-$(date +%
 ```bash
 gunzip -c mento-YYYYMMDD.sql.gz | docker exec -i mento-postgres-local psql -U mento -d mento
 ```
+
+---
+
+## Backups
+
+### Overview
+
+Production backups are managed by `scripts/backup-pg.sh`. The script:
+- Runs `pg_dump` inside the `mento-postgres-prod` container.
+- Writes a gzip-compressed dump to `/srv/mento/backups/mento-YYYYMMDD-HHMMSS.sql.gz`.
+- Optionally uploads to Cloudflare R2 / AWS S3 when `BACKUP_S3_BUCKET` is set in `.env.prod`.
+- Prunes local files older than 7 days.
+- Logs every action to syslog (`logger -t mento-backup`).
+
+### Cron schedule
+
+A daily backup at 02:00 UTC is recommended. Add to `/etc/cron.d/mento-backup`:
+
+```
+0 2 * * * root /srv/mento/scripts/backup-pg.sh >> /var/log/mento-backup.log 2>&1
+```
+
+Verify cron is picking it up:
+
+```bash
+grep mento-backup /var/log/syslog | tail -20
+```
+
+### Run a manual backup
+
+```bash
+/srv/mento/scripts/backup-pg.sh
+```
+
+### Restore-from-backup runbook
+
+**Stop the API first.** Restoring while the API is healthy will corrupt in-flight writes.
+
+1. Stop the API container:
+   ```bash
+   docker stop mento-api-prod
+   ```
+
+2. Identify the backup file to restore:
+   ```bash
+   ls -lh /srv/mento/backups/
+   ```
+
+3. Run the restore script:
+   ```bash
+   /srv/mento/scripts/restore-pg.sh /srv/mento/backups/mento-YYYYMMDD-HHMMSS.sql.gz
+   # Type YES when prompted
+   ```
+
+4. If you're restoring to a newer schema version than the backup, apply pending migrations:
+   ```bash
+   docker start mento-api-prod
+   docker exec mento-api-prod sh -c \
+     "DATABASE_URL=\$MIGRATIONS_DATABASE_URL \
+      node node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma"
+   ```
+
+5. Restart the full stack and verify:
+   ```bash
+   docker compose -f infra/docker/docker-compose.prod.yml --env-file .env.prod up -d
+   curl https://api.mento.in/healthz
+   # Expected: {"status":"ok"}
+   ```
+
+6. Check the User row count matches expectations:
+   ```bash
+   docker exec -e PGPASSWORD="<pw>" mento-postgres-prod \
+     psql -U mento -d mento -c 'SELECT count(*) FROM "User";'
+   ```
+
+### Restore-on-a-fresh-server runbook
+
+Use this when recovering onto a brand-new server (e.g., after catastrophic failure).
+
+1. Provision the server and install Docker (see `docs/DEPLOY.md §1`).
+
+2. Clone the repo:
+   ```bash
+   git clone https://github.com/<org>/mento.git /srv/mento
+   cd /srv/mento
+   cp .env.prod.example .env.prod
+   nano .env.prod   # fill all secrets
+   ```
+
+3. Start only the Postgres container:
+   ```bash
+   docker compose -f infra/docker/docker-compose.prod.yml --env-file .env.prod \
+     up -d postgres
+   # Wait until healthy
+   docker ps   # State should show (healthy)
+   ```
+
+4. Copy the backup file to the new server (from your S3/R2 bucket or old server):
+   ```bash
+   # From R2 (if BACKUP_S3_BUCKET is configured):
+   aws s3 cp \
+     s3://<bucket>/postgres/mento-YYYYMMDD-HHMMSS.sql.gz \
+     /srv/mento/backups/ \
+     --endpoint-url https://<account>.r2.cloudflarestorage.com
+
+   # Or via scp from a machine that has the file:
+   scp user@old-server:/srv/mento/backups/mento-YYYYMMDD-HHMMSS.sql.gz \
+     /srv/mento/backups/
+   ```
+
+5. Run the restore (Postgres container must be up; API not started yet):
+   ```bash
+   /srv/mento/scripts/restore-pg.sh -y \
+     /srv/mento/backups/mento-YYYYMMDD-HHMMSS.sql.gz
+   ```
+
+6. Start the rest of the stack:
+   ```bash
+   docker compose -f infra/docker/docker-compose.prod.yml --env-file .env.prod up -d
+   ```
+
+7. Apply any migrations that landed after the backup was taken:
+   ```bash
+   docker exec mento-api-prod sh -c \
+     "DATABASE_URL=\$MIGRATIONS_DATABASE_URL \
+      node node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma"
+   ```
+
+8. Install the backup cron (see above) and verify health.
+
+### Monthly test-restore
+
+**Recommendation**: perform a test restore into a throwaway container on the last Sunday of each month to confirm backups are valid and the restore procedure still works.
+
+Quick procedure for a test restore (does NOT touch prod):
+
+```bash
+# 1. Spin up a separate Postgres container for testing
+docker run --rm -d \
+  --name mento-postgres-test \
+  -e POSTGRES_USER=mento \
+  -e POSTGRES_PASSWORD=testpass \
+  -e POSTGRES_DB=mento \
+  postgres:16-alpine
+
+# Wait a few seconds for it to start, then restore
+sleep 5
+gunzip -c /srv/mento/backups/mento-YYYYMMDD-HHMMSS.sql.gz \
+  | docker exec -i -e PGPASSWORD=testpass mento-postgres-test \
+      psql -U mento -d mento
+
+# Check a row count
+docker exec -e PGPASSWORD=testpass mento-postgres-test \
+  psql -U mento -d mento -c 'SELECT count(*) FROM "User";'
+
+# Tear down test container (data discarded automatically — --rm flag)
+docker stop mento-postgres-test
+```
