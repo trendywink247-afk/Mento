@@ -180,6 +180,50 @@ The avatar letter is set based on `journeyStage` on Mirror submit, or `journeyTy
 ### Typecheck succeeds locally but root `pnpm typecheck` fails with three.js errors
 That's `/root/GeekSpace2.0`'s typecheck (cwd reset issue). Ignore. Always typecheck per-app inside `apps/<app>`.
 
+## Running load tests
+
+Load tests live in `loadtest/` at the repo root. Full documentation: [`loadtest/README.md`](../loadtest/README.md).
+
+### Prerequisites
+- k6 installed (`brew install k6`) or Docker available
+- API running in **dev mode** (`NODE_ENV=development`) so `devCode` is returned in OTP responses — no real SMS is sent
+- Local infra up (`pnpm db:up`)
+
+### Quick start (dev box)
+```bash
+# Smoke test — onboarding flow, 50 VUs, 2.5 minutes
+k6 run loadtest/k6/01-onboarding.js
+
+# Full mixed scenario — 500 VUs, 6 minutes (warning: CPU-intensive on dev box)
+k6 run loadtest/k6/05-mixed-realistic.js
+
+# Via Docker (no local k6 install needed)
+pnpm loadtest
+```
+
+### Against staging
+```bash
+k6 run -e BASE_URL=https://staging.mento.app loadtest/k6/05-mixed-realistic.js
+```
+
+### Save results for comparison
+```bash
+k6 run --out json=loadtest/results/run-$(date +%Y%m%d-%H%M).json \
+  loadtest/k6/05-mixed-realistic.js
+```
+
+### SLO targets summary
+| Endpoint group | P95 target | Error budget |
+|---|---|---|
+| Auth (OTP request + verify) | < 500 ms | 0.1% |
+| Mentor discovery | < 200 ms | 0.1% |
+| Chat reads | < 300 ms | 0.1% |
+| Journal writes | < 400 ms | 0.1% |
+| Mixed aggregate | P95 < 500 ms, P99 < 1000 ms | 0.5% |
+
+See [`loadtest/SCALING_PLAYBOOK.md`](../loadtest/SCALING_PLAYBOOK.md) for capacity planning,
+bottleneck analysis, and "when to scale up" triggers.
+
 ## Backup local DB
 
 ```bash

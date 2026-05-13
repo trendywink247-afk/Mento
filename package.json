@@ -19,7 +19,8 @@
     "clean": "turbo run clean && rm -rf node_modules",
     "db:up": "docker compose -f infra/docker/docker-compose.local.yml up -d",
     "db:down": "docker compose -f infra/docker/docker-compose.local.yml down",
-    "db:logs": "docker compose -f infra/docker/docker-compose.local.yml logs -f"
+    "db:logs": "docker compose -f infra/docker/docker-compose.local.yml logs -f",
+    "loadtest": "echo 'Run: docker run --rm -i grafana/k6 run - < loadtest/k6/05-mixed-realistic.js' && echo 'Or install k6 (brew install k6) and run: k6 run loadtest/k6/05-mixed-realistic.js'"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
