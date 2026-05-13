@@ -307,9 +307,13 @@ test.describe('keyboard — chat', () => {
     // Wait for either the tab bar or a loading state
     await page.waitForTimeout(2000)
 
+    // The chat page renders 3 tabs (role-aware):
+    //   ASPIRANT → All / Sent / Archived
+    //   MENTOR   → All / Pending / Archived
+    // The injectSession helper sets role=ASPIRANT, so we get 3 tabs.
     const tabs = page.locator('[role="tab"]')
     const count = await tabs.count()
-    expect(count).toBe(4)
+    expect(count).toBe(3)
 
     // The first tab (All) should be selected by default
     await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true')
@@ -321,14 +325,14 @@ test.describe('keyboard — chat', () => {
     await page.goto('/chat')
     await page.waitForTimeout(2000)
 
-    // Find and focus the "Pending" tab
-    const pendingTab = page.getByRole('tab', { name: /pending/i })
-    await expect(pendingTab).toBeVisible()
-    await pendingTab.focus()
-    await expect(pendingTab).toBeFocused()
+    // For ASPIRANT role the second tab is "Sent" (not "Pending")
+    const sentTab = page.getByRole('tab', { name: /sent/i })
+    await expect(sentTab).toBeVisible()
+    await sentTab.focus()
+    await expect(sentTab).toBeFocused()
 
     await page.keyboard.press('Enter')
-    await expect(pendingTab).toHaveAttribute('aria-selected', 'true')
+    await expect(sentTab).toHaveAttribute('aria-selected', 'true')
   })
 })
 

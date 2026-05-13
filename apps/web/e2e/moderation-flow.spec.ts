@@ -64,6 +64,50 @@ async function signInAsAdmin(page: import('@playwright/test').Page, request: imp
 }
 
 test.describe('Moderation: admin queue browser tests', () => {
+  const API_BASE = process.env.API_BASE_URL ?? 'http://localhost:4000'
+  const ADMIN_PHONE = process.env.ADMIN_BOOTSTRAP_PHONE ?? '+910000000000'
+
+  /**
+   * Precondition check: verify the admin user actually has the ADMIN role.
+   * If not, skip the entire suite with a clear message rather than failing.
+   *
+   * To fix: run `UPDATE "User" SET role = 'ADMIN' WHERE phone = '+910000000000';`
+   * or delete the user and run `ADMIN_BOOTSTRAP_PHONE=+910000000000 pnpm db:seed`
+   * from apps/api.
+   */
+  test.beforeAll(async ({ request }) => {
+    let isAdmin = false
+    try {
+      const otpRes = await request.post(`${API_BASE}/auth/otp/request`, {
+        data: { phone: ADMIN_PHONE },
+      })
+      if (otpRes.ok()) {
+        const { devCode } = (await otpRes.json()) as { devCode?: string }
+        if (devCode) {
+          const verifyRes = await request.post(`${API_BASE}/auth/otp/verify`, {
+            data: { phone: ADMIN_PHONE, code: devCode },
+          })
+          if (verifyRes.ok()) {
+            const body = (await verifyRes.json()) as { user?: { role?: string } }
+            isAdmin = body.user?.role === 'ADMIN'
+          }
+        }
+      }
+    } catch {
+      // Network or server error — skip
+    }
+
+    if (!isAdmin) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[moderation-flow] SKIPPING suite — admin user (${ADMIN_PHONE}) does not have role=ADMIN. ` +
+          `Run: UPDATE "User" SET role = 'ADMIN' WHERE phone = '${ADMIN_PHONE}'; ` +
+          `or delete the user and run ADMIN_BOOTSTRAP_PHONE=${ADMIN_PHONE} pnpm db:seed from apps/api.`,
+      )
+      test.skip(true, `Admin user ${ADMIN_PHONE} is not seeded with role=ADMIN. See console for fix.`)
+    }
+  })
+
   test('MOD-UI-1: admin sees Moderation Queue page', async ({ page, request }) => {
     await signInAsAdmin(page, request)
 

@@ -13,8 +13,10 @@ const OUT_DIR = path.join(__dirname, 'ui-screenshots')
 const API = process.env.API_BASE_URL ?? 'http://localhost:4000'
 
 function uniquePhone(): string {
-  const suffix = String(Math.floor(Math.random() * 1_000_000_000)).padStart(10, '0')
-  return `+91${suffix.slice(0, 10)}`
+  // Indian mobile numbers must start with 6-9. Generate 9 random digits after the leading digit.
+  const leading = String(Math.floor(Math.random() * 4) + 6) // 6, 7, 8, or 9
+  const rest = String(Math.floor(Math.random() * 1_000_000_000)).padStart(9, '0').slice(0, 9)
+  return `+91${leading}${rest}`
 }
 
 test.beforeAll(async () => {
@@ -29,7 +31,10 @@ async function loginViaUi(page: Page, request: APIRequestContext, role: 'ASPIRAN
   const phone = uniquePhone()
   // The first call goes through the page so localStorage gets populated correctly.
   await page.goto(`/login?role=${role}`)
-  await page.getByPlaceholder(/91987/i).fill(phone)
+  // Fill only the 10-digit portion (no +91 prefix) — the input has a +91 chip already.
+  await page.getByPlaceholder(/98765/i).fill(phone.replace('+91', ''))
+  // Terms checkbox must be checked before Send OTP becomes enabled.
+  await page.locator('input[type="checkbox"]').check()
   await page.getByRole('button', { name: /send otp/i }).click()
   await page.waitForURL(/\/otp/)
 
@@ -37,7 +42,12 @@ async function loginViaUi(page: Page, request: APIRequestContext, role: 'ASPIRAN
   const otpRes = await request.post(`${API}/auth/otp/request`, { data: { phone } })
   const { devCode } = (await otpRes.json()) as { devCode: string }
 
-  await page.getByPlaceholder('123456').fill(devCode)
+  // OTP uses 6 individual single-digit cells (aria-label="Digit N of 6"), not a combined input.
+  const cells = page.locator('input[aria-label^="Digit"]')
+  await cells.nth(0).focus()
+  for (let i = 0; i < devCode.length; i++) {
+    await cells.nth(i).fill(devCode[i])
+  }
   await page.getByRole('button', { name: /verify & sign in/i }).click()
   return { phone }
 }
@@ -50,7 +60,8 @@ test.describe('UI tour @desktop', () => {
     await page.waitForLoadState('networkidle')
     await shot(page, '01-landing')
 
-    await page.getByRole('link', { name: /get started/i }).click()
+    // Use the hero CTA (exact text "Get started") — FinalCta has "Get started — it's free"
+    await page.getByRole('link', { name: /get started/i }).first().click()
     await page.waitForURL(/\/onboarding\/role/)
     await shot(page, '02-role-pick')
 
@@ -65,7 +76,10 @@ test.describe('UI tour @desktop', () => {
     await page.waitForLoadState('networkidle')
     await shot(page, '04-login-empty')
 
-    await page.getByPlaceholder(/91987/i).fill('+91')
+    // Fill a deliberately short/invalid number to trigger the validation error state.
+    await page.getByPlaceholder(/98765/i).fill('123')
+    // Check terms so the button is enabled; the phone validation error will fire on submit.
+    await page.locator('input[type="checkbox"]').check()
     await page.getByRole('button', { name: /send otp/i }).click()
     await page.waitForTimeout(500)
     await shot(page, '05-login-error-bad-phone')
@@ -208,7 +222,9 @@ test.describe('UI tour @desktop', () => {
     await shot(page, '34-mentor-reach')
 
     await page.getByRole('button', { name: /submit for verification/i }).click()
-    await page.waitForURL(/\/onboarding\/submitted/, { timeout: 10_000 })
+    // After mentor journey form, the flow routes to /onboarding/credentials for file upload,
+    // then to /onboarding/submitted after credentials are provided.
+    await page.waitForURL(/\/onboarding\/(credentials|submitted)/, { timeout: 10_000 })
     await page.waitForLoadState('networkidle')
     await shot(page, '35-mentor-submitted')
   })

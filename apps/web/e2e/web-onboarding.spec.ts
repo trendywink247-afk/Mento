@@ -9,11 +9,14 @@ test.describe('Web — happy path onboarding', () => {
   }) => {
     // 1. Landing
     await page.goto('/')
-    await expect(page.getByRole('heading', { name: 'Mento' })).toBeVisible()
-    await expect(page.getByRole('link', { name: /get started/i })).toBeVisible()
+    // The hero h1 is the main brand heading on the page. The nav "Mento" is a link,
+    // not a heading. Use the h1 which contains the tagline text.
+    await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
+    // Two "Get started" links exist (hero CTA + FinalCta). Use first() for the hero CTA.
+    await expect(page.getByRole('link', { name: /get started/i }).first()).toBeVisible()
 
     // 2. Role pick
-    await page.getByRole('link', { name: /get started/i }).click()
+    await page.getByRole('link', { name: /get started/i }).first().click()
     await expect(page).toHaveURL(/\/onboarding\/role/)
     await expect(page.getByRole('button', { name: /preparing for UPSC/i })).toBeVisible()
 
@@ -26,7 +29,10 @@ test.describe('Web — happy path onboarding', () => {
     //    Playwright entered into the form, because the page reads devCode from the api response
     //    but doesn't expose it via the DOM in a stable, scrape-safe way.
     const phone = uniquePhone()
-    await page.getByPlaceholder(/91987/i).fill(phone)
+    // Fill only the 10-digit portion (no +91 prefix) — the input has a +91 chip already.
+    await page.getByPlaceholder(/98765/i).fill(phone.replace('+91', ''))
+    // Terms checkbox must be checked before Send OTP becomes enabled.
+    await page.locator('input[type="checkbox"]').check()
     await page.getByRole('button', { name: /send otp/i }).click()
     await page.waitForURL(/\/otp/)
 
@@ -35,7 +41,14 @@ test.describe('Web — happy path onboarding', () => {
     expect(devCodeRes.ok()).toBeTruthy()
     // The most-recent OTP for this phone is the one the page will accept.
     const { devCode } = (await devCodeRes.json()) as { devCode: string }
-    await page.getByPlaceholder('123456').fill(devCode)
+    // OTP uses 6 individual single-digit cells (aria-label="Digit N of 6"), not a combined input.
+    // Paste via clipboard API which the OTP component handles.
+    const cells = page.locator('input[aria-label^="Digit"]')
+    await cells.nth(0).focus()
+    // Simulate typing each digit into the appropriate cell
+    for (let i = 0; i < devCode.length; i++) {
+      await cells.nth(i).fill(devCode[i])
+    }
     await page.getByRole('button', { name: /verify & sign in/i }).click()
 
     // 5. Should land on Mirror
@@ -82,6 +95,8 @@ test.describe('Web — happy path onboarding', () => {
 })
 
 function uniquePhone(): string {
-  const suffix = String(Math.floor(Math.random() * 1_000_000_000)).padStart(10, '0')
-  return `+91${suffix.slice(0, 10)}`
+  // Indian mobile numbers must start with 6-9. Generate 9 random digits after the leading digit.
+  const leading = String(Math.floor(Math.random() * 4) + 6) // 6, 7, 8, or 9
+  const rest = String(Math.floor(Math.random() * 1_000_000_000)).padStart(9, '0').slice(0, 9)
+  return `+91${leading}${rest}`
 }

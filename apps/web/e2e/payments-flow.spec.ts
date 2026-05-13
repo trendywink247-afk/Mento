@@ -77,9 +77,10 @@ test.describe('Payments: upgrade page (browser)', () => {
     await page.goto('/upgrade')
 
     // Should show tier cards for BASIC, PRO, MAX.
-    await expect(page.getByRole('button', { name: /basic/i })).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByRole('button', { name: /pro/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /max/i })).toBeVisible()
+    // Use data-testid to avoid strict-mode violations (multiple buttons match /basic/i, /pro/i).
+    await expect(page.locator('[data-testid="tier-card-basic"]')).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('[data-testid="tier-card-pro"]')).toBeVisible()
+    await expect(page.locator('[data-testid="tier-card-max"]')).toBeVisible()
 
     // In dev mode, the banner mentions "Dev mode" or similar.
     const html = await page.content()
@@ -109,10 +110,11 @@ test.describe('Payments: upgrade page (browser)', () => {
     await injectAuth(page, authBody.tokens.accessToken, authBody.user, authBody.profile, authBody.tokens)
 
     await page.goto('/upgrade')
-    await expect(page.getByRole('button', { name: /pro/i })).toBeVisible({ timeout: 15_000 })
+    // Use data-testid to avoid strict-mode violations (multiple buttons can match /pro/i).
+    await expect(page.locator('[data-testid="tier-card-pro"]')).toBeVisible({ timeout: 15_000 })
 
     // Select Pro tier (it's selected by default, but click anyway).
-    await page.getByRole('button', { name: /^pro/i }).first().click()
+    await page.locator('[data-testid="tier-card-pro"]').click()
 
     // Click the activate button.
     const upgradeBtn = page.getByRole('button', { name: /activate pro|pay ₹599/i })

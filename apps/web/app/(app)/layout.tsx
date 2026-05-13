@@ -247,6 +247,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
+          {/* Tier badge sits OUTSIDE the toggle button to avoid nested-interactive violation */}
+          {currentTier && (
+            <Link
+              href="/upgrade"
+              tabIndex={-1}
+              aria-hidden="true"
+              className={[
+                'mb-1 inline-block rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide',
+                currentTier !== 'FREE'
+                  ? 'bg-primary/15 text-primary hover:bg-primary/25'
+                  : 'bg-muted text-muted-foreground hover:bg-accent',
+              ].join(' ')}
+            >
+              {currentTier === 'FREE' ? 'Free' : currentTier}
+            </Link>
+          )}
           <button
             onClick={() => setUserMenuOpen((v) => !v)}
             className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-accent"
@@ -265,29 +281,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             )}
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{profile?.displayHandle ?? '—'}</p>
-              <div className="flex items-center gap-1.5">
-                <p className="text-xs capitalize text-muted-foreground">
-                  {user?.role?.toLowerCase() ?? ''}
-                </p>
-                {currentTier && currentTier !== 'FREE' && (
-                  <Link
-                    href="/upgrade"
-                    onClick={(e) => e.stopPropagation()}
-                    className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary hover:bg-primary/25"
-                  >
-                    {currentTier}
-                  </Link>
-                )}
-                {currentTier === 'FREE' && (
-                  <Link
-                    href="/upgrade"
-                    onClick={(e) => e.stopPropagation()}
-                    className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground hover:bg-accent"
-                  >
-                    Free
-                  </Link>
-                )}
-              </div>
+              <p className="text-xs capitalize text-muted-foreground">
+                {user?.role?.toLowerCase() ?? ''}
+              </p>
             </div>
             <ChevronUp
               size={14}

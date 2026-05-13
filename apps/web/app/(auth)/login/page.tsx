@@ -218,6 +218,9 @@ function LoginForm() {
   const t = useTranslations('auth.login')
   const te = useTranslations('auth.errors')
 
+  // Role intent from URL (e.g. /login?role=MENTOR) — forwarded to /otp so routing is correct.
+  const roleParam = params.get('role') ?? ''
+
   // If returning from OTP page with ?phone=+91XXXXXXXXXX, pre-fill the 10 digits
   const prefillRaw = params.get('phone') ?? ''
   const prefillDigits = prefillRaw.startsWith('+91') ? prefillRaw.slice(3) : prefillRaw.replace(/^\+\d{0,2}/, '')
@@ -272,7 +275,10 @@ function LoginForm() {
     try {
       const res = await getApiClient().auth.requestOtp(phone)
       if (res.devCode) setDevCode(res.devCode)
-      router.push(`/otp?phone=${encodeURIComponent(phone)}`)
+      const otpUrl = roleParam
+        ? `/otp?phone=${encodeURIComponent(phone)}&role=${encodeURIComponent(roleParam)}`
+        : `/otp?phone=${encodeURIComponent(phone)}`
+      router.push(otpUrl)
     } catch (err) {
       setError(err instanceof Error ? err.message : te('otpSendFailed'))
     } finally {

@@ -200,6 +200,7 @@ export default function UpgradePage() {
           return (
             <button
               key={tier}
+              data-testid={`tier-card-${tier.toLowerCase()}`}
               onClick={() => setSelectedTier(tier)}
               className={[
                 'group w-full rounded-xl border p-4 text-left transition-all',
