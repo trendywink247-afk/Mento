@@ -1,6 +1,11 @@
 import Link from 'next/link'
 
 const tiles: Array<{ href: string; label: string; description: string }> = [
+  {
+    href: '/admin/analytics',
+    label: 'Analytics',
+    description: 'Founder metrics — users, signups, MRR, moderation health.',
+  },
   { href: '/admin/moderation', label: 'Moderation', description: 'Triage reported messages — warn, suspend, or ban.' },
   { href: '/admin/users', label: 'Users', description: 'List, change roles, suspend.' },
   {
@@ -10,6 +15,7 @@ const tiles: Array<{ href: string; label: string; description: string }> = [
   },
   { href: '/admin/assignments', label: 'Assignments', description: 'Pair mentors with aspirants.' },
   { href: '/admin/audit', label: 'Audit log', description: 'See recent admin actions.' },
+  { href: '/admin/flags', label: 'Feature flags', description: 'Toggle feature flags without deploying code. Changes propagate within 30s.' },
 ]
 
 export default function AdminHome() {

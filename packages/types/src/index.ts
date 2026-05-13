@@ -34,6 +34,18 @@ export type JourneyStage =
 
 export type SubscriptionTier = 'FREE' | 'BASIC' | 'PRO' | 'MAX'
 
+/**
+ * Exhaustive union of all feature flag keys shipped with Mento.
+ * Pass to useFeatureFlag() for compile-time safety.
+ */
+export type FeatureFlagKey =
+  | 'broadcast-requests'
+  | 'voice-calls'
+  | 'group-sessions'
+  | 'mentor-self-onboarding-v2'
+  | 'chat-search'
+  | 'i18n-hindi'
+
 export type ChatRequestStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'ARCHIVED' | 'EXPIRED'
 
 export type JournalCategory =
@@ -143,6 +155,50 @@ export interface AuthSession {
   user: User
   profile: Profile | null
   tokens: AuthTokens
+}
+
+// ─── Admin Analytics ────────────────────────────────────────────────────────
+
+export interface AdminAnalyticsSummary {
+  users: {
+    total: number
+    byRole: { ASPIRANT: number; MENTOR: number; COORDINATOR: number; ADMIN: number }
+    byStatus: { ACTIVE: number; SUSPENDED: number; BANNED: number; PENDING_VERIFICATION: number }
+  }
+  signups: {
+    /** Daily signup counts ordered oldest → newest, covering the last 7 days. */
+    last7d: number[]
+    /** Daily signup counts ordered oldest → newest, covering the last 30 days. */
+    last30d: number[]
+  }
+  onboarding: {
+    mirrorCompletionRate: number
+    mentorApplicationRate: number
+    mentorApprovalRate: number
+  }
+  chats: {
+    pendingRequests: number
+    acceptedRequests: number
+    /** Daily message counts ordered oldest → newest, covering the last 7 days. */
+    last7dMessages: number[]
+  }
+  subscriptions: {
+    free: number
+    basic: number
+    pro: number
+    max: number
+    mrrInr: number
+  }
+  moderation: {
+    openReports: number
+    last30dActions: { WARN: number; DISMISS: number; SUSPEND: number; BAN: number }
+  }
+  verification: {
+    pendingDocs: number
+    approvedLast7d: number
+    rejectedLast7d: number
+  }
+  generatedAt: string
 }
 
 // Socket.IO events

@@ -1,5 +1,6 @@
 import ky, { type KyInstance } from 'ky'
 import type {
+  AdminAnalyticsSummary,
   AuthSession,
   AuthTokens,
   AvatarColor,
@@ -61,6 +62,12 @@ export class ApiClient {
 
   health(): Promise<{ status: 'ok'; uptime: number }> {
     return this.http.get('healthz').json()
+  }
+
+  flags = {
+    /** Returns Record<key, boolean> for all flags. Public — no auth required. */
+    list: (): Promise<Record<string, boolean>> =>
+      this.http.get('flags').json(),
   }
 
   auth = {
@@ -647,6 +654,35 @@ export class ApiClient {
     listAssignments: () => this.http.get('assignments').json(),
 
     endAssignment: (id: string) => this.http.delete(`assignments/${id}`).json(),
+
+    // ─── Analytics ────────────────────────────────────────────────────────
+
+    analytics: {
+      summary: (): Promise<AdminAnalyticsSummary> =>
+        this.http.get('admin/analytics/summary').json(),
+    },
+
+    // ─── Feature Flags ────────────────────────────────────────────────────
+
+    flags: {
+      list: (): Promise<Array<{
+        id: string
+        key: string
+        enabled: boolean
+        description: string | null
+        updatedAt: string
+        updatedBy: string | null
+      }>> =>
+        this.http.get('admin/flags').json(),
+
+      set: (key: string, enabled: boolean, description?: string) =>
+        this.http
+          .patch(`admin/flags/${encodeURIComponent(key)}`, { json: { enabled, ...(description !== undefined ? { description } : {}) } })
+          .json<{ id: string; key: string; enabled: boolean; description: string | null; updatedAt: string; updatedBy: string | null }>(),
+
+      seed: (): Promise<{ seeded: number; skipped: number; total: number }> =>
+        this.http.post('admin/flags/seed').json(),
+    },
   }
 }
 
