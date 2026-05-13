@@ -11,6 +11,7 @@ import { LetterAvatar } from '@/components/LetterAvatar'
 import { ChatConversationSkeleton } from '@/components/skeletons/ChatConversationSkeleton'
 import { EmptyChat } from '@/components/illustrations/EmptyChat'
 import { MotionFade, MotionTap } from '@/components/motion'
+import { useFeatureFlag } from '@/lib/feature-flags'
 
 // ---- Types ----
 
@@ -409,6 +410,7 @@ function ArchivedTab({
 export default function ChatListPage() {
   const t = useTranslations('chat')
   const role = useAuthStore((s) => s.user?.role)
+  const broadcastEnabled = useFeatureFlag('broadcast-requests')
   const [convs, setConvs] = useState<ConversationSummary[] | null>(null)
   const [requests, setRequests] = useState<ChatRequest[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -478,7 +480,17 @@ export default function ChatListPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+        {broadcastEnabled && (
+          <button
+            onClick={() => alert('Coming soon')}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+          >
+            Broadcast request
+          </button>
+        )}
+      </div>
 
       {/* Tab bar — sticky within the scrolling main area */}
       <div

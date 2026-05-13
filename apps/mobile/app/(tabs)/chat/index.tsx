@@ -25,6 +25,7 @@ import { Swipeable } from 'react-native-gesture-handler'
 import type { ConversationSummary, AvatarLetter, AvatarColor } from '@mento/types'
 import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
+import { useFeatureFlag } from '@/lib/feature-flags'
 import { LetterAvatar } from '@/components/LetterAvatar'
 import { CHAT_TABS_COPY, CHAT_ARCHIVE_COPY } from '@/lib/copy'
 
@@ -460,6 +461,7 @@ function RequestRow({
 export default function ChatList() {
   const role = useAuthStore((s) => s.user?.role)
   const isMentor = role === 'MENTOR'
+  const broadcastEnabled = useFeatureFlag('broadcast-requests')
 
   const [convs, setConvs] = useState<ConversationSummaryWithArchive[] | null>(null)
   const [requests, setRequests] = useState<ChatRequest[] | null>(null)
@@ -592,8 +594,16 @@ export default function ChatList() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <View className="px-4 pt-4">
+      <View className="flex-row items-center justify-between px-4 pt-4">
         <Text className="text-2xl font-bold tracking-tight text-foreground">Chats</Text>
+        {broadcastEnabled && (
+          <Pressable
+            onPress={() => Alert.alert('Coming soon', 'Broadcast requests are coming soon.')}
+            style={{ backgroundColor: '#2563eb', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}
+          >
+            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Broadcast</Text>
+          </Pressable>
+        )}
       </View>
 
       {/* Pill tab bar */}

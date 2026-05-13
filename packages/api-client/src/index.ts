@@ -1,6 +1,5 @@
 import ky, { type KyInstance } from 'ky'
 import type {
-  AdminAnalyticsSummary,
   AuthSession,
   AuthTokens,
   AvatarColor,
@@ -64,27 +63,34 @@ export class ApiClient {
     return this.http.get('healthz').json()
   }
 
-  flags = {
-    /** Returns Record<key, boolean> for all flags. Public — no auth required. */
-    list: (): Promise<Record<string, boolean>> =>
-      this.http.get('flags').json(),
-  }
-
   auth = {
     requestOtp: (phone: string): Promise<OtpRequestResponse> =>
       this.http.post('auth/otp/request', { json: { phone } }).json(),
 
-    verifyOtp: (phone: string, code: string): Promise<AuthSession> =>
-      this.http.post('auth/otp/verify', { json: { phone, code } }).json(),
+    verifyOtp: (phone: string, code: string, inviteCode?: string): Promise<AuthSession> =>
+      this.http
+        .post('auth/otp/verify', { json: { phone, code, ...(inviteCode ? { inviteCode } : {}) } })
+        .json(),
 
-    googleSignin: (idToken: string): Promise<AuthSession> =>
-      this.http.post('auth/google', { json: { idToken } }).json(),
+    googleSignin: (idToken: string, inviteCode?: string): Promise<AuthSession> =>
+      this.http
+        .post('auth/google', { json: { idToken, ...(inviteCode ? { inviteCode } : {}) } })
+        .json(),
 
     refresh: (refreshToken: string): Promise<AuthTokens> =>
       this.http.post('auth/refresh', { json: { refreshToken } }).json(),
 
     logout: (refreshToken: string): Promise<void> =>
       this.http.post('auth/logout', { json: { refreshToken } }).json(),
+  }
+
+  invites = {
+    /**
+     * Validates an invite code without redeeming it.
+     * Returns 200 if valid. Throws on 404 (not found) or 410 (expired/disabled/used).
+     */
+    validate: (code: string): Promise<{ valid: boolean }> =>
+      this.http.post('invites/redeem', { json: { code } }).json(),
   }
 
   users = {
@@ -655,33 +661,43 @@ export class ApiClient {
 
     endAssignment: (id: string) => this.http.delete(`assignments/${id}`).json(),
 
-    // ─── Analytics ────────────────────────────────────────────────────────
+    // ─── Invite codes ─────────────────────────────────────────────────────
 
-    analytics: {
-      summary: (): Promise<AdminAnalyticsSummary> =>
-        this.http.get('admin/analytics/summary').json(),
-    },
+    invites: {
+      list: () =>
+        this.http.get('admin/invites').json<
+          Array<{
+            id: string
+            code: string
+            label: string | null
+            maxUses: number
+            uses: number
+            expiresAt: string | null
+            disabledAt: string | null
+            createdAt: string
+            redemptionCount: number
+            status: 'active' | 'disabled' | 'expired' | 'exhausted'
+          }>
+        >(),
 
-    // ─── Feature Flags ────────────────────────────────────────────────────
+      create: (body: { label?: string; maxUses?: number; expiresAt?: string }) =>
+        this.http.post('admin/invites', { json: body }).json<{
+          id: string
+          code: string
+          label: string | null
+          maxUses: number
+          uses: number
+          expiresAt: string | null
+          disabledAt: string | null
+          createdAt: string
+        }>(),
 
-    flags: {
-      list: (): Promise<Array<{
-        id: string
-        key: string
-        enabled: boolean
-        description: string | null
-        updatedAt: string
-        updatedBy: string | null
-      }>> =>
-        this.http.get('admin/flags').json(),
-
-      set: (key: string, enabled: boolean, description?: string) =>
-        this.http
-          .patch(`admin/flags/${encodeURIComponent(key)}`, { json: { enabled, ...(description !== undefined ? { description } : {}) } })
-          .json<{ id: string; key: string; enabled: boolean; description: string | null; updatedAt: string; updatedBy: string | null }>(),
-
-      seed: (): Promise<{ seeded: number; skipped: number; total: number }> =>
-        this.http.post('admin/flags/seed').json(),
+      disable: (id: string) =>
+        this.http.patch(`admin/invites/${id}/disable`).json<{
+          id: string
+          code: string
+          disabledAt: string
+        }>(),
     },
   }
 }

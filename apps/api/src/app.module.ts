@@ -22,8 +22,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { PushTokensModule } from './modules/push-tokens/push-tokens.module'
 import { SessionsModule } from './modules/sessions/sessions.module'
 import { ModerationModule } from './modules/moderation/moderation.module'
-import { AnalyticsModule } from './modules/analytics/analytics.module'
-import { FlagsModule } from './modules/flags/flags.module'
+import { InvitesModule } from './modules/invites/invites.module'
 
 @Module({
   imports: [
@@ -93,8 +92,7 @@ import { FlagsModule } from './modules/flags/flags.module'
     PushTokensModule,
     SessionsModule,
     ModerationModule,
-    AnalyticsModule,
-    FlagsModule,
+    InvitesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

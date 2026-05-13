@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { FeatureFlagsProvider } from '@/lib/feature-flags'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
@@ -149,6 +150,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   ]
 
   return (
+    <FeatureFlagsProvider>
     <div className="flex min-h-screen">
       {/* Sidebar */}
       <aside className="flex w-64 flex-shrink-0 flex-col border-r bg-background">
@@ -325,6 +327,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Global paywall modal — listens for mento:paywall events from api.ts */}
       <PaywallModal />
     </div>
+    </FeatureFlagsProvider>
   )
 }
 

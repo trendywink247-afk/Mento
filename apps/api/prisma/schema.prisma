@@ -214,6 +214,8 @@ model User {
   refreshTokens      RefreshToken[]
   subscriptions      Subscription[]
   walletTransactions WalletTransaction[]
+  invitesCreated     InviteCode[]         @relation("InviteCodesCreated")
+  inviteRedemption   InviteRedemption?    @relation("InviteRedemptions")
 
   conversationsAsMentor   Conversation[] @relation("MentorConversations")
   conversationsAsAspirant Conversation[] @relation("AspirantConversations")
@@ -624,6 +626,51 @@ model AuditLog {
 
   @@index([actorId, createdAt])
   @@index([action, createdAt])
+}
+
+// =================== Invite Codes ===================
+
+model InviteCode {
+  id          String    @id @default(uuid()) @db.Uuid
+  code        String    @unique
+  createdBy   String    @db.Uuid
+  creator     User      @relation("InviteCodesCreated", fields: [createdBy], references: [id])
+  label       String?
+  maxUses     Int       @default(1)
+  uses        Int       @default(0)
+  expiresAt   DateTime?
+  disabledAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  redemptions InviteRedemption[]
+
+  @@index([code])
+  @@index([createdBy])
+}
+
+model InviteRedemption {
+  id           String     @id @default(uuid()) @db.Uuid
+  inviteCodeId String     @db.Uuid
+  inviteCode   InviteCode @relation(fields: [inviteCodeId], references: [id])
+  userId       String     @db.Uuid
+  user         User       @relation("InviteRedemptions", fields: [userId], references: [id])
+  redeemedAt   DateTime   @default(now())
+
+  @@unique([userId])
+  @@index([inviteCodeId])
+}
+
+// =================== Feature Flags ===================
+
+model FeatureFlag {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  enabled     Boolean  @default(false)
+  description String?
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?  @db.Uuid
+
+  @@index([key])
 }
 
 // =================== Analytics ===================

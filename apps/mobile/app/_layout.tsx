@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react'
 import { ActivityIndicator, View } from 'react-native'
 import * as Notifications from 'expo-notifications'
 import { Providers } from '@/components/providers'
+import { FeatureFlagsProvider } from '@/lib/feature-flags'
 import { useAuthStore } from '@/lib/auth-store'
 import { initAnalytics } from '@/lib/analytics'
 import '../global.css'
@@ -89,6 +90,7 @@ export default function RootLayout() {
 
   return (
     <Providers>
+      <FeatureFlagsProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <StatusBar style="auto" />
         <AuthGate />
@@ -104,6 +106,7 @@ export default function RootLayout() {
           </Stack>
         )}
       </GestureHandlerRootView>
+      </FeatureFlagsProvider>
     </Providers>
   )
 }
