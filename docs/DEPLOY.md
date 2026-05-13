@@ -45,6 +45,36 @@ Caddy will provision TLS certificates automatically via Let's Encrypt once DNS r
 
 ---
 
+## Note on migration strategy
+
+The project used `prisma db push` during local development (Phases A–G), which applies schema changes directly without generating migration files. Production deployments use `prisma migrate deploy`, which requires migration files in `apps/api/prisma/migrations/`.
+
+**On the very first production deploy** (fresh database), use this workflow instead of `migrate deploy`:
+
+```bash
+# 1. Push the full current schema directly to the new prod DB
+docker exec mento-api-prod \
+  node node_modules/.bin/prisma db push \
+    --schema prisma/schema.prisma \
+    --accept-data-loss
+
+# 2. Mark both existing migrations as already applied so migrate deploy
+#    does not attempt to re-run them on subsequent deploys
+docker exec mento-api-prod \
+  node node_modules/.bin/prisma migrate resolve \
+    --applied 20260510181133_init \
+    --schema prisma/schema.prisma
+
+docker exec mento-api-prod \
+  node node_modules/.bin/prisma migrate resolve \
+    --applied 20260513000000_catch_up_phases_a_through_g \
+    --schema prisma/schema.prisma
+```
+
+**From Phase H onward**, all schema changes must go through `prisma migrate dev --create-only` locally, producing a migration file that gets committed and deployed via `prisma migrate deploy`. Never use `prisma db push` on production again.
+
+---
+
 ## 2. First-time deploy
 
 ### 2a. Clone the repo
