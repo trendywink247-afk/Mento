@@ -185,6 +185,58 @@ export const AUTH_COPY = {
   otpResendCountdown: 'Resend in',
 } as const
 
+// Admin analytics dashboard
+export const ANALYTICS_COPY = {
+  pageTitle: 'Analytics',
+  pageSubtitle: 'Founder dashboard — top-line growth, funnel, and moderation health.',
+  refresh: 'Refresh',
+  generatedAgo: (secs: number) =>
+    secs < 60
+      ? `Generated ${secs}s ago`
+      : `Generated ${Math.floor(secs / 60)}m ago`,
+  sections: {
+    users: 'Users',
+    signups: 'Signups & messages',
+    funnel: 'Onboarding funnel',
+    subscriptions: 'Subscriptions',
+    moderation: 'Moderation health',
+    verification: 'Mentor verification',
+  },
+  cards: {
+    totalUsers: 'Total users',
+    activeMentors: 'Active mentors',
+    paidSubscribers: 'Paid subscribers',
+    openReports: 'Open reports',
+    mrr: 'MRR (₹)',
+  },
+  chart: {
+    last7d: 'Last 7 days',
+    last30d: 'Last 30 days',
+    signupsLabel: 'Daily signups',
+    messagesLabel: 'Daily messages',
+    noData: 'No data yet',
+  },
+  funnel: {
+    signedUp: 'Signed up',
+    mirrorComplete: 'Mirror complete',
+    mentorAccepted: 'First mentor accepted',
+    paidTier: 'Paid tier',
+  },
+  moderation: {
+    open: 'Open reports',
+    actions30d: 'Last 30 days',
+    warn: 'Warn',
+    dismiss: 'Dismiss',
+    suspend: 'Suspend',
+    ban: 'Ban',
+  },
+  verification: {
+    pending: 'Pending docs',
+    approved7d: 'Approved (7d)',
+    rejected7d: 'Rejected (7d)',
+  },
+} as const
+
 // Invite code copy (beta gate)
 export const INVITE_COPY = {
   required: 'Mento is currently invite-only. Enter your invite code.',

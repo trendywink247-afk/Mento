@@ -93,6 +93,11 @@ export class ApiClient {
       this.http.post('invites/redeem', { json: { code } }).json(),
   }
 
+  flags = {
+    /** Public list of feature flags for the current client. Cached server-side ~30s. */
+    list: (): Promise<Record<string, boolean>> => this.http.get('flags').json(),
+  }
+
   users = {
     me: (): Promise<{ user: User; profile: Profile | null }> => this.http.get('me').json(),
   }
@@ -564,6 +569,39 @@ export class ApiClient {
         this.http
           .patch(`admin/users/${id}/status`, { json: { status, reason } })
           .json<{ ok: boolean; status: string }>(),
+    },
+
+    // ─── Analytics ───────────────────────────────────────────────────────
+
+    analytics: {
+      summary: () =>
+        this.http
+          .get('admin/analytics/summary')
+          .json<import('@mento/types').AdminAnalyticsSummary>(),
+    },
+
+    // ─── Feature flags ────────────────────────────────────────────────────
+
+    flags: {
+      list: () =>
+        this.http.get('admin/flags').json<Array<{
+          id: string
+          key: string
+          enabled: boolean
+          description: string | null
+          updatedAt: string
+          updatedBy: string | null
+        }>>(),
+      set: (key: string, enabled: boolean, description?: string) =>
+        this.http
+          .patch(`admin/flags/${encodeURIComponent(key)}`, {
+            json: { enabled, ...(description !== undefined ? { description } : {}) },
+          })
+          .json<{ ok: boolean; key: string; enabled: boolean }>(),
+      seed: () =>
+        this.http
+          .post('admin/flags/seed')
+          .json<{ seeded: number; skipped: number; created?: number; existed?: number }>(),
     },
 
     // ─── Existing ────────────────────────────────────────────────────────
