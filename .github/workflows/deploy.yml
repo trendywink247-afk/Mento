@@ -1,0 +1,169 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Mento — Production deploy workflow (scaffold)
+#
+# Triggers on version tags (v*). Builds Docker images, pushes to GHCR, then
+# SSHes into the server to pull + restart containers.
+#
+# STATUS: SCAFFOLD — SSH deploy step is commented out until the server is
+#         provisioned. Enable it by filling the SSH_* secrets and uncommenting
+#         the "Deploy to server" step.
+#
+# Secrets required:
+#   GHCR_TOKEN         — GitHub PAT with write:packages scope
+#   SSH_HOST           — server IP or hostname (TODO: fill after provisioning)
+#   SSH_USER           — deploy user on server (e.g. ubuntu)
+#   SSH_PRIVATE_KEY    — private key for the deploy user
+#   SSH_PORT           — SSH port (default 22)
+#   SENTRY_AUTH_TOKEN  — Sentry CLI auth token (optional)
+#   SENTRY_ORG         — Sentry org slug (optional)
+#   SENTRY_PROJECT     — Sentry project slug (optional)
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Deploy
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  REGISTRY: ghcr.io
+  # Must be lowercase. Set to the org or personal account that owns the repo.
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+
+jobs:
+
+  # ── Job 1: Build and push both images to GHCR ─────────────────────────────
+  build-and-push-images:
+    name: Build + push images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      # ── API image ──────────────────────────────────────────────────────────
+      - name: Extract metadata for API image
+        id: meta-api
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/mento-api
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/Dockerfile.api
+          push: true
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      # ── Web image ──────────────────────────────────────────────────────────
+      - name: Extract metadata for Web image
+        id: meta-web
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/mento-web
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/Dockerfile.web
+          push: true
+          tags: ${{ steps.meta-web.outputs.tags }}
+          labels: ${{ steps.meta-web.outputs.labels }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://api.mento.in
+            NEXT_PUBLIC_SOCKET_URL=https://api.mento.in
+            NEXT_PUBLIC_APP_ENV=production
+            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+            SENTRY_ORG=${{ secrets.SENTRY_ORG }}
+            SENTRY_PROJECT=${{ secrets.SENTRY_PROJECT }}
+
+  # ── Job 2: Deploy to server ───────────────────────────────────────────────
+  deploy-to-server:
+    name: Deploy to server
+    runs-on: ubuntu-latest
+    needs: build-and-push-images
+    environment: production
+
+    steps:
+      - name: Checkout (for compose file)
+        uses: actions/checkout@v4
+
+      # TODO: Uncomment and configure after the server is provisioned.
+      # Fill SSH_HOST, SSH_USER, SSH_PRIVATE_KEY, SSH_PORT in repo secrets.
+      #
+      # - name: Deploy via SSH
+      #   uses: appleboy/ssh-action@v1.2.0
+      #   with:
+      #     host: ${{ secrets.SSH_HOST }}
+      #     username: ${{ secrets.SSH_USER }}
+      #     key: ${{ secrets.SSH_PRIVATE_KEY }}
+      #     port: ${{ secrets.SSH_PORT || 22 }}
+      #     script: |
+      #       set -euo pipefail
+      #       cd /srv/mento
+      #
+      #       # Pull latest compose file from git
+      #       git pull --ff-only origin main
+      #
+      #       # Log in to GHCR on the server
+      #       echo "${{ secrets.GHCR_TOKEN }}" | \
+      #         docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      #
+      #       # Pull new images and restart services with zero-downtime rolling update
+      #       IMAGE_TAG=${{ github.ref_name }} \
+      #         docker compose \
+      #           -f infra/docker/docker-compose.prod.yml \
+      #           --env-file .env.prod \
+      #           pull
+      #
+      #       IMAGE_TAG=${{ github.ref_name }} \
+      #         docker compose \
+      #           -f infra/docker/docker-compose.prod.yml \
+      #           --env-file .env.prod \
+      #           up -d --remove-orphans
+      #
+      #       # Run any pending migrations
+      #       docker exec mento-api-prod \
+      #         node node_modules/.bin/prisma migrate deploy \
+      #           --schema prisma/schema.prisma
+      #
+      #       # Prune dangling images to free disk
+      #       docker image prune -f
+
+      - name: Deployment skipped — server not yet provisioned
+        run: |
+          echo "SSH deploy step is commented out. See docs/DEPLOY.md for manual first-deploy steps."
+          echo "Pushed images:"
+          echo "  ghcr.io/${{ github.repository_owner }}/mento-api:${{ github.ref_name }}"
+          echo "  ghcr.io/${{ github.repository_owner }}/mento-web:${{ github.ref_name }}"

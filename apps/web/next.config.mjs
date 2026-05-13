@@ -7,6 +7,10 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@mento/types', '@mento/validation', '@mento/api-client', '@mento/hooks'],
   experimental: { typedRoutes: false },
+  // Enable standalone output only when building the Docker image.
+  // Setting this in dev mode breaks `pnpm dev` (hot-reload stops working).
+  // The Dockerfile sets BUILD_STANDALONE=1 before running `pnpm build`.
+  ...(process.env.BUILD_STANDALONE === '1' && { output: 'standalone' }),
   // Fully suppress the "N" dev-tools badge.
   // Next 15 added `buildActivity` + `appIsrStatus` sub-keys; setting all
   // known knobs to false is the safest cross-version approach.

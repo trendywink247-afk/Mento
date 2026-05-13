@@ -1,0 +1,88 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Mento API — multi-stage Dockerfile
+# Target: <250 MB final image
+# NestJS (CommonJS) + Prisma + pnpm workspaces
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Stage 1: Install ALL workspace dependencies ───────────────────────────────
+FROM node:22-alpine AS deps
+
+# Enable pnpm via corepack (matches packageManager in root package.json)
+RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
+
+WORKDIR /workspace
+
+# Copy manifests and workspace config first — maximise layer cache hits.
+# We copy every package.json so pnpm can resolve the workspace graph.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json            apps/api/package.json
+COPY apps/web/package.json            apps/web/package.json
+COPY packages/types/package.json      packages/types/package.json
+COPY packages/api-client/package.json packages/api-client/package.json
+COPY packages/validation/package.json packages/validation/package.json
+COPY packages/hooks/package.json      packages/hooks/package.json
+COPY packages/config/package.json     packages/config/package.json
+
+# Install (all deps — we need dev tools to build in next stage)
+RUN pnpm install --frozen-lockfile
+
+# ── Stage 2: Build ────────────────────────────────────────────────────────────
+FROM deps AS builder
+
+WORKDIR /workspace
+
+# Copy full source
+COPY . .
+
+# Generate Prisma client (must happen before nest build)
+RUN cd apps/api && pnpm prisma generate
+
+# Build shared packages that api depends on
+RUN pnpm --filter @mento/types    build || true
+RUN pnpm --filter @mento/validation build || true
+
+# Build the api
+RUN cd apps/api && pnpm build
+
+# Prune to production-only deps (eliminates devDependencies)
+RUN pnpm --filter @mento/api --prod deploy /prod/api
+
+# ── Stage 3: Runtime ──────────────────────────────────────────────────────────
+FROM node:22-alpine AS runtime
+
+# Add tini for proper PID 1 signal handling
+RUN apk add --no-cache tini
+
+# Create non-root user
+RUN addgroup -g 1001 node_group && \
+    adduser  -u 1001 -G node_group -s /bin/sh -D appuser
+
+WORKDIR /app
+
+# Copy pruned node_modules (production deps only)
+COPY --from=builder --chown=appuser:node_group /prod/api/node_modules ./node_modules
+
+# Copy compiled dist
+COPY --from=builder --chown=appuser:node_group /workspace/apps/api/dist ./dist
+
+# Copy prisma schema + generated client engines
+# The Prisma client is inside node_modules; the schema file is needed for
+# `prisma migrate deploy` run inside the container at deploy time.
+COPY --from=builder --chown=appuser:node_group /workspace/apps/api/prisma ./prisma
+
+# Copy package.json (needed by some NestJS internals and pino)
+COPY --from=builder --chown=appuser:node_group /workspace/apps/api/package.json ./package.json
+
+USER appuser
+
+ENV NODE_ENV=production
+ENV API_PORT=4000
+
+EXPOSE 4000
+
+# Healthcheck — matches the path in main.ts (exclude 'readyz' path)
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -qO- http://localhost:4000/healthz || exit 1
+
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "dist/main.js"]

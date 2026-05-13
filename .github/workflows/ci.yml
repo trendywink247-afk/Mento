@@ -44,9 +44,11 @@ jobs:
     name: Build web
     runs-on: ubuntu-latest
     env:
-      # Sentry source-map upload is skipped in CI unless SENTRY_AUTH_TOKEN is set.
+      # Sentry source-map upload is skipped in CI unless all three Sentry secrets are set.
       # The token is optional — build still succeeds without it.
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
       NEXT_PUBLIC_API_URL: http://localhost:4000
       NEXT_PUBLIC_SOCKET_URL: http://localhost:4000
       NEXT_PUBLIC_APP_ENV: test
@@ -70,6 +72,25 @@ jobs:
 
       - name: Build web
         run: cd apps/web && pnpm build
+
+      # Upload sourcemaps to Sentry only when all three secrets are present.
+      # The step is skipped silently in forks and PRs without the secret.
+      - name: Upload sourcemaps to Sentry
+        if: >
+          env.SENTRY_AUTH_TOKEN != '' &&
+          env.SENTRY_ORG != '' &&
+          env.SENTRY_PROJECT != ''
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        run: |
+          pnpm dlx @sentry/cli sourcemaps upload \
+            --release="${GITHUB_SHA}" \
+            --auth-token="${SENTRY_AUTH_TOKEN}" \
+            --org="${SENTRY_ORG}" \
+            --project="${SENTRY_PROJECT}" \
+            apps/web/.next
 
   # ─── Job 3: E2E tests (api + web + Playwright) ───────────────────────────
   e2e:

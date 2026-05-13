@@ -1,0 +1,92 @@
+# Mento — Production Caddyfile
+# Domains: api.mento.in → api:4000, mento.in / www.mento.in → web:3000
+# Auto TLS via ACME (Let's Encrypt by default).
+# Security headers, long-cache for static assets, gzip + zstd.
+
+{
+	# Global options
+	admin off
+	email ops@mento.in
+
+	# Prefer zstd, then gzip — Caddy handles negotiation automatically
+}
+
+# ── API ───────────────────────────────────────────────────────────────────────
+api.mento.in {
+	reverse_proxy api:4000 {
+		# Propagate real client IP to Express (trust proxy 1)
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+
+		# Health-check on the upstream so Caddy avoids routing to a cold container
+		health_uri /healthz
+		health_interval 10s
+		health_timeout 5s
+	}
+
+	# Strict security headers
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		-Server
+	}
+
+	encode zstd gzip
+
+	log {
+		output stdout
+		format json
+		level  INFO
+	}
+}
+
+# ── Web (apex + www) ──────────────────────────────────────────────────────────
+www.mento.in {
+	redir https://mento.in{uri} permanent
+}
+
+mento.in {
+	# Long cache for Next.js hashed static chunks
+	@static {
+		path /static/* /_next/static/*
+	}
+	header @static Cache-Control "public, max-age=31536000, immutable"
+
+	# No cache for HTML / navigation responses
+	@html {
+		header Content-Type text/html*
+	}
+	header @html Cache-Control "no-cache, no-store, must-revalidate"
+
+	reverse_proxy web:3000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+
+		health_uri /
+		health_interval 10s
+		health_timeout 5s
+	}
+
+	# Strict security headers
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		-Server
+	}
+
+	encode zstd gzip
+
+	log {
+		output stdout
+		format json
+		level  INFO
+	}
+}

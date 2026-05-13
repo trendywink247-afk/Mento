@@ -1,0 +1,103 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Mento Web — multi-stage Dockerfile
+# Next.js 15 App Router + standalone output
+# NEXT_TELEMETRY_DISABLED=1 throughout
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Stage 1: Install ALL workspace dependencies ───────────────────────────────
+FROM node:22-alpine AS deps
+
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
+
+WORKDIR /workspace
+
+# Manifests only — maximise layer cache
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json            apps/web/package.json
+COPY apps/api/package.json            apps/api/package.json
+COPY packages/types/package.json      packages/types/package.json
+COPY packages/api-client/package.json packages/api-client/package.json
+COPY packages/validation/package.json packages/validation/package.json
+COPY packages/hooks/package.json      packages/hooks/package.json
+COPY packages/config/package.json     packages/config/package.json
+
+RUN pnpm install --frozen-lockfile
+
+# ── Stage 2: Build ────────────────────────────────────────────────────────────
+FROM deps AS builder
+
+ENV NEXT_TELEMETRY_DISABLED=1
+
+WORKDIR /workspace
+
+COPY . .
+
+# Build shared packages first
+RUN pnpm --filter @mento/types     build || true
+RUN pnpm --filter @mento/validation build || true
+RUN pnpm --filter @mento/api-client build || true
+RUN pnpm --filter @mento/hooks      build || true
+
+# Build Next.js in standalone mode.
+# BUILD_STANDALONE=1 activates `output: 'standalone'` in next.config.mjs
+# (see apps/web/next.config.mjs — guarded by the env var so dev mode is unaffected).
+ENV BUILD_STANDALONE=1
+
+# These are build-time public env vars — must be provided at build time.
+# Pass them through docker build --build-arg or compose build.args.
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_SOCKET_URL
+ARG NEXT_PUBLIC_APP_ENV=production
+ARG SENTRY_AUTH_TOKEN
+ARG SENTRY_ORG
+ARG SENTRY_PROJECT
+
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_SOCKET_URL=$NEXT_PUBLIC_SOCKET_URL
+ENV NEXT_PUBLIC_APP_ENV=$NEXT_PUBLIC_APP_ENV
+ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
+ENV SENTRY_ORG=$SENTRY_ORG
+ENV SENTRY_PROJECT=$SENTRY_PROJECT
+
+RUN cd apps/web && pnpm build
+
+# ── Stage 3: Runtime ──────────────────────────────────────────────────────────
+FROM node:22-alpine AS runtime
+
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+RUN apk add --no-cache tini
+
+RUN addgroup -g 1001 node_group && \
+    adduser  -u 1001 -G node_group -s /bin/sh -D appuser
+
+WORKDIR /app
+
+# Copy the standalone bundle (includes its own node_modules subset)
+COPY --from=builder --chown=appuser:node_group \
+  /workspace/apps/web/.next/standalone ./
+
+# Copy static assets (hashed chunks) — served by Next.js standalone server
+COPY --from=builder --chown=appuser:node_group \
+  /workspace/apps/web/.next/static ./apps/web/.next/static
+
+# Copy the public folder (favicon, robots.txt, OG images, etc.)
+COPY --from=builder --chown=appuser:node_group \
+  /workspace/apps/web/public ./apps/web/public
+
+USER appuser
+
+EXPOSE 3000
+
+# Healthcheck — root returns 200 for Next.js App Router
+HEALTHCHECK --interval=15s --timeout=5s --start-period=40s --retries=3 \
+  CMD wget -qO- http://localhost:3000/ || exit 1
+
+ENTRYPOINT ["/sbin/tini", "--"]
+# The standalone server.js is at the root of the standalone output
+CMD ["node", "apps/web/server.js"]

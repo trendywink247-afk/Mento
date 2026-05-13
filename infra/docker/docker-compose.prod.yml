@@ -1,0 +1,199 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Mento — Production docker-compose
+#
+# Boot order:
+#   postgres + redis → api (waits healthy) → web (waits healthy) → caddy
+#
+# Prerequisites:
+#   - Copy .env.prod.example → .env.prod (repo root) and fill all secrets.
+#   - Validate: docker compose -f infra/docker/docker-compose.prod.yml \
+#                 --env-file .env.prod config
+#   - First deploy: see docs/DEPLOY.md for migration + seed steps.
+#
+# Usage (from repo root):
+#   docker compose -f infra/docker/docker-compose.prod.yml \
+#     --env-file .env.prod up -d
+#
+# All ${VAR} references below are resolved from the --env-file at CLI invocation
+# time; no service-level env_file is used so validation works without .env.prod.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: mento-prod
+
+services:
+
+  # ── Postgres 16 ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: mento-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mento}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-mento}
+    volumes:
+      - mento_pg_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mento} -d ${POSTGRES_DB:-mento}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    # Postgres is NOT exposed on the host — only the api container can reach it
+    networks:
+      - mento_internal
+
+  # ── Redis 7 ────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: mento-redis-prod
+    restart: unless-stopped
+    command: >
+      redis-server
+      --save 60 1
+      --loglevel warning
+      --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - mento_redis_prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - mento_internal
+
+  # ── NestJS API ─────────────────────────────────────────────────────────────
+  api:
+    image: ghcr.io/${GHCR_OWNER:-mento}/mento-api:${IMAGE_TAG:-latest}
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    container_name: mento-api-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_PORT: "4000"
+      # Database — constructed from postgres container network alias
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mento}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mento}
+      # Redis — constructed from redis container network alias
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      # Auth
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-30d}
+      # CORS
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://mento.in,https://www.mento.in}
+      # Sentry
+      SENTRY_DSN_API: ${SENTRY_DSN_API:-}
+      # Razorpay
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      # Google OAuth
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-https://api.mento.in/auth/google/callback}
+      # S3 / R2
+      AWS_REGION: ${AWS_REGION:-auto}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-}
+      S3_BUCKET: ${S3_BUCKET:-mento-uploads}
+      # OTP / SMS
+      OTP_DEV_MODE: ${OTP_DEV_MODE:-false}
+      SMS_PROVIDER: ${SMS_PROVIDER:-}
+      SMS_API_KEY: ${SMS_API_KEY:-}
+      SMS_SENDER_ID: ${SMS_SENDER_ID:-}
+      # PostHog
+      POSTHOG_API_KEY: ${POSTHOG_API_KEY:-}
+      # Admin
+      ADMIN_BOOTSTRAP_PHONE: ${ADMIN_BOOTSTRAP_PHONE:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - mento_internal
+
+  # ── Next.js Web ────────────────────────────────────────────────────────────
+  web:
+    image: ghcr.io/${GHCR_OWNER:-mento}/mento-web:${IMAGE_TAG:-latest}
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.mento.in}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-https://api.mento.in}
+        NEXT_PUBLIC_APP_ENV: production
+        SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
+        SENTRY_ORG: ${SENTRY_ORG:-}
+        SENTRY_PROJECT: ${SENTRY_PROJECT:-mento-web}
+    container_name: mento-web-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.mento.in}
+      NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-https://api.mento.in}
+      NEXT_PUBLIC_APP_ENV: production
+      NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+      NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
+      NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-https://app.posthog.com}
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - mento_internal
+
+  # ── Caddy reverse proxy ────────────────────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: mento-caddy-prod
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"    # HTTP/3 (QUIC)
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - mento_caddy_data:/data
+      - mento_caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    networks:
+      - mento_internal
+
+# ── Volumes ────────────────────────────────────────────────────────────────
+volumes:
+  mento_pg_prod:
+    driver: local
+  mento_redis_prod:
+    driver: local
+  mento_caddy_data:
+    driver: local
+  mento_caddy_config:
+    driver: local
+
+# ── Networks ───────────────────────────────────────────────────────────────
+networks:
+  mento_internal:
+    driver: bridge

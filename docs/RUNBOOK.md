@@ -1,6 +1,9 @@
 # Mento — Runbook
 
 > Common commands + troubleshooting. Bookmarks for things you'll forget.
+>
+> For production deployment (provisioning, first-deploy, updates, rollback, backups)
+> see **[docs/DEPLOY.md](./DEPLOY.md)**.
 
 ## First-time setup on a fresh machine
 
@@ -122,6 +125,34 @@ pnpm rebuild @sentry/cli
 ```
 
 This is safe — `onlyBuiltDependencies` explicitly permits it.
+
+## Production sourcemaps
+
+Sentry sourcemap upload runs as an optional step in the `build-web` CI job
+(`.github/workflows/ci.yml`). It only executes when all three secrets are present:
+`SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT`. If any are missing the step
+is silently skipped and the build still succeeds.
+
+The upload command is:
+
+```bash
+pnpm dlx @sentry/cli sourcemaps upload \
+  --release="$GITHUB_SHA" \
+  --auth-token="$SENTRY_AUTH_TOKEN" \
+  --org="$SENTRY_ORG" \
+  --project="$SENTRY_PROJECT" \
+  apps/web/.next
+```
+
+To configure:
+1. Create a Sentry internal integration token with `project:releases` + `org:read` scopes.
+2. Add `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` as repository secrets in
+   GitHub (Settings → Secrets → Actions).
+3. Confirm the next CI run picks up the upload step (check the "Build web" job log).
+
+The Next.js `next.config.mjs` conditionally wraps with `withSentryConfig` when
+`SENTRY_AUTH_TOKEN` is set at build time, which also injects the release identifier.
+Standalone Docker builds pass the token in via `build-args` in `docker-compose.prod.yml`.
 
 ## Troubleshooting
 
