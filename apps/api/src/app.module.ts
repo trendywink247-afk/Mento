@@ -23,6 +23,7 @@ import { PushTokensModule } from './modules/push-tokens/push-tokens.module'
 import { SessionsModule } from './modules/sessions/sessions.module'
 import { ModerationModule } from './modules/moderation/moderation.module'
 import { InvitesModule } from './modules/invites/invites.module'
+import { NudgesModule } from './modules/nudges/nudges.module'
 
 @Module({
   imports: [
@@ -93,6 +94,7 @@ import { InvitesModule } from './modules/invites/invites.module'
     SessionsModule,
     ModerationModule,
     InvitesModule,
+    NudgesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
