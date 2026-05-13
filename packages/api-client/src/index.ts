@@ -463,6 +463,9 @@ export class ApiClient {
       this.http
         .post(`chat/messages/${messageId}/report`, { json: { reason, details } })
         .json(),
+
+    archiveConversation: (conversationId: string): Promise<unknown> =>
+      this.http.patch(`conversations/${conversationId}/archive`).json(),
   }
 
   admin = {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -6,15 +6,27 @@ import {
   Pressable,
   RefreshControl,
   SafeAreaView,
+  ScrollView,
   Text,
+  ToastAndroid,
   View,
+  Platform,
 } from 'react-native'
 import { router } from 'expo-router'
 import { Inbox, Clock, Send, Archive, type LucideIcon } from 'lucide-react-native'
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated'
+import { Swipeable } from 'react-native-gesture-handler'
 import type { ConversationSummary, AvatarLetter, AvatarColor } from '@mento/types'
 import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { LetterAvatar } from '@/components/LetterAvatar'
+import { CHAT_TABS_COPY, CHAT_ARCHIVE_COPY } from '@/lib/copy'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +49,11 @@ interface ChatRequest {
   }
 }
 
+type ConversationSummaryWithArchive = ConversationSummary & {
+  archivedByMentee?: boolean
+  archivedByMentor?: boolean
+}
+
 type Tab = 'all' | 'pending' | 'sent' | 'archived'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -49,71 +66,104 @@ function formatTime(iso: string) {
   return d.toLocaleDateString()
 }
 
-// ─── Tab button ───────────────────────────────────────────────────────────────
+function showToast(msg: string) {
+  if (Platform.OS === 'android') {
+    ToastAndroid.show(msg, ToastAndroid.SHORT)
+  }
+  // On iOS we use an Alert for simplicity (no native toast API without a dep)
+}
 
-function TabButton({
-  id,
-  label,
-  Icon,
-  count,
+// ─── Animated tab indicator ───────────────────────────────────────────────────
+
+function PillTabBar({
+  tabs,
   active,
   onPress,
 }: {
-  id: Tab
-  label: string
-  Icon: LucideIcon
-  count?: number
-  active: boolean
-  onPress: () => void
+  tabs: { id: Tab; label: string; Icon: LucideIcon; count?: number }[]
+  active: Tab
+  onPress: (id: Tab) => void
 }) {
   const PRIMARY = '#2563eb'
   const MUTED = '#64748b'
+
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ paddingHorizontal: 12, gap: 8, flexDirection: 'row', alignItems: 'center' }}
+      style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}
+    >
+      {tabs.map(({ id, label, Icon, count }) => {
+        const isActive = active === id
+        return (
+          <Pressable
+            key={id}
+            onPress={() => onPress(id)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+              paddingHorizontal: 12,
+              paddingVertical: 7,
+              borderRadius: 99,
+              backgroundColor: isActive ? '#dbeafe' : '#f1f5f9',
+              minHeight: 36,
+            }}
+          >
+            <Icon size={14} color={isActive ? PRIMARY : MUTED} strokeWidth={isActive ? 2.5 : 2} />
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: isActive ? '600' : '400',
+                color: isActive ? PRIMARY : MUTED,
+              }}
+            >
+              {label}
+            </Text>
+            {count !== undefined && count > 0 && (
+              <View
+                style={{
+                  backgroundColor: isActive ? '#bfdbfe' : '#e2e8f0',
+                  borderRadius: 99,
+                  paddingHorizontal: 5,
+                  minWidth: 18,
+                  alignItems: 'center',
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: '600',
+                    color: isActive ? PRIMARY : MUTED,
+                  }}
+                >
+                  {count}
+                </Text>
+              </View>
+            )}
+          </Pressable>
+        )
+      })}
+    </ScrollView>
+  )
+}
+
+// ─── Swipe action ─────────────────────────────────────────────────────────────
+
+function ArchiveAction({ onPress }: { onPress: () => void }) {
   return (
     <Pressable
       onPress={onPress}
       style={{
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
+        backgroundColor: '#f59e0b',
         justifyContent: 'center',
-        gap: 4,
-        paddingVertical: 10,
-        borderBottomWidth: 2,
-        borderBottomColor: active ? PRIMARY : 'transparent',
+        alignItems: 'center',
+        width: 80,
       }}
     >
-      <Icon size={15} color={active ? PRIMARY : MUTED} strokeWidth={active ? 2.5 : 2} />
-      <Text
-        style={{
-          fontSize: 13,
-          fontWeight: active ? '600' : '400',
-          color: active ? PRIMARY : MUTED,
-        }}
-      >
-        {label}
-      </Text>
-      {count !== undefined && count > 0 && (
-        <View
-          style={{
-            backgroundColor: active ? '#dbeafe' : '#f1f5f9',
-            borderRadius: 99,
-            paddingHorizontal: 5,
-            paddingVertical: 1,
-            minWidth: 18,
-            alignItems: 'center',
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 10,
-              fontWeight: '600',
-              color: active ? PRIMARY : MUTED,
-            }}
-          >
-            {count}
-          </Text>
-        </View>
-      )}
+      <Archive size={20} color="#fff" />
+      <Text style={{ color: '#fff', fontSize: 11, marginTop: 3, fontWeight: '600' }}>Archive</Text>
     </Pressable>
   )
 }
@@ -178,42 +228,82 @@ function EmptyArchived() {
   )
 }
 
-// ─── Conversation row ─────────────────────────────────────────────────────────
+// ─── Skeleton row ─────────────────────────────────────────────────────────────
+
+function SkeletonRow() {
+  const opacity = useSharedValue(0.4)
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      Math.sin(Date.now() / 600),
+      [-1, 1],
+      [0.4, 0.8],
+      Extrapolation.CLAMP,
+    ),
+  }))
+
+  return (
+    <Animated.View style={[animStyle, { flexDirection: 'row', gap: 12, padding: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }]}>
+      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#e2e8f0' }} />
+      <View style={{ flex: 1, gap: 8 }}>
+        <View style={{ width: '60%', height: 14, borderRadius: 6, backgroundColor: '#e2e8f0' }} />
+        <View style={{ width: '80%', height: 12, borderRadius: 6, backgroundColor: '#f1f5f9' }} />
+      </View>
+    </Animated.View>
+  )
+}
+
+// ─── Conversation row (swipeable) ─────────────────────────────────────────────
 
 function ConvRow({
   item,
   onLongPress,
+  onArchive,
 }: {
-  item: ConversationSummary
+  item: ConversationSummaryWithArchive
   onLongPress: () => void
+  onArchive: () => void
 }) {
+  const swipeRef = useRef<Swipeable>(null)
+
+  function handleArchive() {
+    swipeRef.current?.close()
+    onArchive()
+  }
+
   return (
-    <Pressable
-      onPress={() => router.push({ pathname: '/(tabs)/chat/[id]', params: { id: item.id } })}
-      onLongPress={onLongPress}
-      delayLongPress={350}
-      className="flex-row items-start gap-3 border-b border-border px-4 py-4 active:bg-accent"
+    <Swipeable
+      ref={swipeRef}
+      friction={2}
+      overshootRight={false}
+      renderRightActions={() => <ArchiveAction onPress={handleArchive} />}
     >
-      <LetterAvatar
-        letter={item.counterpart.avatarLetter}
-        color={item.counterpart.avatarColor}
-        hasPurpleTick={item.counterpart.hasPurpleTick}
-        size={44}
-      />
-      <View className="flex-1">
-        <View className="flex-row justify-between">
-          <Text className="text-base font-medium text-foreground">
-            {item.counterpart.displayHandle}
-          </Text>
-          <Text className="text-xs text-muted">
-            {item.lastMessageAt ? formatTime(item.lastMessageAt) : ''}
+      <Pressable
+        onPress={() => router.push({ pathname: '/(tabs)/chat/[id]', params: { id: item.id } })}
+        onLongPress={onLongPress}
+        delayLongPress={350}
+        className="flex-row items-start gap-3 border-b border-border bg-white px-4 py-4 active:bg-accent"
+      >
+        <LetterAvatar
+          letter={item.counterpart.avatarLetter}
+          color={item.counterpart.avatarColor}
+          hasPurpleTick={item.counterpart.hasPurpleTick}
+          size={44}
+        />
+        <View className="flex-1">
+          <View className="flex-row justify-between">
+            <Text className="text-base font-medium text-foreground">
+              {item.counterpart.displayHandle}
+            </Text>
+            <Text className="text-xs text-muted">
+              {item.lastMessageAt ? formatTime(item.lastMessageAt) : ''}
+            </Text>
+          </View>
+          <Text numberOfLines={1} className="mt-1 text-sm text-muted">
+            {item.lastMessage?.body ?? 'No messages yet'}
           </Text>
         </View>
-        <Text numberOfLines={1} className="mt-1 text-sm text-muted">
-          {item.lastMessage?.body ?? 'No messages yet'}
-        </Text>
-      </View>
-    </Pressable>
+      </Pressable>
+    </Swipeable>
   )
 }
 
@@ -223,12 +313,15 @@ function RequestRow({
   item,
   isMentor,
   onAction,
+  onArchive,
 }: {
   item: ChatRequest
   isMentor: boolean
   onAction: () => void
+  onArchive?: () => void
 }) {
   const [busy, setBusy] = useState(false)
+  const swipeRef = useRef<Swipeable>(null)
 
   async function accept() {
     setBusy(true)
@@ -278,11 +371,17 @@ function RequestRow({
     ])
   }
 
-  const isArchived = item.status === 'ARCHIVED' || item.status === 'DECLINED'
+  function handleSwipeArchive() {
+    swipeRef.current?.close()
+    onArchive?.()
+  }
 
-  return (
+  const isArchived = item.status === 'ARCHIVED' || item.status === 'DECLINED'
+  const canSwipeArchive = !isArchived && onArchive
+
+  const inner = (
     <View
-      className={`flex-row items-start gap-3 border-b border-border px-4 py-4 ${isArchived ? 'opacity-70' : ''}`}
+      className={`flex-row items-start gap-3 border-b border-border bg-white px-4 py-4 ${isArchived ? 'opacity-70' : ''}`}
     >
       <LetterAvatar
         letter={item.counterpart.avatarLetter}
@@ -339,6 +438,21 @@ function RequestRow({
       </View>
     </View>
   )
+
+  if (canSwipeArchive) {
+    return (
+      <Swipeable
+        ref={swipeRef}
+        friction={2}
+        overshootRight={false}
+        renderRightActions={() => <ArchiveAction onPress={handleSwipeArchive} />}
+      >
+        {inner}
+      </Swipeable>
+    )
+  }
+
+  return inner
 }
 
 // ─── Main screen ───────────────────────────────────────────────────────────────
@@ -347,7 +461,7 @@ export default function ChatList() {
   const role = useAuthStore((s) => s.user?.role)
   const isMentor = role === 'MENTOR'
 
-  const [convs, setConvs] = useState<ConversationSummary[] | null>(null)
+  const [convs, setConvs] = useState<ConversationSummaryWithArchive[] | null>(null)
   const [requests, setRequests] = useState<ChatRequest[] | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -360,7 +474,7 @@ export default function ChatList() {
       getApiClient().chatRequests.list(),
     ])
       .then(([c, r]) => {
-        setConvs(c)
+        setConvs(c as ConversationSummaryWithArchive[])
         setRequests(r as ChatRequest[])
       })
       .catch((err: unknown) => {
@@ -372,17 +486,17 @@ export default function ChatList() {
     load()
   }, [load])
 
-  if (!convs && !requests) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        {error ? (
-          <Text className="text-sm text-destructive">{error}</Text>
-        ) : (
-          <ActivityIndicator />
-        )}
-      </SafeAreaView>
-    )
-  }
+  // ─── Derived lists ───────────────────────────────────────────────────────────
+
+  const activeConvs = (convs ?? []).filter((c) => {
+    if (isMentor) return !c.archivedByMentor
+    return !c.archivedByMentee
+  })
+
+  const archivedConvs = (convs ?? []).filter((c) => {
+    if (isMentor) return c.archivedByMentor
+    return c.archivedByMentee
+  })
 
   const pendingRequests = isMentor
     ? (requests ?? []).filter((r) => r.status === 'PENDING')
@@ -394,12 +508,49 @@ export default function ChatList() {
     (r) => r.status === 'ARCHIVED' || r.status === 'DECLINED',
   )
 
+  // ─── Archive handlers ────────────────────────────────────────────────────────
+
+  async function archiveConversation(id: string) {
+    // Optimistic update
+    setConvs((prev) =>
+      prev
+        ? prev.map((c) =>
+            c.id === id
+              ? { ...c, archivedByMentee: !isMentor || c.archivedByMentee, archivedByMentor: isMentor || c.archivedByMentor }
+              : c,
+          )
+        : prev,
+    )
+    showToast(CHAT_ARCHIVE_COPY.toast)
+    try {
+      await getApiClient().chat.archiveConversation(id)
+    } catch {
+      // Revert on failure
+      load()
+    }
+  }
+
+  async function archiveRequest(id: string) {
+    // Optimistic update
+    setRequests((prev) =>
+      prev ? prev.map((r) => (r.id === id ? { ...r, status: 'ARCHIVED' as ChatRequestStatus } : r)) : prev,
+    )
+    showToast(CHAT_ARCHIVE_COPY.toast)
+    try {
+      await getApiClient().chatRequests.archive(id)
+    } catch {
+      load()
+    }
+  }
+
+  // ─── Tabs definition ─────────────────────────────────────────────────────────
+
   const TABS: { id: Tab; label: string; Icon: LucideIcon; count?: number }[] = [
-    { id: 'all', label: 'All', Icon: Inbox, count: (convs ?? []).length },
+    { id: 'all', label: CHAT_TABS_COPY.all, Icon: Inbox, count: activeConvs.length },
     ...(isMentor
-      ? [{ id: 'pending' as const, label: 'Pending', Icon: Clock, count: pendingRequests.length }]
-      : [{ id: 'sent' as const, label: 'Sent', Icon: Send, count: sentRequests.length }]),
-    { id: 'archived', label: 'Archived', Icon: Archive, count: archivedRequests.length },
+      ? [{ id: 'pending' as const, label: CHAT_TABS_COPY.pending, Icon: Clock, count: pendingRequests.length }]
+      : [{ id: 'sent' as const, label: CHAT_TABS_COPY.sent, Icon: Send, count: sentRequests.length }]),
+    { id: 'archived', label: CHAT_TABS_COPY.archived, Icon: Archive, count: archivedConvs.length + archivedRequests.length },
   ]
 
   function showMessageActions(convId: string) {
@@ -419,31 +570,40 @@ export default function ChatList() {
     ])
   }
 
+  // ─── Loading skeleton ─────────────────────────────────────────────────────────
+
+  if (!convs && !requests) {
+    return (
+      <SafeAreaView className="flex-1 bg-background">
+        <View className="px-4 pt-4">
+          <Text className="text-2xl font-bold tracking-tight text-foreground">Chats</Text>
+        </View>
+        {error ? (
+          <View className="flex-1 items-center justify-center">
+            <Text className="text-sm text-destructive">{error}</Text>
+          </View>
+        ) : (
+          <View className="mt-3">
+            {[0, 1, 2, 3].map((i) => <SkeletonRow key={i} />)}
+          </View>
+        )}
+      </SafeAreaView>
+    )
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <View className="px-4 pt-4">
         <Text className="text-2xl font-bold tracking-tight text-foreground">Chats</Text>
       </View>
 
-      {/* Tab bar */}
-      <View className="mt-3 flex-row border-b border-border bg-background">
-        {TABS.map(({ id, label, Icon, count }) => (
-          <TabButton
-            key={id}
-            id={id}
-            label={label}
-            Icon={Icon}
-            count={count}
-            active={tab === id}
-            onPress={() => setTab(id)}
-          />
-        ))}
-      </View>
+      {/* Pill tab bar */}
+      <PillTabBar tabs={TABS} active={tab} onPress={setTab} />
 
       {/* Content */}
       {tab === 'all' && (
         <FlatList
-          data={convs ?? []}
+          data={activeConvs}
           keyExtractor={(c) => c.id}
           refreshControl={
             <RefreshControl
@@ -460,6 +620,7 @@ export default function ChatList() {
             <ConvRow
               item={item}
               onLongPress={() => showMessageActions(item.id)}
+              onArchive={() => archiveConversation(item.id)}
             />
           )}
         />
@@ -469,9 +630,24 @@ export default function ChatList() {
         <FlatList
           data={pendingRequests}
           keyExtractor={(r) => r.id}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={async () => {
+                setRefreshing(true)
+                load()
+                setRefreshing(false)
+              }}
+            />
+          }
           ListEmptyComponent={<EmptyPending />}
           renderItem={({ item }) => (
-            <RequestRow item={item} isMentor={true} onAction={load} />
+            <RequestRow
+              item={item}
+              isMentor={true}
+              onAction={load}
+              onArchive={() => archiveRequest(item.id)}
+            />
           )}
         />
       )}
@@ -480,21 +656,64 @@ export default function ChatList() {
         <FlatList
           data={sentRequests}
           keyExtractor={(r) => r.id}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={async () => {
+                setRefreshing(true)
+                load()
+                setRefreshing(false)
+              }}
+            />
+          }
           ListEmptyComponent={<EmptySent />}
           renderItem={({ item }) => (
-            <RequestRow item={item} isMentor={false} onAction={load} />
+            <RequestRow
+              item={item}
+              isMentor={false}
+              onAction={load}
+              onArchive={() => archiveRequest(item.id)}
+            />
           )}
         />
       )}
 
       {tab === 'archived' && (
         <FlatList
-          data={archivedRequests}
-          keyExtractor={(r) => r.id}
+          data={[
+            ...archivedConvs.map((c) => ({ type: 'conv' as const, data: c })),
+            ...archivedRequests.map((r) => ({ type: 'req' as const, data: r })),
+          ]}
+          keyExtractor={(item) => item.data.id}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={async () => {
+                setRefreshing(true)
+                load()
+                setRefreshing(false)
+              }}
+            />
+          }
           ListEmptyComponent={<EmptyArchived />}
-          renderItem={({ item }) => (
-            <RequestRow item={item} isMentor={isMentor} onAction={load} />
-          )}
+          renderItem={({ item }) => {
+            if (item.type === 'conv') {
+              return (
+                <ConvRow
+                  item={item.data as ConversationSummaryWithArchive}
+                  onLongPress={() => showMessageActions(item.data.id)}
+                  onArchive={() => {}}
+                />
+              )
+            }
+            return (
+              <RequestRow
+                item={item.data as ChatRequest}
+                isMentor={isMentor}
+                onAction={load}
+              />
+            )
+          }}
         />
       )}
     </SafeAreaView>

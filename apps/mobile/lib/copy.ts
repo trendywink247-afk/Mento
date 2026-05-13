@@ -103,6 +103,23 @@ export const GUIDANCE_CATEGORIES = [
   'Optional',
 ] as const
 
+// Chat tab copy
+export const CHAT_TABS_COPY = {
+  all: 'All',
+  pending: 'Pending',
+  sent: 'Sent',
+  archived: 'Archived',
+} as const
+
+export const CHAT_SEARCH_COPY = {
+  placeholder: 'Search this conversation',
+  empty: 'No matches',
+} as const
+
+export const CHAT_ARCHIVE_COPY = {
+  toast: 'Conversation archived',
+} as const
+
 // Mentees copy (§ 1.6, § 1.10)
 export const MENTEES_COPY = {
   myMenteesEmpty: 'No conversations yet — aspirants you accept will appear here.',

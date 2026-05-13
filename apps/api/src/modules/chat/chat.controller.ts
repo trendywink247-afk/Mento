@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common'
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common'
 import { CurrentUser, type JwtUser } from '../auth/decorators/current-user.decorator'
 import { ChatService } from './chat.service'
 
@@ -27,6 +27,14 @@ export class ChatController {
       limit: limit ? Number(limit) : undefined,
       before,
     })
+  }
+
+  @Patch('conversations/:id/archive')
+  archiveConversation(
+    @CurrentUser() user: JwtUser,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    return this.chat.archiveConversation(id, user.sub)
   }
 
   @Post('chat/messages/:messageId/report')

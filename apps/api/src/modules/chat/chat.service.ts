@@ -41,6 +41,8 @@ export class ChatService {
           avatarColor: counterpart.profile?.avatarColor ?? 'SLATE',
           hasPurpleTick: counterpart.profile?.hasPurpleTick ?? false,
         },
+        archivedByMentee: c.archivedByMentee,
+        archivedByMentor: c.archivedByMentor,
         lastMessage: last
           ? {
               id: last.id,
@@ -141,6 +143,19 @@ export class ChatService {
         deliveredAt: msg.deliveredAt ?? new Date(),
         readAt: new Date(),
       },
+    })
+  }
+
+  async archiveConversation(conversationId: string, userId: string) {
+    const conv = await this.prisma.conversation.findUnique({ where: { id: conversationId } })
+    if (!conv) throw new NotFoundException('Conversation not found')
+    if (conv.mentorId !== userId && conv.aspirantId !== userId) {
+      throw new ForbiddenException('Not a participant')
+    }
+    const isMentor = conv.mentorId === userId
+    return this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: isMentor ? { archivedByMentor: true } : { archivedByMentee: true },
     })
   }
 
