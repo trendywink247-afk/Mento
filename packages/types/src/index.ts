@@ -149,7 +149,6 @@ export interface AuthTokens {
 }
 
 export interface OtpRequestResponse {
-  phone: string
   expiresIn: number
   // In dev mode the api may include the code for testing.
   devCode?: string
