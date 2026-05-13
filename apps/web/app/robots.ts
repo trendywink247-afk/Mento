@@ -17,13 +17,29 @@ export default function robots(): MetadataRoute.Robots {
           '/refund-policy',
         ],
         disallow: [
+          // Admin shell + its tools
           '/admin',
+          '/admin/',
+          // Internal API
           '/api',
-          '/(auth)',
-          '/(app)',
+          // Auth pages (real URLs — (auth) is a Next.js route group, not a path segment)
+          '/login',
+          '/otp',
+          // Authenticated app shell — every (app) route under here
+          '/dashboard',
+          '/chat',
+          '/mentors',
+          '/mentees',
+          '/journals',
+          '/calls',
+          '/wallet',
+          '/availability',
+          '/upgrade',
+          // Mid-flow onboarding steps that shouldn't be indexed
           '/onboarding/welcome',
           '/onboarding/mirror',
           '/onboarding/mentor',
+          '/onboarding/credentials',
           '/onboarding/submitted',
         ],
       },

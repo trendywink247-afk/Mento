@@ -121,13 +121,21 @@ export class InvitesService {
 
       // Step 3: one redemption per user (@@unique([userId])). If two signups by
       // the same user race, the unique constraint will fail one of them — we
-      // surface that as a clean ConflictException.
+      // surface that as a clean ConflictException. Other errors (connectivity,
+      // schema drift) bubble so they don't get misreported as a user conflict.
       try {
         await tx.inviteRedemption.create({
           data: { inviteCodeId: row.id, userId },
         })
       } catch (err) {
-        throw new ConflictException('User has already redeemed an invite code')
+        const isUniqueViolation =
+          typeof err === 'object' &&
+          err !== null &&
+          (err as { code?: string }).code === 'P2002'
+        if (isUniqueViolation) {
+          throw new ConflictException('User has already redeemed an invite code')
+        }
+        throw err
       }
     })
   }
