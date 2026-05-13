@@ -6,6 +6,7 @@ Operational scripts for the Mento production stack. Deploy to `/srv/mento/script
 
 | Script | Purpose |
 |---|---|
+| `check-env.sh` | Pre-deploy env var validator — reads `.env.prod` (or `--file <path>`), hard-fails on missing REQUIRED vars and weak secrets, warns on missing RECOMMENDED vars |
 | `backup-pg.sh` | Dump the production Postgres database to a gzip file, optionally upload to S3/R2, and prune local copies older than 7 days |
 | `restore-pg.sh` | Restore a gzip backup into the production Postgres container; requires explicit confirmation; refuses to restore against a healthy API unless `--force` |
 
@@ -14,6 +15,7 @@ Operational scripts for the Mento production stack. Deploy to `/srv/mento/script
 ```bash
 # On the server (run once during first deploy — see docs/DEPLOY.md §2)
 cp -r /srv/mento/scripts /srv/mento/scripts
+chmod +x /srv/mento/scripts/check-env.sh
 chmod +x /srv/mento/scripts/backup-pg.sh
 chmod +x /srv/mento/scripts/restore-pg.sh
 ```

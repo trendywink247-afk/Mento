@@ -94,14 +94,29 @@ cp .env.prod.example .env.prod
 nano .env.prod
 ```
 
-### 2c. Validate the compose file
+### 2c. Validate env vars before first deploy
+
+Run the env checker **before** starting any containers. It hard-fails on missing
+or weak secrets and warns about missing optional integrations:
+
+```bash
+./scripts/check-env.sh --file .env.prod
+```
+
+This must exit 0 before proceeding. Any `[FAIL]` line means a required secret is
+absent or too short — fix `.env.prod` and re-run until the script prints `RESULT: PASS`.
+
+Warnings (`[WARN]`) indicate optional integrations (Razorpay, Sentry, PostHog, etc.)
+that are not wired up yet. They do not block deployment.
+
+### 2d. Validate the compose file
 
 ```bash
 docker compose -f infra/docker/docker-compose.prod.yml --env-file .env.prod config
 # Must print the resolved YAML with no errors before continuing.
 ```
 
-### 2d. Start all services
+### 2e. Start all services
 
 ```bash
 docker compose -f infra/docker/docker-compose.prod.yml --env-file .env.prod up -d
@@ -113,7 +128,7 @@ Boot order (enforced by healthcheck `depends_on`):
 3. `web` starts, runs, passes `/`.
 4. `caddy` starts last and begins serving traffic + provisioning TLS.
 
-### 2e. Run database migrations
+### 2f. Run database migrations
 
 PgBouncer transaction-pool mode is **incompatible** with `prisma migrate deploy`.
 Prisma's migration engine acquires session-level advisory locks, but in transaction
@@ -143,14 +158,14 @@ Never run `prisma migrate deploy` (or `prisma db push`) with a PgBouncer URL
 (`port 6432` or `?pgbouncer=true`) — the migration will hang or silently corrupt
 the `_prisma_migrations` table.
 
-### 2f. Seed the admin user
+### 2g. Seed the admin user
 
 ```bash
 # Requires ADMIN_BOOTSTRAP_PHONE to be set in .env.prod
 docker exec mento-api-prod node dist/prisma/seed.js
 ```
 
-### 2g. Verify
+### 2h. Verify
 
 ```bash
 # API health
@@ -223,7 +238,7 @@ No schema rollback is needed unless the migration was destructive. If you need t
 
 ---
 
-## 2h. Install backup scripts and cron
+## 2i. Install backup scripts and cron
 
 ```bash
 # Make the scripts executable (already committed as +x; double-check on server)

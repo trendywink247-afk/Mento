@@ -367,6 +367,30 @@ Key files:
 
 ---
 
+## Env checks
+
+Before first deploy (and after any `.env.prod` change), run:
+
+```bash
+./scripts/check-env.sh --file .env.prod
+```
+
+The script must exit 0 before running `docker compose ... up`. Categories:
+
+| Result | Meaning |
+|---|---|
+| `[OK]` | Variable is present and meets all requirements |
+| `[FAIL] MISSING REQUIRED` | Variable is absent or empty — deployment will break |
+| `[FAIL] WEAK SECRET` | Variable is present but too short (see minimum lengths below) |
+| `[WARN] RECOMMENDED missing` | Optional integration not wired up — safe to ignore for MVP |
+| `[WARN] DEV_ONLY active` | A dev flag (e.g. `OTP_DEV_MODE=true`) is set in prod — fix before launch |
+
+Minimum secret lengths: `POSTGRES_PASSWORD` >= 16, `REDIS_PASSWORD` >= 16, `JWT_ACCESS_SECRET` >= 32, `JWT_REFRESH_SECRET` >= 32.
+
+To check against a non-default file: `./scripts/check-env.sh --file /path/to/.env.staging`
+
+---
+
 ## Backup local DB
 
 ```bash
