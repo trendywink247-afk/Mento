@@ -224,6 +224,66 @@ k6 run --out json=loadtest/results/run-$(date +%Y%m%d-%H%M).json \
 See [`loadtest/SCALING_PLAYBOOK.md`](../loadtest/SCALING_PLAYBOOK.md) for capacity planning,
 bottleneck analysis, and "when to scale up" triggers.
 
+## Performance — indexes and caching
+
+### Analytics partial indexes (critical at scale)
+
+Two partial B-tree indexes exist on `User.createdAt` and `Message.createdAt`:
+
+```sql
+"User_createdAt_idx"    ON "User"("createdAt" DESC) WHERE "deletedAt" IS NULL
+"Message_createdAt_idx" ON "Message"("createdAt" DESC) WHERE "deletedAt" IS NULL
+```
+
+These are used by the analytics service's daily-signup and daily-message `DATE_TRUNC`
+groupBy queries. At 10 M MAU the planner will use these indexes instead of a full
+sequential scan on the `User` / `Message` tables.
+
+Migration file: `apps/api/prisma/migrations/20260513010000_perf_indexes_analytics/migration.sql`
+
+Apply to a fresh DB:
+```bash
+docker exec mento-postgres-local psql -U mento -d mento \
+  -f /path/to/migration.sql
+# or just run prisma migrate deploy which picks up all pending migrations
+```
+
+Verify they exist:
+```bash
+docker exec mento-postgres-local psql -U mento -d mento \
+  -c "SELECT indexname, indexdef FROM pg_indexes WHERE indexname IN ('User_createdAt_idx','Message_createdAt_idx');"
+```
+
+### Socket.IO horizontal scaling (SOCKET_REDIS_ADAPTER)
+
+Set `SOCKET_REDIS_ADAPTER=true` in production to activate the `@socket.io/redis-adapter`.
+Without it, Socket.IO uses the in-memory adapter — fine for a single node but **breaks
+presence and message fanout when running more than one API pod**.
+
+The env is already set in `infra/docker/docker-compose.prod.yml`. On a fresh prod deploy
+confirm the API logs print:
+
+```
+[ChatGateway] Socket.IO Redis adapter attached
+```
+
+If you see that line, horizontal scaling is active. If you don't, check `REDIS_URL` is
+reachable and `SOCKET_REDIS_ADAPTER` is literally the string `"true"`.
+
+### Mentor-list 30-second Redis cache
+
+`GET /mentors` responses are cached in Redis for 30 seconds with key prefix
+`mentors:list:`. This means:
+
+- A newly approved mentor takes **up to 30 s** to appear in the public listing.
+- This is intentional — mentor approvals are rare, 30 s lag is acceptable.
+- The admin approve / reject / ban endpoints **actively bust the cache** immediately
+  after the transaction commits, so the lag is usually < 1 s in practice.
+- If you need to force-clear the cache manually:
+  ```bash
+  redis-cli -p 6380 KEYS 'mentors:list:*' | xargs redis-cli -p 6380 DEL
+  ```
+
 ## Backup local DB
 
 ```bash

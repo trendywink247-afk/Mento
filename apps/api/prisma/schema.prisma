@@ -238,6 +238,7 @@ model User {
 
   @@index([role, status])
   @@index([deletedAt])
+  @@index([createdAt(sort: Desc)])  // analytics daily signups groupBy
 }
 
 model Profile {
@@ -402,6 +403,7 @@ model Message {
   @@unique([senderId, clientMessageId])
   @@index([conversationId, createdAt])
   @@index([senderId])
+  @@index([createdAt(sort: Desc)])  // analytics daily messages groupBy
 }
 
 // =================== Journals ===================

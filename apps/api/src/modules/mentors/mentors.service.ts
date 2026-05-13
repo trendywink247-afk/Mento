@@ -1,5 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, Logger, NotFoundException } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { Prisma, Role } from '@prisma/client'
+import { Redis } from 'ioredis'
 import { PrismaService } from '../../database/prisma.service'
 
 export interface MentorListFilters {
@@ -14,11 +16,66 @@ export interface MentorListFilters {
   isVerified?: boolean
 }
 
+// Cache all mentor-list responses for 30 seconds.
+// New mentor verifications take at most 30 s to appear publicly.
+const CACHE_KEY_PREFIX = 'mentors:list:'
+const CACHE_TTL_SECS = 30
+
 @Injectable()
 export class MentorsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(MentorsService.name)
+  private readonly redis: Redis
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {
+    this.redis = new Redis(this.config.get<string>('REDIS_URL') ?? 'redis://localhost:6379/0')
+  }
 
   async list(filters: MentorListFilters = {}) {
+    const cacheKey = `${CACHE_KEY_PREFIX}${JSON.stringify(filters)}`
+
+    // Cache read — non-blocking; on error fall through to DB.
+    try {
+      const hit = await this.redis.get(cacheKey)
+      if (hit) {
+        return JSON.parse(hit) as object[]
+      }
+    } catch (err) {
+      this.logger.warn('Redis get failed for mentors list cache', err)
+    }
+
+    const rows = await this.fetchFromDb(filters)
+
+    // Cache write — fire-and-forget; failure does not break the response.
+    try {
+      await this.redis.set(cacheKey, JSON.stringify(rows), 'EX', CACHE_TTL_SECS)
+    } catch (err) {
+      this.logger.warn('Redis set failed for mentors list cache', err)
+    }
+
+    return rows
+  }
+
+  /**
+   * Invalidate all cached mentor-list responses.
+   * Call this whenever a mentor's visibility changes (approve, reject, ban).
+   */
+  async invalidateMentorListCache() {
+    try {
+      // KEYS is acceptable here: the key-space is small (< 100 distinct filter combos).
+      const keys = await this.redis.keys(`${CACHE_KEY_PREFIX}*`)
+      if (keys.length > 0) {
+        await this.redis.del(...keys)
+        this.logger.log(`Invalidated ${keys.length} mentor-list cache key(s)`)
+      }
+    } catch (err) {
+      this.logger.warn('Redis DEL failed during mentor-list cache invalidation', err)
+    }
+  }
+
+  private async fetchFromDb(filters: MentorListFilters) {
     const where: Prisma.MentorProfileWhereInput = {
       user: {
         role: Role.MENTOR,
@@ -45,6 +102,12 @@ export class MentorsService {
       take: 100,
     })
 
+    return this.buildMentorDtoArray(rows)
+  }
+
+  private buildMentorDtoArray(
+    rows: Awaited<ReturnType<typeof this.prisma.mentorProfile.findMany<{ include: { user: { include: { profile: true } } } }>>>,
+  ) {
     return rows.map((m) => ({
       userId: m.userId,
       displayHandle: m.user.profile?.displayHandle ?? `Mentor_${m.userId.slice(0, 4)}`,

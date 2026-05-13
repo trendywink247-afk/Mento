@@ -2,12 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { ModerationAction, Role, UserStatus } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
 import { StorageService } from '../storage/storage.service'
+import { MentorsService } from '../mentors/mentors.service'
 
 @Injectable()
 export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly mentors: MentorsService,
   ) {}
 
   async listUsers(role?: Role, status?: UserStatus) {
@@ -146,7 +148,7 @@ export class AdminService {
       where: { userId },
     })
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // If marks_sheet was uploaded, grant purple tick.
       const grantPurpleTick = !!verification?.marksSheetUrl
 
@@ -188,6 +190,11 @@ export class AdminService {
 
       return { approved: true, hasPurpleTick: grantPurpleTick }
     })
+
+    // Bust mentor-list cache after transaction commits so the newly approved
+    // mentor appears on the next request rather than waiting up to 30 s.
+    void this.mentors.invalidateMentorListCache()
+    return result
   }
 
   /**
@@ -202,7 +209,7 @@ export class AdminService {
     })
     if (!user) throw new NotFoundException('User not found')
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: userId },
         data: { status: UserStatus.SUSPENDED },
@@ -231,6 +238,9 @@ export class AdminService {
 
       return { rejected: true }
     })
+
+    void this.mentors.invalidateMentorListCache()
+    return result
   }
 
   /**
@@ -246,7 +256,7 @@ export class AdminService {
     })
     if (!user) throw new NotFoundException('User not found')
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // Add to denylist if we have an Aadhaar hash.
       if (user.verification?.aadhaarHash) {
         await tx.mentorDenylist.upsert({
@@ -303,6 +313,9 @@ export class AdminService {
 
       return { banned: true }
     })
+
+    void this.mentors.invalidateMentorListCache()
+    return result
   }
 
   async listAuditLogs(limit = 100) {
