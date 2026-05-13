@@ -91,6 +91,49 @@ Only a 4-digit random suffix; collision rate is the same regardless of PRNG, but
 - **DTO whitelist**: `ValidationPipe` configured with `whitelist: true, forbidNonWhitelisted: true` — mass-assignment safe. Good.
 - **Prisma parameterized queries**: all queries go through Prisma's typed API. No raw SQL. Injection-safe.
 
+## OTP rate limits
+
+Implemented as a layered, per-phone defense. The global `ThrottlerGuard` (per-IP)
+is deliberately **skipped** on `/auth/otp/request` and `/auth/otp/verify` to avoid
+false-positive lockouts on shared NAT (campus Wi-Fi, corporate networks).
+
+### Layer 1 — Request rate limit (Prisma, per phone)
+
+OtpService.issue counts unconsumed `OtpRequest` rows created in the last hour for
+the same phone number. If `count >= 3`, the request is rejected with `HTTP 429`.
+
+This prevents OTP flooding: an attacker cannot generate more than 3 outstanding OTPs
+per phone per hour, capping MSG91 spend and user confusion.
+
+### Layer 2 — Verify brute-force lockout (Redis, per phone)
+
+OtpService.verify maintains two Redis keys per phone:
+
+| Key | Purpose | TTL |
+|-----|---------|-----|
+| `otp:fail:<phone>` | Consecutive wrong-code counter | 10 minutes (sliding from first failure) |
+| `otp:lock:<phone>` | Lockout flag | 30 minutes |
+
+Flow:
+1. On every `/auth/otp/verify` call, `assertNotLocked` checks for `otp:lock:<phone>`. If found, `HTTP 429` with the remaining minutes is returned immediately — no DB query.
+2. On a wrong code, `recordFailure` increments `otp:fail:<phone>` (sets 10-min TTL on the first increment). When the counter reaches 5, `otp:lock:<phone>` is written (30-min TTL) and the fail counter is deleted.
+3. On a correct code, `clearFailures` deletes both keys (counter and lockout), resetting the window.
+
+### Layer 3 — Per-OTP-record attempt cap (Prisma)
+
+Each `OtpRequest` row carries an `attempts` integer. After 5 attempts on the same
+OTP record, the user is told to request a new OTP (the record is not consumed, so
+the 3-per-hour quota continues to apply). This is a defense-in-depth measure; the
+Redis-based lockout above fires first in normal brute-force scenarios.
+
+### Why not per-IP?
+
+Multiple legitimate users behind shared NAT would be blocked together. A single
+student on a university campus requesting an OTP should not lock out 200 classmates.
+Per-phone limits are unambiguous: each victim is isolated.
+
+---
+
 ## Fix order (this session)
 
 1. SEC-1 — refresh token HMAC

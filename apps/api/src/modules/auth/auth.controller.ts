@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, Post } from '@nestjs/common'
+import { SkipThrottle } from '@nestjs/throttler'
 import { Public } from './decorators/public.decorator'
 import { AuthService } from './auth.service'
 import { OtpRequestDto } from './dto/otp-request.dto'
@@ -14,6 +15,19 @@ export class AuthController {
     private readonly prisma: PrismaService,
   ) {}
 
+  /**
+   * OTP request endpoint.
+   *
+   * Global ThrottlerGuard is SKIPPED here intentionally.
+   * Reason: in production many legitimate users share a single egress IP
+   * (campus Wi-Fi, corporate NAT) — a per-IP limit would lock out entire
+   * buildings after a handful of requests.
+   *
+   * Abuse protection is enforced inside OtpService instead:
+   *   - Per-phone: max 3 unconsumed OTPs per hour (Prisma DB counter).
+   *   - Per-phone brute-force: 5 failed verify attempts in 10 min → 30 min lockout (Redis).
+   */
+  @SkipThrottle()
   @Public()
   @Post('otp/request')
   @HttpCode(200)
@@ -22,6 +36,14 @@ export class AuthController {
     return { phone: body.phone, ...result }
   }
 
+  /**
+   * OTP verify endpoint.
+   *
+   * Global ThrottlerGuard is SKIPPED — same shared-NAT reasoning as otp/request.
+   * Brute-force protection is enforced per-phone inside OtpService:
+   * 5 wrong codes in 10 minutes → 30-minute lockout → HTTP 429.
+   */
+  @SkipThrottle()
   @Public()
   @Post('otp/verify')
   @HttpCode(200)
