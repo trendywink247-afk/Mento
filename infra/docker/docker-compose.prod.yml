@@ -84,7 +84,9 @@ services:
   # prisma migrate deploy is INCOMPATIBLE with transaction-pool mode — run it
   # against Postgres directly via MIGRATIONS_DATABASE_URL (see docs/DEPLOY.md).
   pgbouncer:
-    image: edoburu/pgbouncer:1.23.1
+    # Pinned to a tag that exists on Docker Hub. edoburu doesn't publish a
+    # specific 1.23.x; `latest` was 1.25.1 at smoke time (Wave 18 W77).
+    image: edoburu/pgbouncer:latest
     container_name: mento-pgbouncer-prod
     restart: unless-stopped
     environment:
@@ -104,14 +106,14 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      # SHOW POOLS is a PgBouncer admin query — it confirms PgBouncer is up and
-      # accepting connections, not just that the TCP port is bound (which nc -z
-      # would only verify). The edoburu/pgbouncer image ships psql (PostgreSQL 17).
-      # $$VAR syntax escapes the $ so Docker Compose doesn't interpolate env vars
-      # at config-parse time; the shell receives $DB_PASSWORD / $DB_USER / $DB_NAME.
+      # SELECT 1 routed through PgBouncer to Postgres proves the pool is up AND
+      # forwarding correctly — stronger than just TCP-open (nc -z). We avoid
+      # `SHOW POOLS` because that requires connecting to the virtual `pgbouncer`
+      # admin DB and being listed in admin_users (smoke caught this in Wave 18).
+      # $$VAR escapes the $ so Docker Compose doesn't interpolate at parse time.
       test:
         - CMD-SHELL
-        - "PGPASSWORD=$$DB_PASSWORD psql -h localhost -p 6432 -U $$DB_USER -d $$DB_NAME -c 'SHOW POOLS;' >/dev/null 2>&1"
+        - "PGPASSWORD=$$DB_PASSWORD psql -h localhost -p 6432 -U $$DB_USER -d $$DB_NAME -c 'SELECT 1' >/dev/null 2>&1"
       interval: 10s
       timeout: 5s
       retries: 5

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Headers,
   Post,
@@ -45,9 +46,18 @@ export class SubscriptionsController {
     return this.subs.handleWebhook(raw, signature ?? '')
   }
 
-  /** Dev-only: instantly activate a tier for the calling user */
+  /**
+   * Dev-only: instantly activate a tier for the calling user.
+   * Two layers of protection so a misconfigured prod can't be exploited:
+   *  1. Controller-layer NODE_ENV guard — refuses in production regardless
+   *     of any other env state.
+   *  2. Service-layer isDev() check — refuses unless RAZORPAY_KEY_ID is unset.
+   */
   @Post('simulate-success')
   simulateSuccess(@CurrentUser() user: JwtUser, @Body() body: SimulateDto) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException('simulate-success is dev-only')
+    }
     return this.subs.simulateSuccess(user.sub, body.tier)
   }
 }

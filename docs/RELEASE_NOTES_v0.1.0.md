@@ -3,10 +3,10 @@
 > Released: 2026-05-13. The MVP described in `docs/Requirement.md` is feature-complete.
 
 ## TL;DR
-- 122 commits, 16 waves
-- 142 unit tests + 40 API e2e + 66 browser e2e (all green)
-- Docker images build clean (api 433 MB), prod compose validates
-- All anonymity invariants enforced; 9 reviewer-found ship-killers caught + fixed across audits
+- 86 commits on `main`, 18 waves of ship → audit → fix
+- 142 Vitest unit + 32 Playwright API e2e + 118 Playwright browser e2e (all green)
+- Docker images build clean (api 433 MB), prod compose validates with PgBouncer
+- All anonymity invariants enforced; 11 reviewer-found ship-killers caught + fixed across audits
 
 ## Highlights for users (Aspirants and Mentors)
 - Anonymous identity (letter avatars; no real names or photos)
