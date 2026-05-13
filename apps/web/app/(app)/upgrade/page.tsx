@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Check, Loader2, AlertCircle } from 'lucide-react'
+import { Check, Loader2, AlertCircle, X } from 'lucide-react'
 import { getApiClient } from '@/lib/api'
+import { UPGRADE_COPY } from '@/lib/copy'
 
 type Tier = 'FREE' | 'BASIC' | 'PRO' | 'MAX'
 type PaidTier = 'BASIC' | 'PRO' | 'MAX'
@@ -57,6 +58,13 @@ function isDevMode(): boolean {
   return !process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
 }
 
+/** Dispatch mento:tier-changed so the sidebar badge updates without a hard refresh. */
+function dispatchTierChanged(tier: Tier) {
+  if (isBrowser()) {
+    window.dispatchEvent(new CustomEvent('mento:tier-changed', { detail: { tier } }))
+  }
+}
+
 export default function UpgradePage() {
   const params = useSearchParams()
   const initialTier = (params?.get('tier') as PaidTier | null) ?? 'PRO'
@@ -68,13 +76,14 @@ export default function UpgradePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [showDowngradeModal, setShowDowngradeModal] = useState(false)
   const rzpScriptLoaded = useRef(false)
 
   // Fetch current subscription on mount
   useEffect(() => {
     getApiClient()
       .subscriptions.me()
-      .then((sub) => setCurrentTier(sub.tier))
+      .then((sub) => setCurrentTier(sub.tier as Tier))
       .catch(() => {})
   }, [])
 
@@ -96,17 +105,18 @@ export default function UpgradePage() {
     setSuccess(null)
 
     try {
-      const result = await getApiClient().subscriptions.checkout(selectedTier)
-
-      if (result.simulated) {
-        // Dev mode — call simulate-success immediately
+      if (isDevMode()) {
+        // Dev path — call simulate-success directly, no checkout call needed
         const sim = await getApiClient().subscriptions.simulateSuccess(selectedTier)
-        setCurrentTier(sim.tier as Tier)
+        const newTier = sim.tier as Tier
+        setCurrentTier(newTier)
+        dispatchTierChanged(newTier)
         setSuccess(
           `[Dev] Activated ${sim.tier} until ${new Date(sim.currentPeriodEnd).toLocaleDateString()}`,
         )
       } else {
-        // Prod — open Razorpay checkout
+        // Prod path — open Razorpay checkout
+        const result = await getApiClient().subscriptions.checkout(selectedTier)
         openRazorpay(result.orderId, selectedTier)
       }
     } catch {
@@ -135,6 +145,7 @@ export default function UpgradePage() {
       handler: (response: { razorpay_payment_id: string }) => {
         setSuccess(`Payment successful. Your ${tier} plan is now active.`)
         setCurrentTier(tier)
+        dispatchTierChanged(tier)
         // In production Razorpay webhook fires subscription.activated which
         // updates the DB. The UI optimistically reflects the new tier.
         void response.razorpay_payment_id
@@ -158,8 +169,11 @@ export default function UpgradePage() {
       </p>
 
       {dev && (
-        <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
-          Dev mode — payments are simulated. No real charge will occur.
+        <div className="mt-4 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
+          <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-900 dark:bg-amber-800 dark:text-amber-200">
+            Dev mode
+          </span>
+          {UPGRADE_COPY.devModeBanner}
         </div>
       )}
 
@@ -244,7 +258,7 @@ export default function UpgradePage() {
         {currentTier === selectedTier
           ? 'Already on this plan'
           : dev
-          ? `Activate ${TIER_META[selectedTier].label} (simulated)`
+          ? `Activate ${TIER_META[selectedTier].label} (dev)`
           : `Pay ${TIER_META[selectedTier].priceLabel}`}
       </button>
 
@@ -252,48 +266,99 @@ export default function UpgradePage() {
         Payments processed securely by Razorpay. Cancel anytime.
       </p>
 
-      {/* Cancel current subscription */}
+      {/* Downgrade to FREE */}
       {currentTier !== 'FREE' && (
         <div className="mt-8 border-t pt-6">
-          <p className="text-sm font-medium">Cancel subscription</p>
+          <p className="text-sm font-medium">Downgrade plan</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Your access continues until the end of the current billing period.
           </p>
-          <CancelButton onCancelled={() => setCurrentTier('FREE')} />
+          <button
+            onClick={() => setShowDowngradeModal(true)}
+            className="mt-3 rounded-lg border border-destructive/30 px-4 py-2 text-sm text-destructive hover:bg-destructive/5"
+          >
+            {UPGRADE_COPY.downgrade}
+          </button>
         </div>
+      )}
+
+      {/* Downgrade confirmation modal */}
+      {showDowngradeModal && (
+        <DowngradeModal
+          onClose={() => setShowDowngradeModal(false)}
+          onConfirmed={() => {
+            setShowDowngradeModal(false)
+            setCurrentTier('FREE')
+            dispatchTierChanged('FREE')
+            setSuccess('Your subscription has been cancelled. Access continues until period end.')
+          }}
+        />
       )}
     </div>
   )
 }
 
-function CancelButton({ onCancelled }: { onCancelled: () => void }) {
+function DowngradeModal({
+  onClose,
+  onConfirmed,
+}: {
+  onClose: () => void
+  onConfirmed: () => void
+}) {
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
-  async function handleCancel() {
-    if (!confirm('Are you sure you want to cancel your subscription?')) return
+  async function handleConfirm() {
     setLoading(true)
     setErr(null)
     try {
       await getApiClient().subscriptions.cancel()
-      onCancelled()
+      onConfirmed()
     } catch {
       setErr('Failed to cancel. Please try again.')
-    } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="mt-3">
-      <button
-        onClick={handleCancel}
-        disabled={loading}
-        className="rounded-lg border border-destructive/30 px-4 py-2 text-sm text-destructive hover:bg-destructive/5 disabled:opacity-50"
-      >
-        {loading ? <Loader2 size={14} className="inline animate-spin" /> : 'Cancel subscription'}
-      </button>
-      {err && <p className="mt-1 text-xs text-destructive">{err}</p>}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div className="relative w-full max-w-sm rounded-2xl bg-background p-6 shadow-2xl">
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground hover:bg-accent"
+          aria-label="Close"
+        >
+          <X size={16} />
+        </button>
+
+        <h2 className="text-base font-bold">{UPGRADE_COPY.downgrade}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{UPGRADE_COPY.confirmDowngrade}</p>
+
+        {err && <p className="mt-3 text-xs text-destructive">{err}</p>}
+
+        <div className="mt-5 flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium hover:bg-accent disabled:opacity-50"
+          >
+            Keep plan
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={loading}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-destructive px-4 py-2.5 text-sm font-semibold text-white hover:bg-destructive/90 disabled:opacity-50"
+          >
+            {loading && <Loader2 size={14} className="animate-spin" />}
+            {UPGRADE_COPY.downgrade}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

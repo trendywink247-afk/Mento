@@ -63,6 +63,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       .catch(() => setCurrentTier('FREE'))
   }, [tokens])
 
+  // React to tier changes triggered by the upgrade page (dev simulate-success or prod webhook).
+  useEffect(() => {
+    function handleTierChanged(e: Event) {
+      const detail = (e as CustomEvent<{ tier: string }>).detail
+      setCurrentTier(detail.tier)
+      // Re-fetch from server to ensure accuracy
+      getApiClient()
+        .subscriptions.me()
+        .then((sub) => setCurrentTier(sub.tier))
+        .catch(() => {})
+    }
+    window.addEventListener('mento:tier-changed', handleTierChanged)
+    return () => window.removeEventListener('mento:tier-changed', handleTierChanged)
+  }, [])
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {

@@ -153,6 +153,14 @@ export const JOURNALS_COPY = {
     'Both of you must be active in the chat to write here. Currently read-only.',
 } as const
 
+// Upgrade / subscription copy (Phase E)
+export const UPGRADE_COPY = {
+  devModeBanner: 'Dev mode — simulated payment, no card charged.',
+  downgrade: 'Downgrade to Free',
+  confirmDowngrade:
+    "Are you sure? You'll lose access to PRO features at the end of your billing period.",
+} as const
+
 // Moderation copy (Phase G)
 export const MODERATION_COPY = {
   accountSuspended:
