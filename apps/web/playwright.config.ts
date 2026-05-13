@@ -34,8 +34,8 @@ export default defineConfig({
     {
       name: 'desktop-chromium',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
-      // Mobile-only specs are exclusive to the mobile-android project.
-      testIgnore: [/mobile-redirect\.spec\.ts/, /api-.*\.spec\.ts/],
+      // Mobile-only and API-only specs are excluded from the browser project.
+      testIgnore: [/mobile-redirect\.spec\.ts/, /api-.*\.spec\.ts/, /\/api\//],
     },
     {
       name: 'mobile-android',
@@ -46,7 +46,8 @@ export default defineConfig({
       name: 'api',
       // Hits the api directly; baseURL is overridden in each request.
       use: { baseURL: process.env.API_BASE_URL ?? 'http://localhost:4000' },
-      testMatch: /api-.*\.spec\.ts/,
+      // Match both legacy api-*.spec.ts files and the new e2e/api/ subdirectory.
+      testMatch: [/api-.*\.spec\.ts/, /\/e2e\/api\/.*\.spec\.ts/],
     },
   ],
 })
