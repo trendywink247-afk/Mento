@@ -31,14 +31,25 @@ prisma migrations live in apps/api/prisma/migrations
 
 ## Phase status (live)
 
-Read `docs/STATUS.md` for the up-to-date phase board. As of last commit:
+Read `docs/STATUS.md` for the up-to-date phase board. As of last commit (53 commits on `main`):
 
 - ✅ Phases 0-3 (bootstrap, auth, chat, admin)
 - ✅ Phase A (spec-aligned schema + anonymity layer)
 - ✅ Phase B (pre-auth role pick + 12-screen Mirror + mentor onboarding)
 - ✅ Phase C (mentor discovery + 160-char chat request)
 - ✅ Phase D (journals with presence-gated sharing + audit log)
-- ⏳ Phase E (Razorpay tiers), F (mentor verification + R2 upload), G (moderation + ban), H (1:1 booking UI), I (UX polish), J (Google OAuth + PostHog), K (broadcast request), L (chat-to-journal UI wiring + WhatsApp archive tabs)
+- ✅ Phase E (Razorpay tiers + paywall)
+- ✅ Phase G (moderation: report queue + suspend/ban + Aadhaar denylist)
+- ✅ Phase H (1:1 booking UI + simulated escrow)
+- ✅ Phase J (Google OAuth + PostHog + Sentry)
+- ✅ Phase L (chat→journal + WhatsApp archive tabs + My Mentees, partial)
+- ✅ Push notifications (Expo Push)
+- ✅ Production infra (Dockerfiles, Caddyfile, compose, CI sourcemaps)
+- ✅ Test coverage (115 Vitest unit, 34/40 API e2e, 61/66 browser e2e)
+- ⏳ Phase F (mentor verification + R2 upload) — deferred, admin promotes manually
+- ⏳ Phase K (broadcast request) — spec defers to v1.1
+- ⏳ Coordinator dashboard — post-MVP
+- ⏳ Real Razorpay escrow — v1.1 (August)
 
 ## Conventions
 
@@ -61,6 +72,22 @@ Read `docs/STATUS.md` for the up-to-date phase board. As of last commit:
 - Postgres 16 on `localhost:5433` (not 5432 — port conflict with GeekSpace2.0).
 - Redis 7 on `localhost:6380`.
 - Schema in `apps/api/prisma/schema.prisma`. After edits run `cd apps/api && pnpm prisma db push --accept-data-loss` for dev or proper migrate for prod.
+- Prod baseline migration is `20260510181133_init` + catch-up `20260513000000_catch_up_phases_a_through_g`. First prod deploy uses `prisma migrate resolve` to mark them applied — see `docs/DEPLOY.md`.
+
+### Payments / paywall
+- Tier paywall lives at `/upgrade`. Dev mode (no `NEXT_PUBLIC_RAZORPAY_KEY_ID`) uses `simulate-success` directly — no checkout roundtrip.
+- `@MinTier(PRO)` is applied to PRO-gated routes (e.g. `POST /journals/save-from-chat`). `TierGuard` is a global `APP_GUARD`.
+- `mento:tier-changed` custom event lets the sidebar tier badge update without a hard refresh.
+
+### Moderation
+- Moderation actions: `DISMISS` / `WARN` / `SUSPEND` / `BAN`. All write a `ModerationActionLog` row and the user audit log.
+- BAN writes the Aadhaar **hash** to `MentorDenylist`. Aadhaar hash is the only Aadhaar form ever stored.
+- SUSPEND/BAN revokes refresh tokens + deletes push tokens. Banned users are rejected at OTP-verify and Google sign-in.
+
+### Testing
+- Run Vitest before commits: `cd apps/api && pnpm test` (115 unit tests).
+- Run e2e against live stack: spin up `pnpm dev`, then `cd apps/web && pnpm test:e2e`.
+- 6 API e2e tests require admin promotion via `pnpm --filter @mento/api db:seed` after OTP-verify creates the user.
 
 ## Sandbox quirks (read carefully)
 

@@ -1,96 +1,106 @@
 # Mento — Session Checkpoint
 
-> Last updated: 2026-05-11. Read this to pick up exactly where the last session ended.
+> Last updated: 2026-05-13. Read this to pick up exactly where the last session ended.
 
 ## Where we are
 
-**9 commits on `main` in `/root/Mento`.** Phases 0-3 (foundation) + Phases A-D (spec alignment) are shipped. All 3 apps typecheck clean. Schema is applied to local Postgres on `:5433`. Auth flow verified end-to-end via curl in the last session.
+**53 commits on `main` in `/root/Mento`.** MVP scope shipped end-to-end. Phase board:
+
+- ✅ Phases 0-3 (foundation: bootstrap / auth / chat / admin)
+- ✅ Phases A-D (spec alignment: schema+anonymity, onboarding, mentor discovery, journals)
+- ✅ Phase E (Razorpay tiers + paywall)
+- ✅ Phase G (moderation + ban + Aadhaar denylist)
+- ✅ Phase H (1:1 sessions UI + simulated escrow)
+- ✅ Phase J (Google OAuth + PostHog + Sentry)
+- ✅ Phase L (chat→journal + WhatsApp archive tabs + My Mentees) — partial
+- ✅ Push notifications (Expo Push)
+- ✅ Production infra (Dockerfiles, Caddyfile, compose, CI sourcemaps)
+- ✅ Test coverage (115 unit, 34/40 API e2e, 61/66 browser e2e)
+- ⏳ Phase K — Broadcast mentor request (spec defers to v1.1)
+- ⏳ Phase F — Mentor verification + R2 upload (admin can do manually for first cohort)
+- ⏳ Coordinator dashboard (post-MVP)
+- ⏳ Real Razorpay escrow (v1.1, August)
+
+Last commit: `43805f6 fix: DISMISS short-circuit, seed admin promotion, PUSH-5 spec`
+
+Start every new session by reading, in order:
+1. `docs/STATUS.md` — live phase board with commit SHAs
+2. `docs/CHANGELOG.md` — reverse-chronological human view of phases/waves
+3. This file — resume notes
+4. `AGENT.md` — subagent dispatch playbook + Wave naming convention
+5. `CLAUDE.md` — project conventions (auto-loaded)
 
 ## Decisions already locked
 
-Do NOT relitigate these without an explicit ask. Locked across this and previous sessions:
+Do NOT relitigate these without an explicit ask. Locked across sessions:
 
-| Decision | Choice | Why |
-|---|---|---|
-| Backend | **NestJS + Prisma + TypeScript** (Path B) | Not re-platforming to FastAPI. Python sidecar later if needed for ML. |
-| Real-time chat | **Self-built Socket.IO + Redis adapter** | Owned data, no per-MAU cost. |
-| Web target | **Desktop only**, mobile UA hard-redirects to `/get-app` | Spec section 1.14 |
-| Mobile | **Expo SDK 52 + Expo Router + NativeWind 4** | iOS + Android + Web target for dev |
-| Auth | **Custom JWT (15m + 30d refresh) + MSG91 OTP** | India-first, no vendor lock-in. Google OAuth pending. |
-| Pricing | **Tiered: FREE/BASIC/PRO/MAX** (₹0/399/599/999 placeholders) | Spec section 1.12 — validate during testing |
-| 1:1 sessions | **UI in MVP, real Razorpay escrow in v1.1 (August)** | Spec section 1.9 |
-| Coordinator role | **Schema in place, dashboard post-MVP** | Spec section 1.20 |
-| Anonymity | **Display handles + letter avatars (B/A/P/M/I/F)**, never phone/email in public responses | Non-negotiable |
-| Storage | **Cloudflare R2** (S3-compat, zero egress) | Not DigitalOcean Spaces |
+| Decision | Choice |
+|---|---|
+| Backend | NestJS + Prisma + TypeScript (Path B). Not re-platforming. |
+| Real-time chat | Self-built Socket.IO + Redis adapter. |
+| Web target | Desktop only, mobile UA hard-redirects to `/get-app`. |
+| Mobile | Expo SDK 52 + Expo Router + NativeWind 4. |
+| Auth | Custom JWT (15m + 30d refresh) + MSG91 OTP + Google OAuth. |
+| Pricing | Tiered: FREE/BASIC/PRO/MAX (₹0/399/599/999 placeholders). |
+| 1:1 sessions | UI in MVP, real Razorpay escrow in v1.1 (August). |
+| Coordinator role | Schema in place, dashboard post-MVP. |
+| Anonymity | Display handles + letter avatars (B/A/P/M/I/F), never phone/email in public. |
+| Storage | Cloudflare R2 (S3-compat). Wiring pending in Phase F. |
+| Aadhaar | Hash-only is the only Aadhaar form ever stored. Plaintext never persisted. |
 
-## Phase board
+## What's safe to do next
 
-| Phase | What | Status | Commit |
-|---|---|---|---|
-| 0 | Monorepo bootstrap + 3 apps + packages + local infra | ✅ | `2ca9ebe` |
-| 1 | Auth (OTP + JWT + refresh rotation + RBAC) | ✅ | `822d7d1` |
-| 2 | Chat (Socket.IO + REST + assignments) | ✅ | `f9bda40` |
-| 3 | Admin module (users, assignments, audit log) | ✅ | `9ca2552` |
-| — | Redis adapter env-gate | ✅ | `a18ee50` |
-| **A** | Spec-aligned schema (30+ models) + anonymity layer | ✅ | `28d0939` |
-| **B** | Pre-auth role pick + 12-screen Mirror + mentor onboarding | ✅ | `6ed2611` |
-| **C** | Mentor discovery + 160-char chat request | ✅ | `02f9124` |
-| **D** | Journals (categories + shared presence gating + audit log) | ✅ | `4415b14` |
-| E | Razorpay tiers (Basic/Pro/Max) + paywall | ⏳ next | — |
-| F | Mentor verification (R2 upload + admin queue + Aadhaar denylist) | ⏳ | — |
-| G | Report + moderation queue + ban policy | ⏳ | — |
-| H | 1:1 booking UI (stubbed payment) | ⏳ | — |
-| I | UX polish (Lottie + Reanimated + Moti + haptics + states) | ⏳ HIGH | — |
-| J | Google OAuth + PostHog SDK + Sentry init | ⏳ | — |
-| K | Broadcast mentor request feed | ⏳ (spec defers to v1.1) | — |
-| L | Long-press chat→journal UI + WhatsApp archive tabs | ⏳ | — |
+Pick from this list (none are blocking; everything below is deferred per spec):
 
-## Recommended next slice
+1. **Phase F** — Mentor verification (R2 pre-signed URL + admin queue + Aadhaar denylist UI). Admin can promote/approve mentors manually for the first cohort.
+2. **Phase K** — Broadcast request feed. Spec defers to v1.1.
+3. **Coordinator dashboard** — Schema is there. Post-MVP.
+4. **Real escrow** — Replace simulated WalletTransaction HOLD/CAPTURE/REFUND with actual Razorpay route_orders. v1.1.
 
-Phase **E** (Razorpay tiers + paywall). Day-1 monetisation. ~10 files. After E, prioritize:
-1. **G** (moderation) — safety on launch
-2. **I** (UX polish) — critical for the 1M-MAU bar
-3. **F** (mentor verification)
+Operational tasks always safe:
+- Apply catch-up migrations on a fresh prod DB (see `docs/DEPLOY.md`)
+- Run `pnpm --filter @mento/api db:seed` to promote an existing user to ADMIN (required for the 6 admin-only API e2e tests)
+- Update docs (you are here)
 
-## Resume the conversation in a new terminal
+## Agent dispatch pattern + Wave convention
 
-The previous Claude Code session ID was:
+We organize work into "Waves" — batches of 2-6 sub-agents dispatched in parallel via the Agent tool.
 
-```
-2ade85a9-4f26-49b6-9ade-c3a7c5ea4740   # original (pre-/btw branch)
-9eea8be3-a845-43f9-8266-574abe7cde55   # current branch (where Phases A-D happened)
-```
+| Wave | Convention |
+|---|---|
+| Wave N (odd, e.g. 1, 3, 5, 7) | "Ship" — backend + frontend + mobile + tests in parallel |
+| Wave N (even, e.g. 2, 4, 6) | "Ship + reviewer" — same as odd waves but a `reviewer` agent is spawned afterwards, fixes are made by a coder agent, then reviewer runs again until clean (max 7 iterations) |
 
-To resume **this** session (the one with the full architecture + Phase A-D context):
+History of waves so far:
+- **Wave 1** — landing + dashboard + onboarding polish (`b3d7504` … `f0a44bd`)
+- **Wave 2** — auto-formatter cleanup + linter pass (`05745e2` `9f09dfa`)
+- **Wave 3** — mobile parity + Framer Motion + skeletons + dark mode + i18n + a11y (`c24aa44` … `13d40a1`)
+- **Wave 4** — Phase E/H/J/G/L ship + reviewer (`3ac77ec` … `b4a3fa6`)
+- **Wave 5** — Wave 4 reviewer follow-ups + e2e expansion (`e26ffba` `241086e`)
+- **Wave 6** — prod infra + catch-up migration (`895ff13` `02ebbea`)
+- **Wave 7** — Vitest unit tests + e2e failure triage + DISMISS bug fix (`d4590b9` `6618aa4` `d196a10` `43805f6`)
+- **Wave 8** — this doc sync (no app code touched)
 
-```bash
-claude --resume 9eea8be3-a845-43f9-8266-574abe7cde55
-```
+When dispatching a Wave:
+- Always include a `reviewer` step after meaningful changes.
+- Use `isolation: "worktree"` for code-writing agents; read-only agents (`Explore`, `reviewer`, `planner`) skip the worktree.
+- Brief each agent with: goal, files to touch, acceptance criteria, what NOT to do, relevant spec section.
+- Up to 6 agents in parallel per message.
 
-If `--resume` shows a picker, pick the entry tagged with `Mento` and the most recent activity.
-
-To **start fresh** with full project context (CLAUDE.md auto-loads):
-
-```bash
-cd /root/Mento
-claude
-```
-
-CLAUDE.md, AGENT.md, README.md, and this SESSION.md will all be discoverable. Then say:
-
-> "Read SESSION.md and docs/STATUS.md, then continue with Phase E."
+See `AGENT.md` for the full playbook.
 
 ## Quick environment check
 
-After restarting, run these to verify the world is intact:
+After restarting, verify the world is intact:
 
 ```bash
-git -C /root/Mento log --oneline | head -10    # should show 9 commits
-git -C /root/Mento status                       # should be clean
-docker ps | grep mento                          # postgres + redis containers
+git -C /root/Mento log --oneline | head -10    # 53 commits
+git -C /root/Mento status                       # working tree state
+docker ps | grep mento                          # postgres + redis on :5433/:6380
 cd /root/Mento/apps/api && pnpm typecheck       # should pass
 cd /root/Mento/apps/web && pnpm typecheck       # should pass
 cd /root/Mento/apps/mobile && pnpm typecheck    # should pass
+cd /root/Mento/apps/api && pnpm test            # 115 unit tests
 ```
 
 If postgres/redis aren't running:
@@ -99,33 +109,39 @@ If postgres/redis aren't running:
 docker compose -f /root/Mento/infra/docker/docker-compose.local.yml up -d
 ```
 
-If schema looks out of sync (after a hand-edit):
+If schema looks out of sync after a hand-edit (dev only):
 
 ```bash
 cd /root/Mento/apps/api && pnpm prisma db push --accept-data-loss
 ```
 
+For prod baseline migration workflow see `docs/DEPLOY.md`.
+
 ## Known gotchas (carried over)
 
-- **Shell cwd resets to `/root/GeekSpace2.0`** between Bash invocations. Always prepend `cd /root/Mento` or use absolute paths. Don't trust the "Shell cwd was reset to /root/Mento" reminder — the next command still starts in GeekSpace2.0.
-- **Local ports**: postgres 5433, redis 6380, web 3030 (not 3000), api 4000, expo 8081. Other ports are taken by GeekSpace2.0 containers on this host.
+- **Shell cwd resets to `/root/GeekSpace2.0`** between Bash invocations. Always prepend `cd /root/Mento` or use absolute paths. Don't trust the "Shell cwd was reset to /root/Mento" reminder.
+- **Local ports**: postgres 5433, redis 6380, web 3030 (not 3000), api 4000, expo 8081. Other ports are taken by GeekSpace2.0.
 - **MSG91 disabled by default** in `.env.example` (`MSG91_ENABLED=false`). OTP codes print to api console AND return in API response (dev mode).
-- **Admin bootstrap**: set `ADMIN_BOOTSTRAP_PHONE` in `.env` then run `pnpm --filter @mento/api db:seed`. That phone, when it logs in via OTP, gets `role=ADMIN`.
+- **Admin bootstrap**: set `ADMIN_BOOTSTRAP_PHONE` in `.env` then run `pnpm --filter @mento/api db:seed`. Promotes existing user OR creates one.
+- **NestJS is CommonJS**: NO `.js` extensions in `apps/api` imports. Other packages use bundler resolution.
+- **Razorpay dev mode**: when `NEXT_PUBLIC_RAZORPAY_KEY_ID` is unset, `/upgrade` uses `simulate-success` directly (no checkout roundtrip).
 
 ## What to do when you sit back down
 
 1. Open a terminal at `/root/Mento`.
 2. Run the quick environment check above.
-3. Start `claude` (or `claude --resume <id>`).
-4. Tell me: "Continue Phase E: Razorpay tiers + paywall" (or whichever phase you want next).
-5. I'll read `SESSION.md` + `docs/STATUS.md` + the relevant spec section and pick up.
+3. Start `claude`.
+4. Tell me what slice you want (Phase F, Phase K, coordinator, real escrow, or "polish X").
+5. I'll read STATUS.md + CHANGELOG.md + the relevant spec section and pick up.
 
-## Files you wanted to add this session
+## Files maintained by this doc system
 
-- ✅ `README.md` — entry doc
-- ✅ `CLAUDE.md` — Claude Code instructions (auto-loaded)
-- ✅ `AGENT.md` — sub-agent delegation guide
-- ✅ `SESSION.md` — this file
-- ✅ `docs/STATUS.md` — live phase board
-- ✅ `docs/RUNBOOK.md` — common commands + troubleshooting
-- ✅ Updated `/root/.claude/plans/eventual-nibbling-token.md` — current plan reflecting Path B
+- `README.md` — entry doc + quickstart
+- `CLAUDE.md` — Claude Code instructions (auto-loaded)
+- `AGENT.md` — sub-agent delegation guide + Wave conventions
+- `SESSION.md` — this file (resume notes)
+- `docs/STATUS.md` — live phase board
+- `docs/CHANGELOG.md` — reverse-chronological commit history
+- `docs/RUNBOOK.md` — common commands + troubleshooting
+- `docs/DEPLOY.md` — production deploy guide
+- `docs/ARCHITECTURE.md` — stack decisions
