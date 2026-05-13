@@ -2,7 +2,7 @@
 
 > Anonymous, peer-led mentorship for UPSC aspirants. WhatsApp-simple. Built on the principle that the person who *almost* cleared carries the same wisdom as the person who did.
 
-**Status:** MVP feature-complete. 13 waves shipped across 53+ commits. Phases 0-3 (foundation) + A-L (spec alignment, payments, moderation, sessions, analytics, polish) live. See `docs/STATUS.md` for the full phase board and `docs/CHANGELOG.md` for the wave-by-wave history.
+**Status:** 100% of in-scope MVP shipped. 13 waves across 71 commits on `main`. Foundation (0-3) + spec alignment (A-D) + payments (E) + moderation (G) + sessions (H) + Google OAuth (J) + chat/journal polish (L) + production infra + admin analytics + feature flags + beta invites + onboarding nudges + SEO/OG + EAS mobile pipeline + PostHog event taxonomy. See `docs/STATUS.md` for the live phase board, `docs/CHANGELOG.md` for wave history, and `docs/RELEASE_READINESS.md` for the launch audit (GREEN, gated only on operator credential provisioning).
 
 ---
 
@@ -104,13 +104,13 @@ URLs:
 ## Test
 
 ```bash
-# Unit tests — Vitest, 115 passing (anonymity, auth, moderation, subscriptions, sessions)
+# Unit tests — Vitest, 127 passing (anonymity, auth, moderation, subscriptions, sessions, nudges, invites, analytics, flags)
 cd apps/api && pnpm test
 
-# API e2e — Playwright API project (34/40 pass; 6 require admin-seed promotion)
+# API e2e — Playwright API project (40/40 pass; requires admin-seed promotion)
 cd apps/web && pnpm test:e2e --project=api
 
-# Browser e2e — Playwright desktop-chromium, includes axe-playwright a11y
+# Browser e2e — Playwright desktop-chromium (66/66 pass; axe-playwright a11y + keyboard nav)
 cd apps/web && pnpm test:e2e --project=chromium
 
 # Load tests — k6 (smoke: 50 VUs; full mixed: 500 VUs)

@@ -31,7 +31,7 @@ prisma migrations live in apps/api/prisma/migrations
 
 ## Phase status (live)
 
-Read `docs/STATUS.md` for the up-to-date phase board. As of last commit (53 commits on `main`):
+Read `docs/STATUS.md` for the up-to-date phase board. As of last commit (71 commits on `main`, latest `da593bc`):
 
 - ✅ Phases 0-3 (bootstrap, auth, chat, admin)
 - ✅ Phase A (spec-aligned schema + anonymity layer)
@@ -42,10 +42,13 @@ Read `docs/STATUS.md` for the up-to-date phase board. As of last commit (53 comm
 - ✅ Phase G (moderation: report queue + suspend/ban + Aadhaar denylist)
 - ✅ Phase H (1:1 booking UI + simulated escrow)
 - ✅ Phase J (Google OAuth + PostHog + Sentry)
-- ✅ Phase L (chat→journal + WhatsApp archive tabs + My Mentees, partial)
+- ✅ Phase L (chat→journal + WhatsApp archive tabs + My Mentees)
 - ✅ Push notifications (Expo Push)
-- ✅ Production infra (Dockerfiles, Caddyfile, compose, CI sourcemaps)
-- ✅ Test coverage (115 Vitest unit, 34/40 API e2e, 61/66 browser e2e)
+- ✅ Production infra (Dockerfiles, Caddyfile, compose, CI sourcemaps, BuildKit secret)
+- ✅ Test coverage (127 Vitest unit, 40/40 API e2e, 66/66 browser e2e)
+- ✅ Wave 11 — Admin analytics + feature flags + beta invite codes
+- ✅ Wave 12 — Onboarding nudges (`@nestjs/schedule`) + perf indexes + SEO/OG + hygiene
+- ✅ Wave 13 — EAS mobile build pipeline + PostHog event taxonomy (40 events)
 - ⏳ Phase F (mentor verification + R2 upload) — deferred, admin promotes manually
 - ⏳ Phase K (broadcast request) — spec defers to v1.1
 - ⏳ Coordinator dashboard — post-MVP
@@ -84,10 +87,16 @@ Read `docs/STATUS.md` for the up-to-date phase board. As of last commit (53 comm
 - BAN writes the Aadhaar **hash** to `MentorDenylist`. Aadhaar hash is the only Aadhaar form ever stored.
 - SUSPEND/BAN revokes refresh tokens + deletes push tokens. Banned users are rejected at OTP-verify and Google sign-in.
 
+### Growth / observability / flags
+- **Onboarding nudges**: `@nestjs/schedule` crons (`0 */6 * * *` mirror, `0 */12 * * *` mentor). Enable via `NUDGES_ENABLED=true`; disable with `NUDGES_ENABLED=false`. 7-day dedup via `OnboardingEvent`. 500-row cap per cron tick. Admin trigger: `POST /admin/nudges/trigger`.
+- **Feature flags**: server-driven via `/flags` (public) and `/admin/flags` (admin). 60s web/mobile poll + 30s Redis cache. Seed defaults after first deploy with `POST /admin/flags/seed` (admin token). Defaults: `chat-search: true`, others `false`.
+- **Beta invites**: gate new signups behind a code with `BETA_INVITE_REQUIRED=true`. Admin creates codes at `/admin/invites`. Redemption is race-safe via atomic `UPDATE ... WHERE uses < maxUses` SQL.
+- **PostHog analytics**: keyed by anonymous user UUID only — **never include PII in `capture()` props** (no phone, email, displayHandle, googleSub, name, aadhaar). UUID-only `identify()` at login. Full taxonomy lives in `docs/ANALYTICS_EVENTS.md` (40 events).
+
 ### Testing
-- Run Vitest before commits: `cd apps/api && pnpm test` (115 unit tests).
+- Run Vitest before commits: `cd apps/api && pnpm test` (127 unit tests).
 - Run e2e against live stack: spin up `pnpm dev`, then `cd apps/web && pnpm test:e2e`.
-- 6 API e2e tests require admin promotion via `pnpm --filter @mento/api db:seed` after OTP-verify creates the user.
+- API e2e tests require admin promotion via `pnpm --filter @mento/api db:seed` after OTP-verify creates the user.
 
 ## Sandbox quirks (read carefully)
 
@@ -148,5 +157,9 @@ See `AGENT.md` for delegation patterns. TL;DR: parallelize independent slices (e
 - Copy bank: `apps/{web,mobile}/lib/copy.ts`
 - Auth gating (mobile): `apps/mobile/app/_layout.tsx`
 - Onboarding state machine: `apps/api/src/modules/onboarding/onboarding.service.ts`
+- Analytics taxonomy (40 events): `docs/ANALYTICS_EVENTS.md`
+- Release audit: `docs/RELEASE_READINESS.md`
+- k6 load tests + scaling playbook: `loadtest/`
+- Wave conventions: `AGENT.md`
 - Spec: `docs/Requirement.md`
 - Plan file: `/root/.claude/plans/eventual-nibbling-token.md`
