@@ -38,7 +38,7 @@ export default function Profile() {
 
         <View className="mt-8 rounded-2xl bg-gray-50 p-4">
           <Row label="Role" value={user?.role ?? '—'} />
-          <Row label="Phone (private)" value={user?.phone ?? '—'} />
+          <Row label="Account ID" value={user?.id ? user.id.slice(0, 8) : '—'} />
           <Row label="Joined" value={user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'} />
         </View>
 

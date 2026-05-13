@@ -65,7 +65,7 @@ test.describe('API: onboarding flows', () => {
     const res = await request.get(`${API}/me`, { headers: authHeader(session) })
     expect(res.ok()).toBeTruthy()
     const body = (await res.json()) as {
-      user: { phone: string | null; role: string }
+      user: { id: string; role: string; status: string }
       profile: {
         displayHandle: string
         avatarLetter: string
@@ -73,7 +73,11 @@ test.describe('API: onboarding flows', () => {
         hasPurpleTick: boolean
       } | null
     }
-    // /me may include phone for the user themselves — that's OK (it's THEIR phone).
+    // Anonymity invariant: /me must NOT return phone, email, or googleSub.
+    const responseText = JSON.stringify(body)
+    expect(responseText).not.toContain('"phone"')
+    expect(responseText).not.toContain('"email"')
+    expect(responseText).not.toContain('"googleSub"')
     expect(body.profile?.displayHandle).toMatch(/^Aspirant_/)
     expect(body.profile?.avatarLetter).toBe('B')
     expect(body.profile?.avatarColor).toBe('SLATE')

@@ -77,12 +77,16 @@ export type SessionRequestStatus =
 
 export interface User {
   id: string
-  phone: string | null
-  email: string | null
   role: Role
   status: UserStatus
   createdAt: string
   updatedAt: string
+  // The following fields are admin-only — present only in /admin/users/:id responses.
+  // Removed from /auth/otp/verify, /auth/google, /me, and all public/self endpoints
+  // to enforce the anonymity invariant. Never render these in non-admin UI.
+  phone?: string | null
+  email?: string | null
+  googleSub?: string | null
 }
 
 export interface Profile {

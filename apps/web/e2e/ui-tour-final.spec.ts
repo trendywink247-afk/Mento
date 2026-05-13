@@ -39,7 +39,7 @@ test.describe('final captures', () => {
           'mento.auth',
           JSON.stringify({
             state: {
-              user: { id: u, phone: null, email: null, role: 'ASPIRANT', status: 'ACTIVE', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+              user: { id: u, role: 'ASPIRANT', status: 'ACTIVE', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
               profile: p,
               tokens: { accessToken: a, refreshToken: r, expiresIn: 900 },
             },

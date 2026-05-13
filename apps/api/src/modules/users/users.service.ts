@@ -14,8 +14,8 @@ export class UsersService {
     return {
       user: {
         id: user.id,
-        phone: user.phone,
-        email: user.email,
+        // Anonymity invariant: phone, email, googleSub are admin-only fields.
+        // Mirror the /auth/otp/verify and /auth/google shapes — no PII here.
         role: user.role,
         status: user.status,
         createdAt: user.createdAt.toISOString(),
