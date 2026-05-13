@@ -112,7 +112,7 @@ export default function AdminFlagsPage() {
         <div className="mt-8 rounded-lg border bg-card p-8 text-center">
           <p className="text-base font-medium">No flags found.</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Click "Seed defaults" to create the built-in flag set.
+            Click &ldquo;Seed defaults&rdquo; to create the built-in flag set.
           </p>
         </div>
       ) : (

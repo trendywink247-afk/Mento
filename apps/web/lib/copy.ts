@@ -169,58 +169,6 @@ export const MODERATION_COPY = {
     'Banning is permanent — the user and their Aadhaar will be denylisted from re-applying as a mentor.',
 } as const
 
-// Analytics dashboard copy (Phase E — founder metrics)
-export const ANALYTICS_COPY = {
-  pageTitle: 'Analytics',
-  pageSubtitle: 'Founder-facing metrics. Refreshes every 60 seconds.',
-  generatedAgo: (secs: number) =>
-    secs < 5 ? 'Just now' : `${secs}s ago`,
-  refresh: 'Refresh',
-  sections: {
-    users: 'Users',
-    signups: 'Signups',
-    funnel: 'Acquisition funnel',
-    subscriptions: 'Subscriptions',
-    moderation: 'Moderation health',
-    verification: 'Mentor verification',
-  },
-  cards: {
-    totalUsers: 'Total users',
-    activeMentors: 'Active mentors',
-    paidSubscribers: 'Paid subscribers',
-    openReports: 'Open reports',
-    mrr: 'MRR (INR)',
-  },
-  chart: {
-    last7d: 'Last 7 days',
-    last30d: 'Last 30 days',
-    signupsLabel: 'Signups / day',
-    messagesLabel: 'Messages / day',
-    noData: 'No data yet',
-  },
-  funnel: {
-    signedUp: 'Signed up',
-    mirrorComplete: 'Mirror complete',
-    mentorAccepted: 'Mentor accepted',
-    paidTier: 'Paid tier',
-    conversionPct: (pct: number) => `${pct}%`,
-  },
-  verification: {
-    pending: 'Pending review',
-    approved7d: 'Approved (7d)',
-    rejected7d: 'Rejected (7d)',
-  },
-  moderation: {
-    open: 'Open reports',
-    actions30d: 'Actions (30d)',
-    warn: 'Warn',
-    dismiss: 'Dismiss',
-    suspend: 'Suspend',
-    ban: 'Ban',
-  },
-  empty: 'No data yet — come back once users sign up.',
-} as const
-
 // Auth flow copy (login + OTP)
 export const AUTH_COPY = {
   loginLeftPanelQuote: 'We honour the struggle.',
@@ -235,4 +183,14 @@ export const AUTH_COPY = {
   otpWrongCode: "Code didn't match. Try again.",
   otpResendLabel: 'Resend OTP',
   otpResendCountdown: 'Resend in',
+} as const
+
+// Invite code copy (beta gate)
+export const INVITE_COPY = {
+  required: 'Mento is currently invite-only. Enter your invite code.',
+  invalid: "That invite code isn't valid.",
+  expired: 'That invite code has expired or been used.',
+  label: 'Invite code',
+  placeholder: 'ABCD1234',
+  hint: 'Enter your 8-character invite code.',
 } as const

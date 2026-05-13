@@ -9,7 +9,7 @@ import { useAuthStore } from '@/lib/auth-store'
 import { OtpInput } from '@/components/OtpInput'
 import { identify } from '@/lib/analytics'
 import { MotionTap } from '@/components/motion'
-import { MODERATION_COPY } from '@/lib/copy'
+import { MODERATION_COPY, INVITE_COPY } from '@/lib/copy'
 
 const RESEND_SECONDS = 30
 
@@ -34,10 +34,15 @@ function OtpForm() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [suspended, setSuspended] = useState(false)
+  const [inviteRequired, setInviteRequired] = useState(false)
   const [clearKey, setClearKey] = useState(0)
   const [countdown, setCountdown] = useState(RESEND_SECONDS)
   const [resending, setResending] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Read invite code from sessionStorage (set by /login if BETA_INVITE_REQUIRED)
+  const inviteCode =
+    typeof window !== 'undefined' ? (sessionStorage.getItem('mento_invite_code') ?? undefined) : undefined
 
   useEffect(() => {
     startCountdown()
@@ -89,12 +94,15 @@ function OtpForm() {
     }
     setSubmitting(true)
     setError(null)
+    setInviteRequired(false)
     try {
-      const session = await getApiClient().auth.verifyOtp(phone, codeValue)
+      const session = await getApiClient().auth.verifyOtp(phone, codeValue, inviteCode)
       setSession(session)
       // Identify in PostHog and Sentry — UUID only, no PII.
       identify(session.user.id, { role: session.user.role })
       Sentry.setUser({ id: session.user.id })
+      // Clean up invite code from session after successful sign-in
+      sessionStorage.removeItem('mento_invite_code')
       const state = await getApiClient().onboarding.state().catch(() => null)
       router.push(nextDestination(state, role))
     } catch (err) {
@@ -104,6 +112,10 @@ function OtpForm() {
       const msg = err instanceof Error ? err.message.toLowerCase() : ''
       if (msg.includes('suspended') || msg.includes('banned')) {
         setSuspended(true)
+        return
+      }
+      if (msg.includes('invite code required')) {
+        setInviteRequired(true)
         return
       }
       setError(te('otpWrongCode'))
@@ -164,6 +176,24 @@ function OtpForm() {
     return (
       <div className="rounded-lg border border-red-300 bg-red-50 px-5 py-4 text-sm text-red-800 dark:border-red-700 dark:bg-red-950 dark:text-red-200">
         {MODERATION_COPY.accountSuspended}
+      </div>
+    )
+  }
+
+  // Invite code required banner — redirect back to login.
+  if (inviteRequired) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+          {INVITE_COPY.required}
+        </div>
+        <button
+          type="button"
+          onClick={() => router.push('/login')}
+          className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-all"
+        >
+          Back to login
+        </button>
       </div>
     )
   }

@@ -1,4 +1,4 @@
-import { IsString, Matches } from 'class-validator'
+import { IsString, IsOptional, Matches } from 'class-validator'
 
 export class OtpVerifyDto {
   @IsString()
@@ -8,4 +8,9 @@ export class OtpVerifyDto {
   @IsString()
   @Matches(/^\d{6}$/, { message: 'OTP must be 6 digits' })
   code!: string
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Z0-9]{8}$/, { message: 'Invite code must be 8 uppercase alphanumeric characters' })
+  inviteCode?: string
 }

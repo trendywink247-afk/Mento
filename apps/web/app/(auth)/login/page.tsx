@@ -8,6 +8,7 @@ import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { identify } from '@/lib/analytics'
 import { MotionTap } from '@/components/motion'
+import { INVITE_COPY } from '@/lib/copy'
 
 // Augment window to allow Google Identity Services global
 declare global {
@@ -212,6 +213,10 @@ function SpinnerIcon() {
 // Phone OTP form
 // ─────────────────────────────────────────────
 
+const BETA_INVITE_REQUIRED = process.env.NEXT_PUBLIC_BETA_INVITE_REQUIRED === 'true'
+
+type InviteStatus = 'idle' | 'checking' | 'valid' | 'invalid' | 'expired'
+
 function LoginForm() {
   const router = useRouter()
   const params = useSearchParams()
@@ -234,6 +239,11 @@ function LoginForm() {
   const [devCode, setDevCode] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Invite code state (only used when BETA_INVITE_REQUIRED)
+  const [inviteCode, setInviteCode] = useState('')
+  const [inviteStatus, setInviteStatus] = useState<InviteStatus>('idle')
+  const inviteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Live validation after first invalid submit
   useEffect(() => {
     if (touched && digits.length > 0) {
@@ -241,6 +251,38 @@ function LoginForm() {
       setError(err)
     }
   }, [digits, touched, te])
+
+  // Debounced invite code validation
+  useEffect(() => {
+    if (!BETA_INVITE_REQUIRED) return
+    if (inviteCode.length === 0) {
+      setInviteStatus('idle')
+      return
+    }
+    if (inviteCode.length !== 8 || !/^[A-Z0-9]{8}$/.test(inviteCode.toUpperCase())) {
+      // Don't validate until 8 chars of alphanumeric entered
+      setInviteStatus('idle')
+      return
+    }
+    if (inviteDebounceRef.current) clearTimeout(inviteDebounceRef.current)
+    setInviteStatus('checking')
+    inviteDebounceRef.current = setTimeout(async () => {
+      try {
+        await getApiClient().invites.validate(inviteCode.toUpperCase())
+        setInviteStatus('valid')
+      } catch (err) {
+        const msg = err instanceof Error ? err.message.toLowerCase() : ''
+        if (msg.includes('expired') || msg.includes('used') || msg.includes('disabled')) {
+          setInviteStatus('expired')
+        } else {
+          setInviteStatus('invalid')
+        }
+      }
+    }, 500)
+    return () => {
+      if (inviteDebounceRef.current) clearTimeout(inviteDebounceRef.current)
+    }
+  }, [inviteCode])
 
   function triggerShake() {
     setShake(true)
@@ -271,10 +313,24 @@ function LoginForm() {
     }
     setError(null)
     const phone = `+91${digits}`
+
+    // Beta gate: require invite code on frontend (API also enforces this)
+    if (BETA_INVITE_REQUIRED && inviteStatus !== 'valid') {
+      setError(INVITE_COPY.required)
+      triggerShake()
+      return
+    }
+
     setLoading(true)
     try {
       const res = await getApiClient().auth.requestOtp(phone)
       if (res.devCode) setDevCode(res.devCode)
+
+      // Persist invite code so /otp page can send it with verifyOtp
+      if (BETA_INVITE_REQUIRED && inviteCode) {
+        sessionStorage.setItem('mento_invite_code', inviteCode.toUpperCase())
+      }
+
       const otpUrl = roleParam
         ? `/otp?phone=${encodeURIComponent(phone)}&role=${encodeURIComponent(roleParam)}`
         : `/otp?phone=${encodeURIComponent(phone)}`
@@ -296,8 +352,62 @@ function LoginForm() {
       : 'border-input',
   ].join(' ')
 
+  // Invite code is valid enough to proceed
+  const inviteReady = !BETA_INVITE_REQUIRED || inviteStatus === 'valid'
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+      {/* Beta invite code field — shown only when BETA_INVITE_REQUIRED */}
+      {BETA_INVITE_REQUIRED && (
+        <div>
+          <p className="mb-3 text-sm text-muted-foreground">{INVITE_COPY.required}</p>
+          <label htmlFor="invite-code" className="mb-1.5 block text-sm font-medium">
+            {INVITE_COPY.label}
+          </label>
+          <div className="relative">
+            <input
+              id="invite-code"
+              type="text"
+              inputMode="text"
+              maxLength={8}
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))}
+              placeholder={INVITE_COPY.placeholder}
+              className={[
+                'w-full rounded-lg border bg-background px-3 py-2.5 text-sm pr-8',
+                'focus:outline-none focus:ring-2 focus:ring-ring',
+                'placeholder:text-muted-foreground/60 font-mono tracking-widest',
+                inviteStatus === 'valid' ? 'border-green-500 focus:ring-green-500' : '',
+                inviteStatus === 'invalid' || inviteStatus === 'expired' ? 'border-destructive focus:ring-destructive' : '',
+                inviteStatus === 'idle' || inviteStatus === 'checking' ? 'border-input' : '',
+              ].join(' ')}
+              autoComplete="off"
+            />
+            {/* Status indicator */}
+            {inviteStatus === 'checking' && (
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                <SpinnerIcon />
+              </span>
+            )}
+            {inviteStatus === 'valid' && (
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-green-500 text-base">&#10003;</span>
+            )}
+            {(inviteStatus === 'invalid' || inviteStatus === 'expired') && (
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-destructive text-base">&#10005;</span>
+            )}
+          </div>
+          {inviteStatus === 'invalid' && (
+            <p className="mt-1.5 text-xs text-destructive" role="alert">{INVITE_COPY.invalid}</p>
+          )}
+          {inviteStatus === 'expired' && (
+            <p className="mt-1.5 text-xs text-destructive" role="alert">{INVITE_COPY.expired}</p>
+          )}
+          {inviteStatus === 'idle' && (
+            <p className="mt-1.5 text-xs text-muted-foreground">{INVITE_COPY.hint}</p>
+          )}
+        </div>
+      )}
+
       {/* Google sign-in */}
       <GoogleSigninButton onSuccess={() => { /* navigation handled inside component */ }} />
 
@@ -390,10 +500,10 @@ function LoginForm() {
       </label>
 
       {/* CTA */}
-      <MotionTap disabled={loading || !agreed}>
+      <MotionTap disabled={loading || !agreed || !inviteReady}>
         <button
           type="submit"
-          disabled={loading || !agreed}
+          disabled={loading || !agreed || !inviteReady}
           className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? t('sending') : t('sendOtp')}

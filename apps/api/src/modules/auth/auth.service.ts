@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common'
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import { Role, User, UserStatus } from '@prisma/client'
@@ -8,6 +13,7 @@ import { Redis } from 'ioredis'
 import { OAuth2Client } from 'google-auth-library'
 import { PrismaService } from '../../database/prisma.service'
 import { OtpService } from './otp.service'
+import { InvitesService } from '../invites/invites.service'
 import { colorForLetter, defaultLetterForRole, generateDisplayHandle } from '../../common/anonymity'
 
 export interface IssueResult {
@@ -27,6 +33,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly otp: OtpService,
     private readonly config: ConfigService,
+    private readonly invites: InvitesService,
   ) {
     this.redis = new Redis(this.config.get<string>('REDIS_URL') ?? 'redis://localhost:6379/0')
     this.accessTtlSec = parseTtl(this.config.get<string>('JWT_ACCESS_TTL') ?? '15m')
@@ -37,7 +44,10 @@ export class AuthService {
     return this.otp.issue(phone)
   }
 
-  async googleSignin(idToken: string): Promise<{ user: User; tokens: IssueResult }> {
+  async googleSignin(
+    idToken: string,
+    inviteCode?: string,
+  ): Promise<{ user: User; tokens: IssueResult }> {
     const clientId = this.config.get<string>('GOOGLE_CLIENT_ID')
     if (!clientId) {
       throw new BadRequestException('Google OAuth is not configured on this server')
@@ -65,8 +75,12 @@ export class AuthService {
 
     // Look up by googleSub first; email is not guaranteed to be stable across Google accounts.
     let user = await this.prisma.user.findUnique({ where: { googleSub } })
+    const isNewUser = !user
 
     if (!user) {
+      // Beta gate: new users require an invite code when BETA_INVITE_REQUIRED=true.
+      this.assertInviteCodeProvided(inviteCode)
+
       // New user — create with Aspirant_NNNN handle.
       const letter = defaultLetterForRole(Role.ASPIRANT)
       user = await this.createUserWithProfile({
@@ -75,6 +89,11 @@ export class AuthService {
         role: Role.ASPIRANT,
         letter,
       })
+
+      // Redeem invite code. If redemption fails, clean up the newly-created user.
+      if (inviteCode) {
+        await this.redeemOrRollback(user.id, inviteCode)
+      }
     } else if (user.status === UserStatus.SUSPENDED) {
       throw new UnauthorizedException('Account suspended')
     } else if (user.status === UserStatus.BANNED) {
@@ -87,17 +106,31 @@ export class AuthService {
       })
     }
 
+    void isNewUser // used for invite logic above; suppress lint
+
     const tokens = await this.issueTokens(user)
     return { user, tokens }
   }
 
-  async verifyOtp(phone: string, code: string): Promise<{ user: User; tokens: IssueResult }> {
+  async verifyOtp(
+    phone: string,
+    code: string,
+    inviteCode?: string,
+  ): Promise<{ user: User; tokens: IssueResult }> {
     await this.otp.verify(phone, code)
 
     let user = await this.prisma.user.findUnique({ where: { phone } })
     if (!user) {
+      // Beta gate: new users require an invite code when BETA_INVITE_REQUIRED=true.
+      this.assertInviteCodeProvided(inviteCode)
+
       const letter = defaultLetterForRole(Role.ASPIRANT)
       user = await this.createUserWithProfile({ phone, role: Role.ASPIRANT, letter })
+
+      // Redeem invite code. If redemption fails, clean up the newly-created user.
+      if (inviteCode) {
+        await this.redeemOrRollback(user.id, inviteCode)
+      }
     } else if (user.status === UserStatus.PENDING_VERIFICATION) {
       user = await this.prisma.user.update({
         where: { id: user.id },
@@ -111,6 +144,32 @@ export class AuthService {
 
     const tokens = await this.issueTokens(user)
     return { user, tokens }
+  }
+
+  /**
+   * Throws ForbiddenException if BETA_INVITE_REQUIRED is true and no inviteCode provided.
+   */
+  private assertInviteCodeProvided(inviteCode?: string): void {
+    const betaRequired = this.config.get<string>('BETA_INVITE_REQUIRED')
+    if (betaRequired === 'true' && !inviteCode) {
+      throw new ForbiddenException('Invite code required during beta')
+    }
+  }
+
+  /**
+   * Attempts to redeem the invite code for the given user.
+   * If redemption throws, deletes the just-created user and re-throws.
+   */
+  private async redeemOrRollback(userId: string, code: string): Promise<void> {
+    try {
+      await this.invites.redeemForUser(userId, code)
+    } catch (err) {
+      // Roll back the newly created user so a failed/invalid invite doesn't ghost-create accounts.
+      await this.prisma.user.delete({ where: { id: userId } }).catch(() => {
+        // swallow — best-effort cleanup
+      })
+      throw err
+    }
   }
 
   async refresh(refreshToken: string): Promise<IssueResult> {

@@ -26,7 +26,7 @@ export class AuthController {
   @Post('otp/verify')
   @HttpCode(200)
   async verifyOtp(@Body() body: OtpVerifyDto) {
-    const { user, tokens } = await this.auth.verifyOtp(body.phone, body.code)
+    const { user, tokens } = await this.auth.verifyOtp(body.phone, body.code, body.inviteCode)
     const profile = await this.prisma.profile.findUnique({ where: { userId: user.id } })
     return {
       user: {
@@ -59,7 +59,7 @@ export class AuthController {
   @Post('google')
   @HttpCode(200)
   async googleSignin(@Body() body: GoogleSigninDto) {
-    const { user, tokens } = await this.auth.googleSignin(body.idToken)
+    const { user, tokens } = await this.auth.googleSignin(body.idToken, body.inviteCode)
     const profile = await this.prisma.profile.findUnique({ where: { userId: user.id } })
     return {
       user: {

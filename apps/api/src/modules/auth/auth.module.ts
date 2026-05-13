@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+import { Module, forwardRef } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { JwtModule } from '@nestjs/jwt'
 import { PassportModule } from '@nestjs/passport'
@@ -9,6 +9,7 @@ import { OtpService } from './otp.service'
 import { JwtStrategy } from './jwt.strategy'
 import { JwtAuthGuard } from './guards/jwt-auth.guard'
 import { RolesGuard } from './guards/roles.guard'
+import { InvitesModule } from '../invites/invites.module'
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { RolesGuard } from './guards/roles.guard'
         secret: config.get<string>('JWT_ACCESS_SECRET'),
       }),
     }),
+    forwardRef(() => InvitesModule),
   ],
   controllers: [AuthController],
   providers: [
