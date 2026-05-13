@@ -67,6 +67,21 @@ function makeOtpMock() {
   }
 }
 
+function makeMetricsMock() {
+  const counter = { inc: vi.fn() }
+  return {
+    otpRequestTotal: counter,
+    otpVerifyTotal: counter,
+    signupTotal: counter,
+    paywallTotal: counter,
+    subscriptionChangeTotal: counter,
+    moderationActionTotal: counter,
+    chatRequestTotal: counter,
+    sessionRequestTotal: counter,
+    httpRequestDuration: { startTimer: vi.fn().mockReturnValue(vi.fn()) },
+  }
+}
+
 // Build a real AuthService with mocked collaborators.
 // We cannot use NestJS DI here — call the constructor directly.
 function makeService(overrides?: {
@@ -78,6 +93,8 @@ function makeService(overrides?: {
   const jwt = overrides?.jwt ?? makeJwtMock()
   const otp = makeOtpMock()
   const config = overrides?.config ?? makeConfigMock()
+  const invites = { redeemForUser: vi.fn().mockResolvedValue({}) }
+  const metrics = makeMetricsMock()
 
   // AuthService constructor creates a Redis client.
   // We must mock the Redis constructor before importing.
@@ -90,6 +107,8 @@ function makeService(overrides?: {
     jwt as unknown as import('@nestjs/jwt').JwtService,
     otp as unknown as import('./otp.service').OtpService,
     config as unknown as import('@nestjs/config').ConfigService,
+    invites as unknown as import('../invites/invites.service').InvitesService,
+    metrics as unknown as import('../metrics/metrics.service').MetricsService,
   )
 
   return { svc, prisma, jwt, config }
@@ -473,12 +492,16 @@ describe('AuthService.requestOtp', () => {
     const prisma = makePrismaMock()
     const jwt = makeJwtMock()
     const config = makeConfigMock()
+    const invites = { redeemForUser: vi.fn().mockResolvedValue({}) }
+    const metrics = makeMetricsMock()
 
     const svc = new AuthService(
       prisma as unknown as import('../../database/prisma.service').PrismaService,
       jwt as unknown as import('@nestjs/jwt').JwtService,
       otp as unknown as import('./otp.service').OtpService,
       config as unknown as import('@nestjs/config').ConfigService,
+      invites as unknown as import('../invites/invites.service').InvitesService,
+      metrics as unknown as import('../metrics/metrics.service').MetricsService,
     )
 
     await svc.requestOtp('+919876543210')
@@ -510,11 +533,15 @@ describe('AuthService.verifyOtp', () => {
     const jwt = makeJwtMock()
     jwt.signAsync.mockResolvedValue('signed-token')
     const config = makeConfigMock()
+    const invites = { redeemForUser: vi.fn().mockResolvedValue({}) }
+    const metrics = makeMetricsMock()
     const svc = new AuthService(
       prisma as unknown as import('../../database/prisma.service').PrismaService,
       jwt as unknown as import('@nestjs/jwt').JwtService,
       otp as unknown as import('./otp.service').OtpService,
       config as unknown as import('@nestjs/config').ConfigService,
+      invites as unknown as import('../invites/invites.service').InvitesService,
+      metrics as unknown as import('../metrics/metrics.service').MetricsService,
     )
     return { svc, otp, prisma, jwt }
   }
@@ -573,11 +600,15 @@ describe('AuthService.verifyOtp', () => {
     const jwt = makeJwtMock()
     jwt.signAsync.mockResolvedValue('signed')
     const config = makeConfigMock()
+    const invites2 = { redeemForUser: vi.fn().mockResolvedValue({}) }
+    const metrics2 = makeMetricsMock()
     const svc = new AuthService(
       prisma as unknown as import('../../database/prisma.service').PrismaService,
       jwt as unknown as import('@nestjs/jwt').JwtService,
       otp as unknown as import('./otp.service').OtpService,
       config as unknown as import('@nestjs/config').ConfigService,
+      invites2 as unknown as import('../invites/invites.service').InvitesService,
+      metrics2 as unknown as import('../metrics/metrics.service').MetricsService,
     )
     const result = await svc.verifyOtp('+910000000004', '123456')
     expect(prisma.user.update).toHaveBeenCalledWith(

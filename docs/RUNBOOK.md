@@ -68,11 +68,62 @@ cd apps/api && pnpm prisma db push --accept-data-loss
 |---|---|
 | API | http://localhost:4000 |
 | API health | http://localhost:4000/healthz |
+| API metrics (docker-internal only) | http://api:4000/metrics |
 | Web | http://localhost:3030 |
 | Expo dev server | http://localhost:8081 |
 | Expo Web | http://localhost:8081 (press `w`) |
 | Postgres | localhost:5433, user `mento`, password `mento`, db `mento` |
 | Redis | localhost:6380 |
+
+## Scraping Prometheus metrics
+
+The API exposes metrics at `GET /metrics`. This endpoint is intentionally public
+(no auth) so the Prometheus scraper can reach it without a bearer token. The
+Caddyfile 403s the public route — only the internal docker network can reach it.
+
+### Verify metrics (inside docker network)
+
+```bash
+# From any container on the same docker network:
+curl http://api:4000/metrics
+
+# From the host (dev only — Caddy is not in front of localhost:4000):
+curl http://localhost:4000/metrics
+```
+
+### Example prometheus.yml scrape config
+
+```yaml
+scrape_configs:
+  - job_name: mento_api
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets:
+          - api:4000   # docker-internal — never goes through Caddy
+    metrics_path: /metrics
+```
+
+Add this service to your `docker-compose.prod.yml`:
+
+```yaml
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=30d'
+    networks:
+      - internal
+    restart: unless-stopped
+```
+
+Prometheus must be on the same `internal` network as `api`. Do **not** expose
+the Prometheus port publicly — use an internal Grafana instance to query it.
+
+See `docs/ALERTING.md` for alert rules and Sentry integration details.
 
 ## Test auth flow via curl
 

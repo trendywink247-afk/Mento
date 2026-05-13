@@ -11,6 +11,7 @@ import {
   WalletTxnType,
 } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
+import { MetricsService } from '../metrics/metrics.service'
 
 type AnonProfile = {
   id: string
@@ -35,7 +36,10 @@ function anonProfile(user: {
 
 @Injectable()
 export class SessionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly metricsService: MetricsService,
+  ) {}
 
   // ─── Availability ──────────────────────────────────────────────────────
 
@@ -120,6 +124,7 @@ export class SessionsService {
         },
       })
 
+      this.metricsService.sessionRequestTotal.inc({ outcome: 'sent' })
       return { id: request.id, status: request.status, paymentStatus: request.paymentStatus, amountInr }
     })
   }
@@ -190,6 +195,7 @@ export class SessionsService {
         },
       })
 
+      this.metricsService.sessionRequestTotal.inc({ outcome: 'accepted' })
       return { id: updated.id, status: updated.status }
     })
   }
@@ -225,6 +231,7 @@ export class SessionsService {
         },
       })
 
+      this.metricsService.sessionRequestTotal.inc({ outcome: 'declined' })
       return { id: updated.id, status: updated.status }
     })
   }
@@ -258,6 +265,7 @@ export class SessionsService {
         },
       })
 
+      this.metricsService.sessionRequestTotal.inc({ outcome: 'cancelled' })
       return { id: updated.id, status: updated.status }
     })
   }

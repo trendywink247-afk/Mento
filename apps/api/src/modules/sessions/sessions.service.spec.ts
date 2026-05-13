@@ -48,8 +48,27 @@ function makePrismaMock() {
 
 type PrismaMock = ReturnType<typeof makePrismaMock>
 
+function makeMetricsMock() {
+  const counter = { inc: vi.fn() }
+  return {
+    otpRequestTotal: counter,
+    otpVerifyTotal: counter,
+    signupTotal: counter,
+    paywallTotal: counter,
+    subscriptionChangeTotal: counter,
+    moderationActionTotal: counter,
+    chatRequestTotal: counter,
+    sessionRequestTotal: counter,
+    httpRequestDuration: { startTimer: vi.fn().mockReturnValue(vi.fn()) },
+  }
+}
+
 function makeService(prisma: PrismaMock): SessionsService {
-  return new SessionsService(prisma as unknown as import('../../database/prisma.service').PrismaService)
+  const metrics = makeMetricsMock()
+  return new SessionsService(
+    prisma as unknown as import('../../database/prisma.service').PrismaService,
+    metrics as unknown as import('../metrics/metrics.service').MetricsService,
+  )
 }
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────

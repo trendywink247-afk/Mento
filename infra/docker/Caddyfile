@@ -12,6 +12,13 @@
 
 # ── API ───────────────────────────────────────────────────────────────────────
 api.mento.in {
+	# Block /metrics from the public internet.
+	# Prometheus scrapes api:4000/metrics directly inside the docker network —
+	# it never goes through Caddy. This matcher ensures no external client can
+	# reach the exposition endpoint even if they know the path.
+	@metrics path /metrics
+	respond @metrics 403
+
 	reverse_proxy api:4000 {
 		# Propagate real client IP to Express (trust proxy 1)
 		header_up X-Real-IP {remote_host}

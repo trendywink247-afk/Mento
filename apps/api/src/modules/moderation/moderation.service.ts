@@ -5,11 +5,15 @@ import {
 } from '@nestjs/common'
 import { ModerationAction, ReportStatus, Role, UserStatus } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
+import { MetricsService } from '../metrics/metrics.service'
 import { ResolveAction } from './dto/resolve-report.dto'
 
 @Injectable()
 export class ModerationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly metricsService: MetricsService,
+  ) {}
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -237,6 +241,7 @@ export class ModerationService {
       }
     })
 
+    this.metricsService.moderationActionTotal.inc({ action: action.toLowerCase() })
     return { ok: true, action }
   }
 
@@ -383,6 +388,9 @@ export class ModerationService {
       })
     })
 
+    if (status === UserStatus.SUSPENDED || status === UserStatus.BANNED) {
+      this.metricsService.moderationActionTotal.inc({ action: status === UserStatus.BANNED ? 'ban' : 'suspend' })
+    }
     return { ok: true, status }
   }
 }

@@ -7,12 +7,14 @@ import {
 import { ChatRequestStatus, MessageType, Role } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
+import { MetricsService } from '../metrics/metrics.service'
 
 @Injectable()
 export class ChatRequestsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly metricsService: MetricsService,
   ) {}
 
   async create(menteeId: string, mentorId: string, intro: string) {
@@ -73,6 +75,7 @@ export class ChatRequestsService {
       data: { requestId: created.id },
     })
 
+    this.metricsService.chatRequestTotal.inc({ outcome: 'sent' })
     return created
   }
 
@@ -160,6 +163,7 @@ export class ChatRequestsService {
         data: { userId: req.menteeId, step: 'first_mentor_accepted', sessionId: 'server' },
       }).catch(() => {})
 
+      this.metricsService.chatRequestTotal.inc({ outcome: 'accepted' })
       return updated
     })
   }
@@ -170,10 +174,12 @@ export class ChatRequestsService {
     if (req.mentorId !== mentorId) throw new ForbiddenException('Not your request')
     if (req.status !== ChatRequestStatus.PENDING) return req
 
-    return this.prisma.chatRequest.update({
+    const declined = await this.prisma.chatRequest.update({
       where: { id: requestId },
       data: { status: ChatRequestStatus.DECLINED, respondedAt: new Date() },
     })
+    this.metricsService.chatRequestTotal.inc({ outcome: 'declined' })
+    return declined
   }
 
   async archive(requestId: string, userId: string) {

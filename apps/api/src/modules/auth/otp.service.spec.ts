@@ -69,6 +69,21 @@ function makeConfigMock() {
   }
 }
 
+function makeMetricsMock() {
+  const counter = { inc: vi.fn() }
+  return {
+    otpVerifyTotal: counter,
+    otpRequestTotal: counter,
+    signupTotal: counter,
+    paywallTotal: counter,
+    subscriptionChangeTotal: counter,
+    moderationActionTotal: counter,
+    chatRequestTotal: counter,
+    sessionRequestTotal: counter,
+    httpRequestDuration: { startTimer: vi.fn().mockReturnValue(vi.fn()) },
+  }
+}
+
 // Build OtpService with injected mocks, bypassing NestJS DI.
 // We also patch the Redis constructor so it never opens a real connection.
 function makeService(overrides?: {
@@ -79,10 +94,12 @@ function makeService(overrides?: {
   const prisma = overrides?.prisma ?? makePrismaMock()
   const config = overrides?.config ?? makeConfigMock()
   const redis = overrides?.redis ?? makeRedisMock()
+  const metrics = makeMetricsMock()
 
   const svc = new OtpService(
     prisma as unknown as import('../../database/prisma.service').PrismaService,
     config as unknown as import('@nestjs/config').ConfigService,
+    metrics as unknown as import('../metrics/metrics.service').MetricsService,
   )
   // Replace the real Redis client with our mock (created in constructor).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

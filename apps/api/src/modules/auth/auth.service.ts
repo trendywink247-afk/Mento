@@ -13,6 +13,7 @@ import { OAuth2Client } from 'google-auth-library'
 import { PrismaService } from '../../database/prisma.service'
 import { OtpService } from './otp.service'
 import { InvitesService } from '../invites/invites.service'
+import { MetricsService } from '../metrics/metrics.service'
 import { colorForLetter, defaultLetterForRole, generateDisplayHandle } from '../../common/anonymity'
 
 export interface IssueResult {
@@ -32,12 +33,14 @@ export class AuthService {
     private readonly otp: OtpService,
     private readonly config: ConfigService,
     private readonly invites: InvitesService,
+    private readonly metricsService: MetricsService,
   ) {
     this.accessTtlSec = parseTtl(this.config.get<string>('JWT_ACCESS_TTL') ?? '15m')
     this.refreshTtlSec = parseTtl(this.config.get<string>('JWT_REFRESH_TTL') ?? '30d')
   }
 
   requestOtp(phone: string) {
+    this.metricsService.otpRequestTotal.inc()
     return this.otp.issue(phone)
   }
 
@@ -91,6 +94,7 @@ export class AuthService {
       if (inviteCode) {
         await this.redeemOrRollback(user.id, inviteCode)
       }
+      this.metricsService.signupTotal.inc({ method: 'google' })
     } else if (user.status === UserStatus.SUSPENDED) {
       throw new UnauthorizedException('Account suspended')
     } else if (user.status === UserStatus.BANNED) {
@@ -128,6 +132,7 @@ export class AuthService {
       if (inviteCode) {
         await this.redeemOrRollback(user.id, inviteCode)
       }
+      this.metricsService.signupTotal.inc({ method: 'otp' })
 
       // Write signup OnboardingEvent for server-side funnel tracking (fire-and-forget).
       void this.prisma.onboardingEvent.create({

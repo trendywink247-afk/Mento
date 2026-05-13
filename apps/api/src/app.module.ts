@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { JwtModule } from '@nestjs/jwt'
-import { APP_GUARD } from '@nestjs/core'
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core'
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
 import { LoggerModule } from 'nestjs-pino'
 import { PrismaModule } from './database/prisma.module'
 import { PostHogModule } from './common/posthog.module'
+import { MetricsModule } from './modules/metrics/metrics.module'
+import { MetricsInterceptor } from './common/metrics.interceptor'
 import { HealthModule } from './modules/health/health.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { UsersModule } from './modules/users/users.module'
@@ -79,6 +81,7 @@ import { FlagsModule } from './modules/flags/flags.module'
     }),
     PrismaModule,
     PostHogModule,
+    MetricsModule,
     HealthModule,
     AuthModule,
     UsersModule,
@@ -100,6 +103,9 @@ import { FlagsModule } from './modules/flags/flags.module'
     AnalyticsModule,
     FlagsModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
+  ],
 })
 export class AppModule {}

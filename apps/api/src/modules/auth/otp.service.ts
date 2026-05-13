@@ -4,6 +4,7 @@ import { compare, hash } from 'bcryptjs'
 import { randomInt } from 'crypto'
 import { Redis } from 'ioredis'
 import { PrismaService } from '../../database/prisma.service'
+import { MetricsService } from '../metrics/metrics.service'
 
 const OTP_TTL_MS = 5 * 60 * 1000
 const MAX_ATTEMPTS = 5
@@ -35,6 +36,7 @@ export class OtpService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly metricsService: MetricsService,
   ) {
     this.enabled = this.config.get<string>('MSG91_ENABLED') === 'true'
     this.apiKey = this.config.get<string>('MSG91_API_KEY') || undefined
@@ -79,7 +81,15 @@ export class OtpService {
 
   async verify(phone: string, code: string): Promise<boolean> {
     // Check brute-force lockout before touching the DB.
-    await this.assertNotLocked(phone)
+    const locked = await this.redis.exists(`otp:lock:${phone}`)
+    if (locked) {
+      this.metricsService.otpVerifyTotal.inc({ outcome: 'locked' })
+      const ttl = await this.redis.ttl(`otp:lock:${phone}`)
+      throw new HttpException(
+        `Too many failed attempts. Try again in ${Math.ceil(ttl / 60)} minutes.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      )
+    }
 
     const record = await this.prisma.otpRequest.findFirst({
       where: { phone, consumedAt: null, expiresAt: { gt: new Date() } },
@@ -87,6 +97,7 @@ export class OtpService {
     })
     if (!record) throw new BadRequestException('No pending OTP for this phone (or expired)')
     if (record.attempts >= MAX_ATTEMPTS) {
+      this.metricsService.otpVerifyTotal.inc({ outcome: 'rate_limited' })
       throw new BadRequestException('Too many attempts; request a new OTP')
     }
 
@@ -98,6 +109,7 @@ export class OtpService {
       })
       // Track per-phone failure in Redis and potentially trigger lockout.
       await this.recordFailure(phone)
+      this.metricsService.otpVerifyTotal.inc({ outcome: 'wrong' })
       throw new BadRequestException('Invalid OTP')
     }
 
@@ -107,6 +119,7 @@ export class OtpService {
       data: { consumedAt: new Date() },
     })
     await this.clearFailures(phone)
+    this.metricsService.otpVerifyTotal.inc({ outcome: 'ok' })
     return true
   }
 

@@ -10,6 +10,7 @@ import { SubscriptionTier } from '@prisma/client'
 import { SubscriptionsService } from '../subscriptions.service'
 import { MIN_TIER_KEY } from './min-tier.decorator'
 import type { JwtUser } from '../../auth/decorators/current-user.decorator'
+import { MetricsService } from '../../metrics/metrics.service'
 
 /** Numeric rank for tier comparison. Higher = more access. */
 const TIER_RANK: Record<SubscriptionTier, number> = {
@@ -24,6 +25,7 @@ export class TierGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly subs: SubscriptionsService,
+    private readonly metricsService: MetricsService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -44,6 +46,7 @@ export class TierGuard implements CanActivate {
 
     if (TIER_RANK[currentTier] >= TIER_RANK[required]) return true
 
+    this.metricsService.paywallTotal.inc({ requiredTier: required })
     throw new HttpException(
       { requiredTier: required, currentTier },
       HttpStatus.PAYMENT_REQUIRED,

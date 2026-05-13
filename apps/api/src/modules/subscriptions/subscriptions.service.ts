@@ -9,6 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config'
 import { SubscriptionStatus, SubscriptionTier } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
+import { MetricsService } from '../metrics/metrics.service'
 
 @Injectable()
 export class SubscriptionsService {
@@ -17,6 +18,7 @@ export class SubscriptionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly metricsService: MetricsService,
   ) {}
 
   // ─── Internal helpers ──────────────────────────────────────────────────────
@@ -173,6 +175,7 @@ export class SubscriptionsService {
       case 'subscription.charged':
         if (userId) {
           await this.upsertActiveSubscription(userId, tier, razorpaySubscriptionId, currentEnd)
+          this.metricsService.subscriptionChangeTotal.inc({ to: 'activated', tier })
         }
         break
 
@@ -181,6 +184,7 @@ export class SubscriptionsService {
           where: { razorpaySubscriptionId },
           data: { status: SubscriptionStatus.CANCELLED, cancelledAt: new Date() },
         })
+        this.metricsService.subscriptionChangeTotal.inc({ to: 'cancelled', tier })
         break
 
       case 'subscription.expired':
