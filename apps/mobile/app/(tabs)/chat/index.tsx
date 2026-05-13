@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Pressable,
@@ -17,6 +16,7 @@ import { Inbox, Clock, Send, Archive, type LucideIcon } from 'lucide-react-nativ
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
+  withRepeat,
   withTiming,
   interpolate,
   Extrapolation,
@@ -232,14 +232,12 @@ function EmptyArchived() {
 // ─── Skeleton row ─────────────────────────────────────────────────────────────
 
 function SkeletonRow() {
-  const opacity = useSharedValue(0.4)
+  const pulse = useSharedValue(0.4)
+  useEffect(() => {
+    pulse.value = withRepeat(withTiming(0.8, { duration: 600 }), -1, true)
+  }, [pulse])
   const animStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      Math.sin(Date.now() / 600),
-      [-1, 1],
-      [0.4, 0.8],
-      Extrapolation.CLAMP,
-    ),
+    opacity: interpolate(pulse.value, [0.4, 0.8], [0.4, 0.8], Extrapolation.CLAMP),
   }))
 
   return (

@@ -1,4 +1,4 @@
-import { IsIn, IsNumber, IsString, Max, Min } from 'class-validator'
+import { IsIn, IsNumber, Max, Min } from 'class-validator'
 
 export const DOCUMENT_KINDS = ['aadhaar', 'hall_ticket', 'marks_sheet'] as const
 export const ALL_KINDS = [...DOCUMENT_KINDS, 'avatar'] as const

@@ -9,7 +9,6 @@ import { JwtService } from '@nestjs/jwt'
 import { Role, User, UserStatus } from '@prisma/client'
 import { v4 as uuidv4 } from 'uuid'
 import { createHmac } from 'crypto'
-import { Redis } from 'ioredis'
 import { OAuth2Client } from 'google-auth-library'
 import { PrismaService } from '../../database/prisma.service'
 import { OtpService } from './otp.service'
@@ -24,7 +23,6 @@ export interface IssueResult {
 
 @Injectable()
 export class AuthService {
-  private readonly redis: Redis
   private readonly accessTtlSec: number
   private readonly refreshTtlSec: number
 
@@ -35,7 +33,6 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly invites: InvitesService,
   ) {
-    this.redis = new Redis(this.config.get<string>('REDIS_URL') ?? 'redis://localhost:6379/0')
     this.accessTtlSec = parseTtl(this.config.get<string>('JWT_ACCESS_TTL') ?? '15m')
     this.refreshTtlSec = parseTtl(this.config.get<string>('JWT_REFRESH_TTL') ?? '30d')
   }

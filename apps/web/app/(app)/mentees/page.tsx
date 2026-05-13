@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { MessageSquare, BookOpen, Search, Clock, ArrowUpDown, Users } from 'lucide-react'
+import { MessageSquare, BookOpen, Search, ArrowUpDown, Users } from 'lucide-react'
 import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { LetterAvatar } from '@/components/LetterAvatar'

@@ -104,9 +104,10 @@ jobs:
             NEXT_PUBLIC_API_BASE_URL=https://api.mento.in
             NEXT_PUBLIC_SOCKET_URL=https://api.mento.in
             NEXT_PUBLIC_APP_ENV=production
-            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
             SENTRY_ORG=${{ secrets.SENTRY_ORG }}
             SENTRY_PROJECT=${{ secrets.SENTRY_PROJECT }}
+          secrets: |
+            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
 
   # ── Job 2: Deploy to server ───────────────────────────────────────────────
   deploy-to-server:

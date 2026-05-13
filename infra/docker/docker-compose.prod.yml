@@ -142,9 +142,10 @@ services:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://api.mento.in}
         NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-https://api.mento.in}
         NEXT_PUBLIC_APP_ENV: production
-        SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
         SENTRY_ORG: ${SENTRY_ORG:-}
         SENTRY_PROJECT: ${SENTRY_PROJECT:-mento-web}
+      secrets:
+        - sentry_auth_token
     container_name: mento-web-prod
     restart: unless-stopped
     environment:
@@ -199,6 +200,15 @@ volumes:
     driver: local
   mento_caddy_config:
     driver: local
+
+# ── Secrets ────────────────────────────────────────────────────────────────
+# Sentry auth token is passed via BuildKit secret mount (not ARG/ENV) to avoid
+# leaking it into the image layer history.
+# On the build host, write the token to /run/secrets/sentry_auth_token.
+# In CI, this is handled via --secret flag in docker/build-push-action.
+secrets:
+  sentry_auth_token:
+    file: /run/secrets/sentry_auth_token
 
 # ── Networks ───────────────────────────────────────────────────────────────
 networks:

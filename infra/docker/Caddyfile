@@ -2,7 +2,6 @@
 # Domains: api.mento.in → api:4000, mento.in / www.mento.in → web:3000
 # Auto TLS via ACME (Let's Encrypt by default).
 # Security headers, long-cache for static assets, gzip + zstd.
-
 {
 	# Global options
 	admin off
@@ -40,7 +39,7 @@ api.mento.in {
 	log {
 		output stdout
 		format json
-		level  INFO
+		level INFO
 	}
 }
 
@@ -87,6 +86,6 @@ mento.in {
 	log {
 		output stdout
 		format json
-		level  INFO
+		level INFO
 	}
 }

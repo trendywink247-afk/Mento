@@ -2,7 +2,6 @@ import {
   Injectable,
   NotFoundException,
   GoneException,
-  ForbiddenException,
   ConflictException,
 } from '@nestjs/common'
 import { randomBytes } from 'crypto'
