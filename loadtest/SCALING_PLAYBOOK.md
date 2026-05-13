@@ -80,6 +80,8 @@ These numbers drive everything below.
 PgBouncer is now deployed as the `pgbouncer` service in `infra/docker/docker-compose.prod.yml`
 (`edoburu/pgbouncer:1.23.1`, transaction-pool mode, listening on port 6432).
 
+**Healthcheck**: uses `SHOW POOLS` admin query (not just TCP `nc -z`), confirming PgBouncer is accepting and routing connections, not merely that the port is bound.
+
 **Current prod settings (docker-compose.prod.yml):**
 ```
 POOL_MODE=transaction

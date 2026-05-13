@@ -104,11 +104,18 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "sh", "-c", "nc -z localhost 6432 || exit 1"]
+      # SHOW POOLS is a PgBouncer admin query — it confirms PgBouncer is up and
+      # accepting connections, not just that the TCP port is bound (which nc -z
+      # would only verify). The edoburu/pgbouncer image ships psql (PostgreSQL 17).
+      # $$VAR syntax escapes the $ so Docker Compose doesn't interpolate env vars
+      # at config-parse time; the shell receives $DB_PASSWORD / $DB_USER / $DB_NAME.
+      test:
+        - CMD-SHELL
+        - "PGPASSWORD=$$DB_PASSWORD psql -h localhost -p 6432 -U $$DB_USER -d $$DB_NAME -c 'SHOW POOLS;' >/dev/null 2>&1"
       interval: 10s
-      timeout: 3s
+      timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 15s
     networks:
       - mento_internal
 

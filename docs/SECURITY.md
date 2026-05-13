@@ -90,6 +90,11 @@ Only a 4-digit random suffix; collision rate is the same regardless of PRNG, but
 - **Pre-signed R2 URLs not yet implemented**: Phase F. Will be admin-gated for verification document uploads.
 - **DTO whitelist**: `ValidationPipe` configured with `whitelist: true, forbidNonWhitelisted: true` — mass-assignment safe. Good.
 - **Prisma parameterized queries**: all queries go through Prisma's typed API. No raw SQL. Injection-safe.
+- **MINOR-3 (Wave 15) — TOCTOU between `assertNotLocked` and `recordFailure` (accepted risk)**: Under high concurrency, two concurrent verify requests at failure count 4 can both pass `assertNotLocked` before either triggers the lock write. Redis `INCR` is atomic so the phone still gets locked regardless. The residual exposure — an attacker exhausting the Prisma-level `attempts` cap before the Redis lock fires — is mitigated by the per-OTP-record `attempts >= MAX_ATTEMPTS` guard (Layer 3 in the OTP rate limits section above). A Lua script combining INCR + conditional SET atomically would close this window; deferred until OTP endpoint is identified as an active DDoS target.
+
+## User shape / anonymity invariant
+
+The `User` type in `packages/types` and all public/self API endpoints (`/auth/otp/verify`, `/auth/google`, `GET /me`) return **only** `{ id, role, status, createdAt, updatedAt }`. The fields `phone`, `email`, and `googleSub` are **never** included in these responses. They appear only in the admin-gated `GET /admin/users/:id` endpoint and the internal `admin.listUsers()` call, both of which require `Role.ADMIN` via the global `RolesGuard`. Any future endpoint that touches a `User` row must explicitly omit these fields from its response shape — do not spread or return a raw Prisma `User` object. The `User` interface marks these fields optional (`phone?: string | null`) as a type-level reminder that they are absent from public shapes; the optional modifier does NOT mean they can be added back to non-admin endpoints.
 
 ## OTP rate limits
 
