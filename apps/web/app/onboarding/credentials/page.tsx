@@ -7,6 +7,7 @@ import { Upload, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -97,7 +98,7 @@ export default function CredentialsPage() {
       }
 
       setter(() => ({ file, key: publicKey, uploading: false, error: null, done: true }))
-      capture('onboarding.credentials.doc_uploaded', { kind })
+      capture(ANALYTICS_EVENTS.MENTOR_CREDENTIALS_DOC_UPLOADED, { kind })
     } catch (err) {
       setter((s) => ({
         ...s,
@@ -147,7 +148,7 @@ export default function CredentialsPage() {
           upiId: bankAccount.upiId.trim() || undefined,
         },
       })
-      capture('onboarding.credentials.submitted')
+      capture(ANALYTICS_EVENTS.MENTOR_VERIFICATION_SUBMITTED)
       router.replace('/onboarding/submitted')
     } catch (err) {
       setSubmitError(

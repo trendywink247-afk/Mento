@@ -7,7 +7,8 @@ import { useTranslations } from 'next-intl'
 import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { OtpInput } from '@/components/OtpInput'
-import { identify } from '@/lib/analytics'
+import { capture, identify } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 import { MotionTap } from '@/components/motion'
 import { MODERATION_COPY, INVITE_COPY } from '@/lib/copy'
 
@@ -101,9 +102,16 @@ function OtpForm() {
       // Identify in PostHog and Sentry — UUID only, no PII.
       identify(session.user.id, { role: session.user.role })
       Sentry.setUser({ id: session.user.id })
+      capture(ANALYTICS_EVENTS.AUTH_OTP_VERIFIED, { role: session.user.role })
       // Clean up invite code from session after successful sign-in
       sessionStorage.removeItem('mento_invite_code')
       const state = await getApiClient().onboarding.state().catch(() => null)
+      // Distinguish new vs returning: new users have a pending onboarding nextStep.
+      if (!state || state.nextStep) {
+        capture(ANALYTICS_EVENTS.AUTH_SIGNUP_NEW, { role: session.user.role })
+      } else {
+        capture(ANALYTICS_EVENTS.AUTH_SIGNUP_RETURNING, { role: session.user.role })
+      }
       router.push(nextDestination(state, role))
     } catch (err) {
       // Distinguish account-status 401s (suspended / banned) from a wrong-code 401.

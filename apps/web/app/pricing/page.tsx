@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Check, Minus } from 'lucide-react'
+import { PricingViewTracker } from '@/components/analytics/PricingViewTracker'
 
 // Spec § 1.12 — pricing tiers. Numbers are placeholders validated in week 2.
 const TIERS = [
@@ -118,6 +119,7 @@ export const metadata: Metadata = {
 export default function PricingPage() {
   return (
     <div className="min-h-screen bg-background px-6 py-16">
+      <PricingViewTracker />
       {/* Header */}
       <div className="mx-auto max-w-3xl text-center">
         <h1 className="text-4xl font-bold tracking-tight">

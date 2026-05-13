@@ -8,6 +8,8 @@ import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
 import { relativeTime } from '@/components/journals/relative-time'
 import { EmptyJournal } from '@/components/illustrations/EmptyJournal'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -70,6 +72,7 @@ export default function JournalPage() {
     setBusy(true)
     try {
       await getApiClient().journals.addEntry(journal.id, draft.trim())
+      capture(ANALYTICS_EVENTS.JOURNAL_ENTRY_CREATED, { category: journal.category })
       setDraft('')
       setLastSaved(new Date())
       await load()

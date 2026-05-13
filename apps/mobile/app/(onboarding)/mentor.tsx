@@ -5,6 +5,8 @@ import { GUIDANCE_CATEGORIES, LANGUAGE_OPTIONS, MENTOR_JOURNEY_OPTIONS } from '@
 import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { ChipPicker } from '@/components/onboarding/ChipPicker'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 interface AttemptYear {
   year: number
@@ -52,6 +54,15 @@ export default function MentorOnboarding() {
     if (!tokens) router.replace('/(auth)/login?role=MENTOR')
   }, [tokens])
 
+  // Track stage transitions.
+  useEffect(() => {
+    if (stage === 'journey') {
+      capture(ANALYTICS_EVENTS.MENTOR_ONBOARDING_STARTED)
+    } else if (stage !== 'submitting') {
+      capture(ANALYTICS_EVENTS.MENTOR_STEP_COMPLETED, { step: stage })
+    }
+  }, [stage])
+
   function updateYear(idx: number, patch: Partial<AttemptYear>) {
     const next = history.slice()
     next[idx] = { ...next[idx]!, ...patch }
@@ -74,6 +85,7 @@ export default function MentorOnboarding() {
         languages,
         hourlyRateInr: Number(hourlyRate) || 400,
       })
+      capture(ANALYTICS_EVENTS.MENTOR_VERIFICATION_SUBMITTED, { journeyType })
       router.replace('/(onboarding)/submitted')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save')

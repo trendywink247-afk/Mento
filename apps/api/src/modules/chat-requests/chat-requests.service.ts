@@ -155,6 +155,11 @@ export class ChatRequestsService {
         data: { lastMessageAt: new Date() },
       })
 
+      // Write first_mentor_accepted OnboardingEvent for the mentee (fire-and-forget).
+      void this.prisma.onboardingEvent.create({
+        data: { userId: req.menteeId, step: 'first_mentor_accepted', sessionId: 'server' },
+      }).catch(() => {})
+
       return updated
     })
   }

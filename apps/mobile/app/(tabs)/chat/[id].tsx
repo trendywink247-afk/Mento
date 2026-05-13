@@ -21,6 +21,8 @@ import { getSocket } from '@/lib/socket'
 import { useAuthStore } from '@/lib/auth-store'
 import { uuid } from '@/lib/uuid'
 import { MENTEES_COPY, CHAT_SEARCH_COPY } from '@/lib/copy'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 interface JournalItem {
   id: string
@@ -381,14 +383,20 @@ export default function ChatThread() {
     if (!body) return
     const clientMessageId = uuid()
     const socket = getSocket()
+    const isFirstMessage = messages.length === 0
     socket.emit(
       'message:send',
       { conversationId, type: 'TEXT', body, clientMessageId },
-      () => {},
+      () => {
+        capture(ANALYTICS_EVENTS.MESSAGE_SENT)
+        if (isFirstMessage) {
+          capture(ANALYTICS_EVENTS.CHAT_FIRST_MESSAGE_SENT)
+        }
+      },
     )
     setDraft('')
     socket.emit('typing:stop', { conversationId })
-  }, [conversationId, draft])
+  }, [conversationId, draft, messages.length])
 
   const onDraftChange = (v: string) => {
     setDraft(v)
@@ -421,6 +429,7 @@ export default function ChatThread() {
               onPress: () => {
                 getApiClient()
                   .chat.reportMessage(messageId, 'Inappropriate', undefined)
+                  .then(() => capture(ANALYTICS_EVENTS.MESSAGE_REPORTED, { reason: 'Inappropriate' }))
                   .catch(() => {})
               },
             },
@@ -436,6 +445,7 @@ export default function ChatThread() {
     if (!pendingMessageId) return
     try {
       await getApiClient().journals.saveFromChat(pendingMessageId, journal.category)
+      capture(ANALYTICS_EVENTS.CHAT_TO_JOURNAL_SAVED, { category: journal.category })
       Alert.alert('Saved', MENTEES_COPY.savedToJournal(
         journal.title ?? journal.category.replace(/_/g, ' ').toLowerCase(),
       ))

@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import { Check, Loader2, AlertCircle, X } from 'lucide-react'
 import { getApiClient } from '@/lib/api'
 import { UPGRADE_COPY } from '@/lib/copy'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 type Tier = 'FREE' | 'BASIC' | 'PRO' | 'MAX'
 type PaidTier = 'BASIC' | 'PRO' | 'MAX'
@@ -81,11 +83,12 @@ export default function UpgradePage() {
 
   // Fetch current subscription on mount
   useEffect(() => {
+    capture(ANALYTICS_EVENTS.UPGRADE_VIEWED, { initialTier })
     getApiClient()
       .subscriptions.me()
       .then((sub) => setCurrentTier(sub.tier as Tier))
       .catch(() => {})
-  }, [])
+  }, [initialTier])
 
   // Lazily load Razorpay checkout.js only in prod
   useEffect(() => {
@@ -103,6 +106,7 @@ export default function UpgradePage() {
     setLoading(true)
     setError(null)
     setSuccess(null)
+    capture(ANALYTICS_EVENTS.UPGRADE_TIER_SELECTED, { tier: selectedTier })
 
     try {
       if (isDevMode()) {
@@ -111,11 +115,13 @@ export default function UpgradePage() {
         const newTier = sim.tier as Tier
         setCurrentTier(newTier)
         dispatchTierChanged(newTier)
+        capture(ANALYTICS_EVENTS.SUBSCRIPTION_ACTIVATED, { tier: newTier, simulated: true })
         setSuccess(
           `[Dev] Activated ${sim.tier} until ${new Date(sim.currentPeriodEnd).toLocaleDateString()}`,
         )
       } else {
         // Prod path — open Razorpay checkout
+        capture(ANALYTICS_EVENTS.CHECKOUT_OPENED, { tier: selectedTier })
         const result = await getApiClient().subscriptions.checkout(selectedTier)
         openRazorpay(result.orderId, selectedTier)
       }
@@ -146,6 +152,7 @@ export default function UpgradePage() {
         setSuccess(`Payment successful. Your ${tier} plan is now active.`)
         setCurrentTier(tier)
         dispatchTierChanged(tier)
+        capture(ANALYTICS_EVENTS.SUBSCRIPTION_ACTIVATED, { tier, simulated: false })
         // In production Razorpay webhook fires subscription.activated which
         // updates the DB. The UI optimistically reflects the new tier.
         void response.razorpay_payment_id
@@ -291,6 +298,7 @@ export default function UpgradePage() {
             setShowDowngradeModal(false)
             setCurrentTier('FREE')
             dispatchTierChanged('FREE')
+            capture(ANALYTICS_EVENTS.SUBSCRIPTION_CANCELLED)
             setSuccess('Your subscription has been cancelled. Access continues until period end.')
           }}
         />

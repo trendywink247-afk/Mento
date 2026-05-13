@@ -81,6 +81,11 @@ export class OnboardingService {
         data: { avatarLetter: letter, avatarColor: color },
       })
 
+      // Write mirror_completed OnboardingEvent for server-side funnel tracking (fire-and-forget).
+      void this.prisma.onboardingEvent.create({
+        data: { userId, step: 'mirror_completed', sessionId: 'server' },
+      }).catch(() => {})
+
       return tx.menteeProfile.findUnique({ where: { userId } })
     })
   }
@@ -164,6 +169,11 @@ export class OnboardingService {
           data: { avatarLetter: letter, avatarColor: color },
         })
       }
+
+      // Write mentor_submitted OnboardingEvent for server-side funnel tracking (fire-and-forget).
+      void this.prisma.onboardingEvent.create({
+        data: { userId, step: 'mentor_submitted', sessionId: 'server' },
+      }).catch(() => {})
 
       return tx.mentorProfile.findUnique({ where: { userId } })
     })

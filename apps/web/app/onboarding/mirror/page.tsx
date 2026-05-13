@@ -17,6 +17,7 @@ import { ChipPicker } from '@/components/onboarding/ChipPicker'
 import { getSessionId } from '@/lib/session-id'
 import { MotionTap } from '@/components/motion'
 import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 type Stage = 'intro' | 'journey' | 'background' | 'reflection' | 'knowledge' | 'challenges' | 'privacy' | 'submitting'
 
@@ -83,7 +84,11 @@ export default function MirrorPage() {
       .onboarding.trackEvent(getSessionId(), `mirror.${stage}`)
       .catch(() => {})
     // Client-side PostHog event — mirrors the server-side audit event.
-    capture('onboarding.mirror.step_changed', { stage })
+    if (stage === 'intro') {
+      capture(ANALYTICS_EVENTS.MIRROR_STARTED)
+    } else if (stage !== 'submitting') {
+      capture(ANALYTICS_EVENTS.MIRROR_STEP_COMPLETED, { step: stage })
+    }
   }, [stage])
 
   const isBeginner =
@@ -103,7 +108,7 @@ export default function MirrorPage() {
         knowledge,
         challenges,
       })
-      capture('onboarding.mirror.submitted', { journeyStage })
+      capture(ANALYTICS_EVENTS.MIRROR_COMPLETED, { journeyStage })
       router.replace('/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save')

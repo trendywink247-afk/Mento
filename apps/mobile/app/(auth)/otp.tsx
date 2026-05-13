@@ -13,7 +13,8 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { otpCodeSchema } from '@mento/validation'
 import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
-import { identify } from '@/lib/analytics'
+import { capture, identify } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 import { registerForPushNotifications } from '@/lib/push'
 
 const CELL_COUNT = 6
@@ -55,6 +56,7 @@ export default function Otp() {
       const session = await getApiClient().auth.verifyOtp(phone, parsed.data)
       await setSession(session)
       identify(session.user.id, { role: session.user.role })
+      capture(ANALYTICS_EVENTS.AUTH_OTP_VERIFIED, { role: session.user.role })
       // Register push token — fire-and-forget, must not block sign-in.
       void registerForPushNotifications()
       if (process.env.EXPO_PUBLIC_SENTRY_DSN && process.env.NODE_ENV !== 'test') {
@@ -67,6 +69,12 @@ export default function Otp() {
         }
       }
       const state = await getApiClient().onboarding.state().catch(() => null)
+      // Distinguish new vs returning: new users have a pending onboarding nextStep.
+      if (!state || state.nextStep) {
+        capture(ANALYTICS_EVENTS.AUTH_SIGNUP_NEW, { role: session.user.role })
+      } else {
+        capture(ANALYTICS_EVENTS.AUTH_SIGNUP_RETURNING, { role: session.user.role })
+      }
       const rolePick = String(params.role ?? '')
       if (rolePick === 'MENTOR' && (!state || !state.mentorOnboardingSubmitted)) {
         router.replace('/(onboarding)/mentor')

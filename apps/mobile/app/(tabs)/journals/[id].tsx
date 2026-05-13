@@ -14,6 +14,8 @@ import { Lock, Unlock, ChevronLeft } from 'lucide-react-native'
 import type { AvatarColor, AvatarLetter } from '@mento/types'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 type Detail = {
   id: string
@@ -69,6 +71,7 @@ export default function JournalScreen() {
     setBusy(true)
     try {
       await getApiClient().journals.addEntry(journal.id, draft.trim())
+      capture(ANALYTICS_EVENTS.JOURNAL_ENTRY_CREATED, { category: journal.category })
       setDraft('')
       await load()
     } catch (err) {

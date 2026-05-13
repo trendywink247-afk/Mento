@@ -6,7 +6,8 @@ import Script from 'next/script'
 import { useTranslations } from 'next-intl'
 import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
-import { identify } from '@/lib/analytics'
+import { capture, identify } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 import { MotionTap } from '@/components/motion'
 import { INVITE_COPY } from '@/lib/copy'
 
@@ -91,6 +92,7 @@ function GoogleSigninButton({ onSuccess }: GoogleSigninButtonProps) {
         const session = await getApiClient().auth.googleSignin(credential)
         setSession(session)
         identify(session.user.id, { role: session.user.role })
+        capture(ANALYTICS_EVENTS.AUTH_GOOGLE_SIGNIN)
         const onboardingState = await getApiClient().onboarding.state().catch(() => null)
         onSuccess()
         router.push(nextDestination(onboardingState))
@@ -324,6 +326,7 @@ function LoginForm() {
     setLoading(true)
     try {
       const res = await getApiClient().auth.requestOtp(phone)
+      capture(ANALYTICS_EVENTS.AUTH_OTP_REQUESTED)
       if (res.devCode) setDevCode(res.devCode)
 
       // Persist invite code so /otp page can send it with verifyOtp

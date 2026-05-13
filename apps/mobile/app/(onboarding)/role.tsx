@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Pressable, SafeAreaView, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -6,11 +6,18 @@ import { GraduationCap, Star } from 'lucide-react-native'
 import { COPY } from '@/lib/copy'
 import { getApiClient } from '@/lib/api'
 import { getSessionId } from '@/lib/session-id'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 export default function RolePick() {
   const [busy, setBusy] = useState<'ASPIRANT' | 'MENTOR' | null>(null)
 
+  useEffect(() => {
+    capture(ANALYTICS_EVENTS.ROLE_PICK_VIEWED)
+  }, [])
+
   async function pick(role: 'ASPIRANT' | 'MENTOR') {
+    capture(ANALYTICS_EVENTS.ROLE_PICK_SELECTED, { role })
     setBusy(role)
     try {
       const sid = await getSessionId()

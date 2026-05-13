@@ -12,6 +12,8 @@ import { getApiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { ConfidenceSlider } from '@/components/onboarding/ConfidenceSlider'
 import { ChipPicker } from '@/components/onboarding/ChipPicker'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 type Stage = 'intro' | 'journey' | 'background' | 'reflection' | 'knowledge' | 'challenges' | 'privacy' | 'submitting'
 
@@ -49,6 +51,15 @@ export default function Mirror() {
     if (!tokens) router.replace('/(auth)/login?role=ASPIRANT')
   }, [tokens])
 
+  // Track stage transitions.
+  useEffect(() => {
+    if (stage === 'intro') {
+      capture(ANALYTICS_EVENTS.MIRROR_STARTED)
+    } else if (stage !== 'submitting') {
+      capture(ANALYTICS_EVENTS.MIRROR_STEP_COMPLETED, { step: stage })
+    }
+  }, [stage])
+
   const isBeginner =
     journeyStage === 'ABOUT_TO_START' ||
     journeyStage === 'ONE_YEAR_IN' ||
@@ -64,6 +75,7 @@ export default function Mirror() {
         knowledge,
         challenges,
       })
+      capture(ANALYTICS_EVENTS.MIRROR_COMPLETED, { journeyStage })
       router.replace('/(tabs)')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save')

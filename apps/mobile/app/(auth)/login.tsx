@@ -12,6 +12,8 @@ import {
 import { router } from 'expo-router'
 import { phoneSchema } from '@mento/validation'
 import { getApiClient } from '@/lib/api'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 export default function Login() {
   const [phone, setPhone] = useState('')
@@ -32,6 +34,7 @@ export default function Login() {
     setLoading(true)
     try {
       const res = await getApiClient().auth.requestOtp(parsed.data)
+      capture(ANALYTICS_EVENTS.AUTH_OTP_REQUESTED)
       if (res.devCode) setDevCode(res.devCode)
       router.push({ pathname: '/(auth)/otp', params: { phone: parsed.data } })
     } catch (err) {

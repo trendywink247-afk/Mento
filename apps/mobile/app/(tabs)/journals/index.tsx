@@ -23,6 +23,8 @@ import {
 import type { AvatarColor, AvatarLetter } from '@mento/types'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 // ─── Category icon map ────────────────────────────────────────────────────────
 
@@ -111,6 +113,7 @@ export default function JournalsList() {
   const [existing, setExisting] = useState<Existing[]>([])
 
   useEffect(() => {
+    capture(ANALYTICS_EVENTS.JOURNAL_LIST_VIEWED)
     getApiClient()
       .journals.list()
       .then((rows) => setExisting(rows as Existing[]))
@@ -118,6 +121,7 @@ export default function JournalsList() {
   }, [])
 
   async function open(category: string) {
+    capture(ANALYTICS_EVENTS.JOURNAL_OPENED, { category })
     const j = await getApiClient().journals.upsert(category)
     router.push({ pathname: '/(tabs)/journals/[id]', params: { id: j.id } })
   }

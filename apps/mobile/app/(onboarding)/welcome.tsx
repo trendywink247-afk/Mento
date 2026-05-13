@@ -3,6 +3,8 @@ import { Animated, Pressable, SafeAreaView, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { COPY } from '@/lib/copy'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 const ALL_LINES = [...COPY.welcome, ...COPY.notAPlace, COPY.reflection, COPY.brand]
 const MS_PER_LINE = 900
@@ -18,19 +20,28 @@ export default function Welcome() {
   useEffect(() => {
     AsyncStorage.getItem(INTRO_KEY).then((val) => {
       if (val === '1') {
-        navigateAway()
+        // Returning user — skip silently, no analytics event.
+        AsyncStorage.setItem(INTRO_KEY, '1').catch(() => {})
+        router.replace('/(auth)/login?role=ASPIRANT')
+      } else {
+        capture(ANALYTICS_EVENTS.WELCOME_FLASH_VIEWED)
       }
     })
   }, [])
 
-  function navigateAway() {
+  function navigateAway(reason: 'completed' | 'skipped') {
+    if (reason === 'skipped') {
+      capture(ANALYTICS_EVENTS.WELCOME_FLASH_SKIPPED)
+    } else {
+      capture(ANALYTICS_EVENTS.WELCOME_FLASH_COMPLETED)
+    }
     AsyncStorage.setItem(INTRO_KEY, '1').catch(() => {})
     router.replace('/(auth)/login?role=ASPIRANT')
   }
 
   useEffect(() => {
     if (done) {
-      const t = setTimeout(navigateAway, 600)
+      const t = setTimeout(() => navigateAway('completed'), 600)
       return () => clearTimeout(t)
     }
   }, [done])
@@ -85,7 +96,7 @@ export default function Welcome() {
 
       {/* Skip button */}
       <View style={{ paddingBottom: 32, paddingHorizontal: 32 }}>
-        <Pressable onPress={navigateAway} hitSlop={12}>
+        <Pressable onPress={() => navigateAway('skipped')} hitSlop={12}>
           <Text style={{ textAlign: 'center', fontSize: 14, color: '#64748b' }}>Skip</Text>
         </Pressable>
       </View>

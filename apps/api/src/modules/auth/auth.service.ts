@@ -128,6 +128,11 @@ export class AuthService {
       if (inviteCode) {
         await this.redeemOrRollback(user.id, inviteCode)
       }
+
+      // Write signup OnboardingEvent for server-side funnel tracking (fire-and-forget).
+      void this.prisma.onboardingEvent.create({
+        data: { userId: user.id, step: 'signup', sessionId: 'server' },
+      }).catch(() => {})
     } else if (user.status === UserStatus.PENDING_VERIFICATION) {
       user = await this.prisma.user.update({
         where: { id: user.id },

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { BookOpen, ChevronLeft, Lightbulb } from 'lucide-react'
@@ -10,6 +10,7 @@ import { getApiClient } from '@/lib/api'
 import { getSessionId } from '@/lib/session-id'
 import { MotionFade, MotionStagger, MotionStaggerItem, MotionTap } from '@/components/motion'
 import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 const cardVariants = {
   rest: { y: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' },
@@ -26,10 +27,14 @@ export default function RolePickPage() {
   const t = useTranslations('onboarding.role')
   const [busy, setBusy] = useState<'ASPIRANT' | 'MENTOR' | null>(null)
 
+  useEffect(() => {
+    capture(ANALYTICS_EVENTS.ROLE_PICK_VIEWED)
+  }, [])
+
   async function pick(role: 'ASPIRANT' | 'MENTOR') {
     setBusy(role)
     // Fire analytics before the async calls so we capture intent even if API fails.
-    capture('onboarding.role_pick', { role })
+    capture(ANALYTICS_EVENTS.ROLE_PICK_SELECTED, { role })
     try {
       await getApiClient().onboarding.pickRole(getSessionId(), role).catch(() => {})
     } finally {

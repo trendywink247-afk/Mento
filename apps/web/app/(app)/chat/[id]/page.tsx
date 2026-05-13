@@ -9,6 +9,8 @@ import { getApiClient } from '@/lib/api'
 import { getSocket } from '@/lib/socket'
 import { useAuthStore } from '@/lib/auth-store'
 import { MENTEES_COPY } from '@/lib/copy'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 // ---- Inline toast ----
 
@@ -529,16 +531,21 @@ export default function ChatThreadPage() {
     if (!body) return
     const clientMessageId = uuid()
     const socket = getSocket()
+    const isFirstMessage = messages.length === 0
     socket.emit(
       'message:send',
       { conversationId, type: 'TEXT', body, clientMessageId },
       (res) => {
-        if (!res.ok) console.error('send failed:', res.error)
+        if (!res.ok) return
+        capture(ANALYTICS_EVENTS.MESSAGE_SENT)
+        if (isFirstMessage) {
+          capture(ANALYTICS_EVENTS.CHAT_FIRST_MESSAGE_SENT)
+        }
       },
     )
     setDraft('')
     socket.emit('typing:stop', { conversationId })
-  }, [conversationId, draft])
+  }, [conversationId, draft, messages.length])
 
   const onDraftChange = (v: string) => {
     setDraft(v)
@@ -551,11 +558,13 @@ export default function ChatThreadPage() {
   }
 
   function handleReportSuccess(messageId: string) {
+    capture(ANALYTICS_EVENTS.MESSAGE_REPORTED)
     setReportedIds((prev) => new Set([...prev, messageId]))
     pushToast('Reported. Our team will review.', 'success')
   }
 
   function handleSaveSuccess(category: string) {
+    capture(ANALYTICS_EVENTS.CHAT_TO_JOURNAL_SAVED, { category })
     pushToast(MENTEES_COPY.savedToJournal(category), 'success')
   }
 

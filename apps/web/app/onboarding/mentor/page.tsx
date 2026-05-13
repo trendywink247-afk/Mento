@@ -13,6 +13,7 @@ import { useAuthStore } from '@/lib/auth-store'
 import { ChipPicker } from '@/components/onboarding/ChipPicker'
 import { MotionTap } from '@/components/motion'
 import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 interface AttemptYear {
   year: number
@@ -59,10 +60,15 @@ export default function MentorOnboardingPage() {
   }, [hasHydrated, tokens, router])
 
   useEffect(() => {
-    capture('onboarding.mentor.step_changed', { stage })
+    if (stage === 'journey') {
+      capture(ANALYTICS_EVENTS.MENTOR_ONBOARDING_STARTED)
+    } else if (stage !== 'submitting') {
+      capture(ANALYTICS_EVENTS.MENTOR_STEP_COMPLETED, { step: stage })
+    }
   }, [stage])
 
   function addYear() {
+    capture(ANALYTICS_EVENTS.MENTOR_HISTORY_ADDED)
     setHistory([...history, { year: new Date().getFullYear(), prelims: false, mains: false, interview: false }])
   }
   function updateYear(idx: number, patch: Partial<AttemptYear>) {
@@ -94,7 +100,7 @@ export default function MentorOnboardingPage() {
         languages,
         hourlyRateInr: hourlyRate,
       })
-      capture('onboarding.mentor.submitted', { journeyType })
+      capture(ANALYTICS_EVENTS.MENTOR_VERIFICATION_SUBMITTED, { journeyType })
       // After journey form, mentor must upload credentials before manual review.
       router.replace('/onboarding/credentials')
     } catch (err) {

@@ -7,6 +7,8 @@ import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
 import { COPY } from '@/lib/copy'
 import { BookingSheet } from '@/components/sessions/BookingSheet'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 type AttemptYear = { year: number; prelims: boolean; mains: boolean; interview: boolean }
 type MentorDetail = {
@@ -52,7 +54,10 @@ export default function MentorProfilePage() {
     if (!params.id) return
     getApiClient()
       .mentors.detail(params.id)
-      .then(setMentor)
+      .then((m) => {
+        setMentor(m)
+        capture(ANALYTICS_EVENTS.MENTOR_PROFILE_VIEWED, { mentorId: params.id })
+      })
       .catch(() => {})
   }, [params.id])
 
@@ -64,6 +69,7 @@ export default function MentorProfilePage() {
     } catch {
       setBookingAvailability(null)
     }
+    capture(ANALYTICS_EVENTS.SESSION_REQUEST_SENT, { mentorId: mentor.userId })
     setShowBooking(true)
   }
 
@@ -73,6 +79,7 @@ export default function MentorProfilePage() {
     setRequestError(null)
     try {
       await getApiClient().chatRequests.create(mentor.userId, intro.trim())
+      capture(ANALYTICS_EVENTS.CHAT_REQUEST_SENT, { mentorId: mentor.userId })
       setRequestSent(true)
       setTimeout(() => router.push('/chat'), 1500)
     } catch (err) {

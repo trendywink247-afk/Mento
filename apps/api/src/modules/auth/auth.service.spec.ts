@@ -47,6 +47,9 @@ function makePrismaMock() {
       create: vi.fn(),
       update: vi.fn(),
     },
+    onboardingEvent: {
+      create: vi.fn().mockResolvedValue({}),
+    },
   }
 }
 

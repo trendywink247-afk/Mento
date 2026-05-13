@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { FlashSequence } from '@/components/onboarding/FlashSequence'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 const INTRO_SEEN_KEY = 'mento.intro_seen'
 
@@ -34,10 +36,20 @@ export default function WelcomeFlashPage() {
         return
       }
     }
+    capture(ANALYTICS_EVENTS.WELCOME_FLASH_VIEWED)
     setReady(true)
   }, [router])
 
   function finish() {
+    capture(ANALYTICS_EVENTS.WELCOME_FLASH_COMPLETED)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(INTRO_SEEN_KEY, 'true')
+    }
+    router.push('/login?role=ASPIRANT')
+  }
+
+  function skip() {
+    capture(ANALYTICS_EVENTS.WELCOME_FLASH_SKIPPED)
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(INTRO_SEEN_KEY, 'true')
     }
@@ -52,7 +64,7 @@ export default function WelcomeFlashPage() {
       msPerLine={900}
       fadeMs={300}
       onDone={finish}
-      onSkip={finish}
+      onSkip={skip}
     />
   )
 }

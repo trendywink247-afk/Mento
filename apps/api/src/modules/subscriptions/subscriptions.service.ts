@@ -246,6 +246,11 @@ export class SubscriptionsService {
       }),
     ])
 
+    // Write paid_activated OnboardingEvent for funnel tracking (fire-and-forget).
+    void this.prisma.onboardingEvent.create({
+      data: { userId, step: 'paid_activated', sessionId: 'server' },
+    }).catch(() => {})
+
     return { tier, status: 'ACTIVE', currentPeriodEnd: periodEnd, simulated: true }
   }
 

@@ -14,6 +14,8 @@ import type { AvatarColor, AvatarLetter } from '@mento/types'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
 import { COPY } from '@/lib/copy'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 type AttemptYear = { year: number; prelims: boolean; mains: boolean; interview: boolean }
 type MentorDetail = {
@@ -63,7 +65,10 @@ export default function MentorProfile() {
     if (!params.id) return
     getApiClient()
       .mentors.detail(String(params.id))
-      .then(setMentor)
+      .then((m) => {
+        setMentor(m)
+        capture(ANALYTICS_EVENTS.MENTOR_PROFILE_VIEWED, { mentorId: String(params.id) })
+      })
       .catch(() => {})
   }, [params.id])
 
@@ -73,6 +78,7 @@ export default function MentorProfile() {
     setError(null)
     try {
       await getApiClient().chatRequests.create(mentor.userId, intro.trim())
+      capture(ANALYTICS_EVENTS.CHAT_REQUEST_SENT, { mentorId: mentor.userId })
       setSent(true)
       setTimeout(() => {
         setShowRequest(false)

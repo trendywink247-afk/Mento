@@ -8,6 +8,8 @@ import { LetterAvatar } from '@/components/LetterAvatar'
 import { MotionFade, MotionStagger, MotionStaggerItem, MotionTap } from '@/components/motion'
 import { CategoryIconBadge } from '@/components/journals/category-icons'
 import { relativeTime } from '@/components/journals/relative-time'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 type ExistingJournal = {
   id: string
@@ -67,10 +69,12 @@ export default function JournalsPage() {
   ]
 
   useEffect(() => {
+    capture(ANALYTICS_EVENTS.JOURNAL_LIST_VIEWED)
     getApiClient().journals.list().then(setExisting).catch(() => {})
   }, [])
 
   async function open(category: string) {
+    capture(ANALYTICS_EVENTS.JOURNAL_OPENED, { category })
     setBusy(true)
     try {
       const j = await getApiClient().journals.upsert(category)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { getApiClient } from '@/lib/api'
@@ -9,6 +9,8 @@ import { MentorCard, type MentorListItem } from '@/components/mentors/MentorCard
 import { MentorCardSkeleton } from '@/components/mentors/MentorCardSkeleton'
 import { EmptyMentors } from '@/components/illustrations/EmptyMentors'
 import { MotionFade, MotionStagger, MotionStaggerItem } from '@/components/motion'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 type RateBand = '0-300' | '300-600' | '600-1000' | '1000+'
 type SortKey = 'online' | 'helped' | 'rate-asc' | 'recent'
@@ -64,6 +66,13 @@ export default function MentorsPage() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [sort, setSort] = useState<SortKey>('online')
+  // Track whether a filter-applied event has been debounced to avoid flooding.
+  const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const prevActiveRef = useRef(0)
+
+  useEffect(() => {
+    capture(ANALYTICS_EVENTS.MENTORS_LIST_VIEWED)
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -131,6 +140,20 @@ export default function MentorsPage() {
   }, [mentors, filters, sort])
 
   const active = countActiveFilters(filters)
+
+  // Fire filter_applied event (debounced) when the filter count changes.
+  useEffect(() => {
+    if (active === prevActiveRef.current) return
+    prevActiveRef.current = active
+    if (active === 0) return // cleared — don't fire
+    if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current)
+    filterDebounceRef.current = setTimeout(() => {
+      capture(ANALYTICS_EVENTS.MENTORS_FILTER_APPLIED, { activeCount: active })
+    }, 800)
+    return () => {
+      if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current)
+    }
+  }, [active])
 
   return (
     <div className="space-y-6">

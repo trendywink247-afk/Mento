@@ -13,6 +13,8 @@ import { BadgeCheck, SlidersHorizontal } from 'lucide-react-native'
 import type { AvatarColor, AvatarLetter } from '@mento/types'
 import { getApiClient } from '@/lib/api'
 import { LetterAvatar } from '@/components/LetterAvatar'
+import { capture } from '@/lib/analytics'
+import { ANALYTICS_EVENTS } from '@/lib/events'
 
 type Mentor = {
   userId: string
@@ -54,6 +56,10 @@ export default function MentorsList() {
   }
 
   useEffect(() => {
+    capture(ANALYTICS_EVENTS.MENTORS_LIST_VIEWED)
+  }, [])
+
+  useEffect(() => {
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [verifiedOnly])
@@ -78,7 +84,11 @@ export default function MentorsList() {
         {/* Filter chips */}
         <View className="mt-3 flex-row items-center gap-2">
           <Pressable
-            onPress={() => setVerifiedOnly(!verifiedOnly)}
+            onPress={() => {
+              const next = !verifiedOnly
+              setVerifiedOnly(next)
+              if (next) capture(ANALYTICS_EVENTS.MENTORS_FILTER_APPLIED, { filter: 'verified_only' })
+            }}
             className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${
               verifiedOnly ? 'border-primary bg-primary' : 'border-border bg-white'
             }`}
