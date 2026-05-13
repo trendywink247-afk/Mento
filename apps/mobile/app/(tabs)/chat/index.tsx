@@ -467,19 +467,18 @@ export default function ChatList() {
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('all')
 
-  const load = useCallback(() => {
+  const load = useCallback(async (): Promise<void> => {
     setError(null)
-    Promise.all([
-      getApiClient().chat.listConversations(),
-      getApiClient().chatRequests.list(),
-    ])
-      .then(([c, r]) => {
-        setConvs(c as ConversationSummaryWithArchive[])
-        setRequests(r as ChatRequest[])
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Failed to load')
-      })
+    try {
+      const [c, r] = await Promise.all([
+        getApiClient().chat.listConversations(),
+        getApiClient().chatRequests.list(),
+      ])
+      setConvs(c as ConversationSummaryWithArchive[])
+      setRequests(r as ChatRequest[])
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load')
+    }
   }, [])
 
   useEffect(() => {
