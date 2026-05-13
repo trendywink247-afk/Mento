@@ -96,24 +96,39 @@ export class InvitesService {
    * Throws if invalid — caller must delete the just-created user if this throws.
    */
   async redeemForUser(userId: string, code: string): Promise<void> {
-    // Use a transaction so the use-count increment and redemption row are atomic.
     await this.prisma.$transaction(async (tx) => {
+      // Step 1: surface non-quantitative errors (not found, disabled, expired) with
+      // clear error messages, since the atomic update below won't tell us *which*
+      // condition failed if it returns 0 rows.
       const row = await tx.inviteCode.findUnique({ where: { code } })
       if (!row) throw new NotFoundException('Invite code not found')
       this.assertUsable(row)
 
-      // Guard: a user can only redeem once (@@unique([userId]) on InviteRedemption)
-      const existing = await tx.inviteRedemption.findUnique({ where: { userId } })
-      if (existing) throw new ConflictException('User has already redeemed an invite code')
+      // Step 2: atomic uses+1 with a WHERE guard that PostgreSQL evaluates in the
+      // same statement, so two concurrent redemptions of a 1-use code cannot both
+      // succeed — the second UPDATE will affect 0 rows and throw.
+      const updated = await tx.$executeRaw`
+        UPDATE "InviteCode"
+        SET "uses" = "uses" + 1
+        WHERE "id"::text = ${row.id}
+          AND "uses" < "maxUses"
+          AND "disabledAt" IS NULL
+          AND ("expiresAt" IS NULL OR "expiresAt" > NOW())
+      `
+      if (updated === 0) {
+        throw new GoneException('Invite code has been exhausted or disabled')
+      }
 
-      await tx.inviteRedemption.create({
-        data: { inviteCodeId: row.id, userId },
-      })
-
-      await tx.inviteCode.update({
-        where: { id: row.id },
-        data: { uses: { increment: 1 } },
-      })
+      // Step 3: one redemption per user (@@unique([userId])). If two signups by
+      // the same user race, the unique constraint will fail one of them — we
+      // surface that as a clean ConflictException.
+      try {
+        await tx.inviteRedemption.create({
+          data: { inviteCodeId: row.id, userId },
+        })
+      } catch (err) {
+        throw new ConflictException('User has already redeemed an invite code')
+      }
     })
   }
 

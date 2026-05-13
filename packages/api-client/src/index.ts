@@ -597,11 +597,18 @@ export class ApiClient {
           .patch(`admin/flags/${encodeURIComponent(key)}`, {
             json: { enabled, ...(description !== undefined ? { description } : {}) },
           })
-          .json<{ ok: boolean; key: string; enabled: boolean }>(),
+          .json<{
+            id: string
+            key: string
+            enabled: boolean
+            description: string | null
+            updatedAt: string
+            updatedBy: string | null
+          }>(),
       seed: () =>
         this.http
           .post('admin/flags/seed')
-          .json<{ seeded: number; skipped: number; created?: number; existed?: number }>(),
+          .json<{ seeded: number; skipped: number; total: number }>(),
     },
 
     // ─── Existing ────────────────────────────────────────────────────────

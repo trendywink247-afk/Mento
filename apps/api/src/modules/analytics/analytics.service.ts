@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Redis } from 'ioredis'
 import { PrismaService } from '../../database/prisma.service'
@@ -14,7 +14,7 @@ const TIER_PRICES: Record<string, number> = {
 }
 
 @Injectable()
-export class AnalyticsService {
+export class AnalyticsService implements OnModuleDestroy {
   private readonly logger = new Logger(AnalyticsService.name)
   private readonly redis: Redis
 
@@ -23,6 +23,10 @@ export class AnalyticsService {
     private readonly config: ConfigService,
   ) {
     this.redis = new Redis(this.config.get<string>('REDIS_URL') ?? 'redis://localhost:6379/0')
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.redis.quit().catch(() => undefined)
   }
 
   async getSummary() {
@@ -189,7 +193,7 @@ export class AnalyticsService {
     const [pendingDocs, approvedLast7d, rejectedLast7d] = await Promise.all([
       // Docs submitted but not yet reviewed
       this.prisma.verificationDocument.count({
-        where: { reviewedAt: null, submittedAt: { not: undefined } },
+        where: { reviewedAt: null },
       }),
       // Approved in last 7 days: mentorProfile.approvedAt in range
       this.prisma.mentorProfile.count({

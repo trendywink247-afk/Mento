@@ -24,6 +24,8 @@ import { SessionsModule } from './modules/sessions/sessions.module'
 import { ModerationModule } from './modules/moderation/moderation.module'
 import { InvitesModule } from './modules/invites/invites.module'
 import { NudgesModule } from './modules/nudges/nudges.module'
+import { AnalyticsModule } from './modules/analytics/analytics.module'
+import { FlagsModule } from './modules/flags/flags.module'
 
 @Module({
   imports: [
@@ -95,6 +97,8 @@ import { NudgesModule } from './modules/nudges/nudges.module'
     ModerationModule,
     InvitesModule,
     NudgesModule,
+    AnalyticsModule,
+    FlagsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
