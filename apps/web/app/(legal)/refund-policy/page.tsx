@@ -1,6 +1,23 @@
-export const metadata = {
+import type { Metadata } from 'next'
+
+const base = process.env.NEXT_PUBLIC_WEB_BASE_URL ?? 'https://mento.in'
+
+export const metadata: Metadata = {
   title: 'Refund Policy — Mento',
   description: 'How refunds work for Mento subscriptions and sessions.',
+  openGraph: {
+    title: 'Refund Policy — Mento',
+    description: 'How refunds work for Mento subscriptions and sessions.',
+    type: 'website',
+    url: `${base}/refund-policy`,
+    images: [{ url: `${base}/privacy/opengraph-image` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Refund Policy — Mento',
+    description: 'How refunds work for Mento subscriptions and sessions.',
+    images: [`${base}/privacy/opengraph-image`],
+  },
 }
 
 export default function RefundPolicyPage() {

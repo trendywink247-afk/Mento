@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { LandingNav } from '@/components/landing/LandingNav'
 import { HeroSection } from '@/components/landing/HeroSection'
@@ -9,6 +10,55 @@ import { WhatMentoIsNot } from '@/components/landing/WhatMentoIsNot'
 import { FaqSection } from '@/components/landing/FaqSection'
 import { FinalCta } from '@/components/landing/FinalCta'
 import { LandingFooter } from '@/components/landing/LandingFooter'
+
+const webBase = process.env.NEXT_PUBLIC_WEB_BASE_URL ?? 'https://mento.in'
+
+export const metadata: Metadata = {
+  openGraph: {
+    title: 'Mento — Anonymous UPSC mentorship',
+    description:
+      'Walk the UPSC path with someone who has been there. Anonymous, verified peer mentors. No coaching pitch.',
+    type: 'website',
+    url: webBase,
+    images: [{ url: `${webBase}/opengraph-image` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Mento — Anonymous UPSC mentorship',
+    description:
+      'Walk the UPSC path with someone who has been there. Anonymous, verified peer mentors. No coaching pitch.',
+    images: [`${webBase}/opengraph-image`],
+  },
+}
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      name: 'Mento',
+      url: 'https://mento.in',
+      description:
+        'Anonymous, peer-led UPSC mentorship platform. Walk the path with someone who has been there.',
+      sameAs: [],
+    },
+    {
+      '@type': 'WebSite',
+      name: 'Mento',
+      url: 'https://mento.in',
+      description:
+        'Walk the UPSC path with someone who has been there. Anonymous, verified peer mentors.',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: {
+          '@type': 'EntryPoint',
+          urlTemplate: 'https://mento.in/mentors?q={search_term_string}',
+        },
+        'query-input': 'required name=search_term_string',
+      },
+    },
+  ],
+}
 
 async function fetchCounts(): Promise<{ mentors: number; aspirants: number }> {
   try {
@@ -26,6 +76,10 @@ export default async function HomePage() {
   const { mentors, aspirants } = await fetchCounts()
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <LandingNav />
       <main id="main">
         <HeroSection mentorCount={mentors} aspirantCount={aspirants} />

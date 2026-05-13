@@ -1,10 +1,27 @@
 import type { Metadata } from 'next'
 import { DeepLinkBanner } from '@/components/getapp/DeepLinkBanner'
 
+const base = process.env.NEXT_PUBLIC_WEB_BASE_URL ?? 'https://mento.in'
+
 export const metadata: Metadata = {
   title: 'Get Mento on your phone',
   description:
     'Real-time chat with your mentor. Push notifications when they reply. Offline access to your journals.',
+  openGraph: {
+    title: 'Mento — Get the mobile app',
+    description:
+      'Real-time chat with your mentor. Push notifications when they reply. Offline access to your journals.',
+    type: 'website',
+    url: `${base}/get-app`,
+    images: [{ url: `${base}/get-app/opengraph-image` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Mento — Get the mobile app',
+    description:
+      'Real-time chat with your mentor. Push notifications when they reply. Offline access to your journals.',
+    images: [`${base}/get-app/opengraph-image`],
+  },
 }
 
 /* ─── App-store badge SVGs ───────────────────────────────────────────────────

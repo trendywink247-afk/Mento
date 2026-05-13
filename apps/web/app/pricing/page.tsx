@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Check, Minus } from 'lucide-react'
 
@@ -93,10 +94,25 @@ const TIERS = [
   },
 ] as const
 
-export const metadata = {
+const base = process.env.NEXT_PUBLIC_WEB_BASE_URL ?? 'https://mento.in'
+
+export const metadata: Metadata = {
   title: 'Pricing — Mento',
   description:
     'Anonymous UPSC mentorship. Free to start, upgrade when you are ready.',
+  openGraph: {
+    title: 'Pricing — Mento',
+    description: 'Anonymous UPSC mentorship. Free to start, upgrade when you are ready.',
+    type: 'website',
+    url: `${base}/pricing`,
+    images: [{ url: `${base}/pricing/opengraph-image` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Pricing — Mento',
+    description: 'Anonymous UPSC mentorship. Free to start, upgrade when you are ready.',
+    images: [`${base}/pricing/opengraph-image`],
+  },
 }
 
 export default function PricingPage() {

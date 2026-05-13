@@ -1,6 +1,23 @@
-export const metadata = {
+import type { Metadata } from 'next'
+
+const base = process.env.NEXT_PUBLIC_WEB_BASE_URL ?? 'https://mento.in'
+
+export const metadata: Metadata = {
   title: 'Privacy Policy — Mento',
   description: 'How Mento collects, uses, and protects your data.',
+  openGraph: {
+    title: 'Mento — Anonymous by design',
+    description: 'How Mento collects, uses, and protects your data.',
+    type: 'website',
+    url: `${base}/privacy`,
+    images: [{ url: `${base}/privacy/opengraph-image` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Mento — Anonymous by design',
+    description: 'How Mento collects, uses, and protects your data.',
+    images: [`${base}/privacy/opengraph-image`],
+  },
 }
 
 export default function PrivacyPage() {
