@@ -157,18 +157,14 @@ export class ModerationService {
         },
       })
 
-      if (action === ResolveAction.DISMISS) {
-        // No further action.
-        return
-      }
-
-      // Write a ModerationActionLog for WARN, SUSPEND, BAN.
+      // Write a ModerationActionLog for every resolution — including DISMISS — so
+      // the audit trail is complete and dismissals are reviewable later.
       const moderationActionMap: Record<ResolveAction, ModerationAction> = {
-        [ResolveAction.DISMISS]: ModerationAction.WARN, // unused branch
+        [ResolveAction.DISMISS]: ModerationAction.DISMISS,
         [ResolveAction.WARN]: ModerationAction.WARN,
         [ResolveAction.SUSPEND]: targetUser.role === Role.MENTOR
-          ? ModerationAction.BAN_MENTOR
-          : ModerationAction.BAN_ASPIRANT,
+          ? ModerationAction.SUSPEND_MENTOR
+          : ModerationAction.SUSPEND_ASPIRANT,
         [ResolveAction.BAN]: targetUser.role === Role.MENTOR
           ? ModerationAction.BAN_MENTOR
           : ModerationAction.BAN_ASPIRANT,
@@ -361,8 +357,8 @@ export class ModerationService {
             ? ModerationAction.BAN_MENTOR
             : ModerationAction.BAN_ASPIRANT
           : user.role === Role.MENTOR
-          ? ModerationAction.BAN_MENTOR
-          : ModerationAction.BAN_ASPIRANT
+          ? ModerationAction.SUSPEND_MENTOR
+          : ModerationAction.SUSPEND_ASPIRANT
 
       if (status === UserStatus.SUSPENDED || status === UserStatus.BANNED) {
         await tx.moderationActionLog.create({

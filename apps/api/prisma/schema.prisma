@@ -183,6 +183,9 @@ enum ReportStatus {
 
 enum ModerationAction {
   WARN
+  DISMISS
+  SUSPEND_ASPIRANT
+  SUSPEND_MENTOR
   BAN_ASPIRANT
   BAN_MENTOR
   BAN_BOTH

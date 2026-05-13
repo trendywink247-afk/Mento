@@ -77,6 +77,8 @@ export class AuthService {
       })
     } else if (user.status === UserStatus.SUSPENDED) {
       throw new UnauthorizedException('Account suspended')
+    } else if (user.status === UserStatus.BANNED) {
+      throw new UnauthorizedException('Account banned')
     } else if (user.status === UserStatus.PENDING_VERIFICATION) {
       // Activate if somehow stuck in pending state.
       user = await this.prisma.user.update({
@@ -103,6 +105,8 @@ export class AuthService {
       })
     } else if (user.status === UserStatus.SUSPENDED) {
       throw new UnauthorizedException('Account suspended')
+    } else if (user.status === UserStatus.BANNED) {
+      throw new UnauthorizedException('Account banned')
     }
 
     const tokens = await this.issueTokens(user)

@@ -208,9 +208,12 @@ function SaveToJournalDialog({
       onSuccess(category)
       onClose()
     } catch (err: unknown) {
-      // 402 is handled globally (paywall modal triggers). Just close.
+      // 402 is normally surfaced by the global paywall interceptor. We still pass
+      // a hint to the parent so it can show a fallback toast if the interceptor
+      // ever fails to mount.
       const status = (err as { response?: { status?: number } })?.response?.status
       if (status === 402) {
+        onError('Saving chat to journal needs PRO.')
         onClose()
       } else {
         onError(err instanceof Error ? err.message : 'Failed to save')

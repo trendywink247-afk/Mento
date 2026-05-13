@@ -98,12 +98,11 @@ function OtpForm() {
       const state = await getApiClient().onboarding.state().catch(() => null)
       router.push(nextDestination(state, role))
     } catch (err) {
-      // Check if the error is a 401 "Account suspended" response.
-      const isSuspended =
-        err instanceof Error &&
-        (err.message.toLowerCase().includes('suspended') ||
-          (err as { response?: { status?: number } }).response?.status === 401)
-      if (isSuspended && err instanceof Error && err.message.toLowerCase().includes('suspended')) {
+      // Distinguish account-status 401s (suspended / banned) from a wrong-code 401.
+      // We match on the server's exact error strings so a generic 401 falls through
+      // to "wrong code" instead of misleadingly showing the suspended banner.
+      const msg = err instanceof Error ? err.message.toLowerCase() : ''
+      if (msg.includes('suspended') || msg.includes('banned')) {
         setSuspended(true)
         return
       }
