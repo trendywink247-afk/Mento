@@ -75,7 +75,45 @@ These numbers drive everything below.
 
 ## 3. Recommended config knobs
 
-### PgBouncer (connection pooling)
+### PgBouncer (connection pooling) — SHIPPED in prod compose
+
+PgBouncer is now deployed as the `pgbouncer` service in `infra/docker/docker-compose.prod.yml`
+(`edoburu/pgbouncer:1.23.1`, transaction-pool mode, listening on port 6432).
+
+**Current prod settings (docker-compose.prod.yml):**
+```
+POOL_MODE=transaction
+DEFAULT_POOL_SIZE=25      # server-side connections to Postgres
+RESERVE_POOL_SIZE=5
+MAX_CLIENT_CONN=1000      # inbound connections from the api
+AUTH_TYPE=scram-sha-256
+SERVER_RESET_QUERY=DISCARD ALL
+```
+
+Bump `DEFAULT_POOL_SIZE` if monitoring shows connection queue depth > 0 sustained
+for more than a few seconds. For the staging tier use pool_size=40; for prod-scale
+use pool_size=80 (see capacity tiers in §5).
+
+**Prisma integration — required flags:**
+
+`?pgbouncer=true` in DATABASE_URL disables Prisma's prepared-statement caching.
+PgBouncer transaction mode routes each statement to a potentially different server
+connection, making named prepared statements invalid across calls. Prisma detects
+the `pgbouncer=true` query parameter and falls back to simple protocol automatically.
+
+```
+# api sees this (in docker-compose):
+DATABASE_URL=postgresql://mento:<pw>@pgbouncer:6432/mento?pgbouncer=true
+
+# migrations bypass PgBouncer — use this for prisma migrate deploy:
+MIGRATIONS_DATABASE_URL=postgresql://mento:<pw>@postgres:5432/mento
+```
+
+Do NOT add `connection_limit` to DATABASE_URL when using PgBouncer — PgBouncer
+itself is the connection manager; Prisma's internal pool should stay at its default
+(1 connection per worker in transaction mode) so the pool math is correct.
+
+**Legacy ini reference (kept for bare-metal / k8s sidecar deployments):**
 ```ini
 # /etc/pgbouncer/pgbouncer.ini
 [databases]
@@ -90,12 +128,6 @@ reserve_pool_size = 20
 reserve_pool_timeout = 3
 server_idle_timeout = 600
 log_connections = 0           ; disable in prod for perf
-```
-
-Prisma connection string: `postgresql://mento:mento@localhost:5432/mento?pgbouncer=true`
-Set `connection_limit` in `DATABASE_URL` to match PgBouncer `max_client_conn`:
-```
-DATABASE_URL="postgresql://...?pgbouncer=true&connection_limit=80"
 ```
 
 ### Redis Cluster (for >50k concurrent socket users)
@@ -216,7 +248,7 @@ monitor effectiveness.
 ## 7. Pre-launch checklist
 
 - [ ] `SOCKET_REDIS_ADAPTER=true` set in production env
-- [ ] PgBouncer deployed and `DATABASE_URL` updated to point to it
+- [x] PgBouncer deployed and `DATABASE_URL` updated to point to it (pgbouncer:6432, transaction mode)
 - [ ] Caddy `lb_policy ip_hash` enabled for Socket.IO sticky sessions
 - [ ] `UV_THREADPOOL_SIZE=64` in systemd unit
 - [ ] Sentry DSN configured and `SENTRY_DSN_API` set

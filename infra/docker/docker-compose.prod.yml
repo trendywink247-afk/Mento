@@ -2,7 +2,8 @@
 # Mento — Production docker-compose
 #
 # Boot order:
-#   postgres + redis → api (waits healthy) → web (waits healthy) → caddy
+#   postgres + redis → pgbouncer (waits postgres healthy) →
+#   api (waits pgbouncer + redis healthy) → web (waits api healthy) → caddy
 #
 # Prerequisites:
 #   - Copy .env.prod.example → .env.prod (repo root) and fill all secrets.
@@ -16,6 +17,10 @@
 #
 # All ${VAR} references below are resolved from the --env-file at CLI invocation
 # time; no service-level env_file is used so validation works without .env.prod.
+#
+# Connection routing:
+#   api  →  pgbouncer:6432  (transaction-pool, ?pgbouncer=true)
+#   prisma migrate deploy  →  postgres:5432  via MIGRATIONS_DATABASE_URL
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: mento-prod
@@ -64,6 +69,49 @@ services:
     networks:
       - mento_internal
 
+  # ── PgBouncer (connection pooler) ─────────────────────────────────────────
+  # Sits between the api and Postgres. Transaction-pool mode means each query
+  # borrows a server connection for its duration only — allows thousands of
+  # concurrent client connections while keeping Postgres connections low.
+  #
+  # Key settings:
+  #   DEFAULT_POOL_SIZE=25   → server-side connections to Postgres per DB
+  #   MAX_CLIENT_CONN=1000   → inbound connections from the api container
+  #   POOL_MODE=transaction  → required for Prisma (no prepared-statement caching)
+  #   SERVER_RESET_QUERY     → cleans session state between transactions
+  #
+  # Prisma must connect with ?pgbouncer=true to disable prepared statements.
+  # prisma migrate deploy is INCOMPATIBLE with transaction-pool mode — run it
+  # against Postgres directly via MIGRATIONS_DATABASE_URL (see docs/DEPLOY.md).
+  pgbouncer:
+    image: edoburu/pgbouncer:1.23.1
+    container_name: mento-pgbouncer-prod
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-mento}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB:-mento}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 25
+      RESERVE_POOL_SIZE: 5
+      SERVER_RESET_QUERY: DISCARD ALL
+      AUTH_TYPE: scram-sha-256
+      LISTEN_PORT: 6432
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "sh", "-c", "nc -z localhost 6432 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - mento_internal
+
   # ── NestJS API ─────────────────────────────────────────────────────────────
   api:
     image: ghcr.io/${GHCR_OWNER:-mento}/mento-api:${IMAGE_TAG:-latest}
@@ -75,8 +123,14 @@ services:
     environment:
       NODE_ENV: production
       API_PORT: "4000"
-      # Database — constructed from postgres container network alias
-      DATABASE_URL: postgresql://${POSTGRES_USER:-mento}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mento}
+      # Database — routed through PgBouncer (transaction-pool mode).
+      # ?pgbouncer=true disables Prisma's prepared-statement caching, which is
+      # required for PgBouncer transaction mode.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mento}:${POSTGRES_PASSWORD}@pgbouncer:6432/${POSTGRES_DB:-mento}?pgbouncer=true
+      # Direct connection to Postgres — used ONLY for prisma migrate deploy.
+      # PgBouncer transaction-pool is incompatible with the session-level locks
+      # that Prisma's migration engine uses. See docs/DEPLOY.md.
+      MIGRATIONS_DATABASE_URL: postgresql://${POSTGRES_USER:-mento}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mento}
       # Redis — constructed from redis container network alias
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       # Auth
@@ -119,7 +173,7 @@ services:
       # Admin
       ADMIN_BOOTSTRAP_PHONE: ${ADMIN_BOOTSTRAP_PHONE:-}
     depends_on:
-      postgres:
+      pgbouncer:
         condition: service_healthy
       redis:
         condition: service_healthy

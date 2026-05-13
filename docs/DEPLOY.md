@@ -115,12 +115,33 @@ Boot order (enforced by healthcheck `depends_on`):
 
 ### 2e. Run database migrations
 
+PgBouncer transaction-pool mode is **incompatible** with `prisma migrate deploy`.
+Prisma's migration engine acquires session-level advisory locks, but in transaction
+mode PgBouncer may route different statements to different server connections,
+breaking the lock. Always run migrations directly against Postgres using
+`MIGRATIONS_DATABASE_URL` (set in `.env.prod`):
+
 ```bash
-# Apply all pending Prisma migrations (safe for first deploy and every update)
-docker exec mento-api-prod \
-  node node_modules/.bin/prisma migrate deploy \
-    --schema prisma/schema.prisma
+# Apply all pending Prisma migrations via the direct Postgres connection.
+# MIGRATIONS_DATABASE_URL bypasses PgBouncer (port 5432, not 6432).
+docker exec mento-api-prod sh -c \
+  "DATABASE_URL=\$MIGRATIONS_DATABASE_URL \
+   node node_modules/.bin/prisma migrate deploy \
+     --schema prisma/schema.prisma"
 ```
+
+If `MIGRATIONS_DATABASE_URL` is not in scope inside the container you can
+inject it explicitly:
+
+```bash
+docker exec -e DATABASE_URL="postgresql://mento:<pw>@postgres:5432/mento" \
+  mento-api-prod \
+  node node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma
+```
+
+Never run `prisma migrate deploy` (or `prisma db push`) with a PgBouncer URL
+(`port 6432` or `?pgbouncer=true`) — the migration will hang or silently corrupt
+the `_prisma_migrations` table.
 
 ### 2f. Seed the admin user
 
@@ -174,10 +195,11 @@ IMAGE_TAG=v1.2.3 \
     --env-file .env.prod \
     up -d --remove-orphans
 
-# Run any new migrations
-docker exec mento-api-prod \
-  node node_modules/.bin/prisma migrate deploy \
-    --schema prisma/schema.prisma
+# Run any new migrations (via direct Postgres — NOT through PgBouncer)
+docker exec mento-api-prod sh -c \
+  "DATABASE_URL=\$MIGRATIONS_DATABASE_URL \
+   node node_modules/.bin/prisma migrate deploy \
+     --schema prisma/schema.prisma"
 
 # Prune dangling images
 docker image prune -f
