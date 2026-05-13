@@ -50,6 +50,7 @@ import {
   authHeaders,
   randomElement,
   weightedPick,
+  qs,
   LANGUAGES,
   OPTIONAL_SUBJECTS,
   GUIDANCE_CATEGORIES,
@@ -195,15 +196,16 @@ function doMentorBrowse(state) {
   const headers = authHeaders(state.accessToken)
 
   group('mentor_browse', () => {
-    const params = new URLSearchParams()
-    if (Math.random() < 0.4) params.set('language', randomElement(LANGUAGES))
-    if (Math.random() < 0.3) params.set('optionalSubject', randomElement(OPTIONAL_SUBJECTS))
-    if (Math.random() < 0.3) params.set('guidanceCategory', randomElement(GUIDANCE_CATEGORIES))
-    if (Math.random() < 0.2) params.set('isVerified', 'true')
-    const qs = params.toString() ? `?${params.toString()}` : ''
+    // Note: URLSearchParams is NOT available in Goja (k6's JS engine).
+    // Use the qs() helper from lib/setup.js instead.
+    const filterParams = {}
+    if (Math.random() < 0.4) filterParams.language = randomElement(LANGUAGES)
+    if (Math.random() < 0.3) filterParams.optionalSubject = randomElement(OPTIONAL_SUBJECTS)
+    if (Math.random() < 0.3) filterParams.guidanceCategory = randomElement(GUIDANCE_CATEGORIES)
+    if (Math.random() < 0.2) filterParams.isVerified = 'true'
 
     const listRes = http.get(
-      `${BASE_URL}/mentors${qs}`,
+      `${BASE_URL}/mentors${qs(filterParams)}`,
       { headers, ...tagParams('mentor_list') },
     )
     const ok1 = check(listRes, { 'mentor list 200': (r) => r.status === 200 })
@@ -315,13 +317,21 @@ function doOnboarding() {
 
     sleep(1) // simulate filling Mirror
 
+    // journeyStage must be a valid JourneyStage enum value (not BEGINNER etc).
+    // challenges must be an array of strings (max 12), not a plain string.
+    // knowledge values must be numbers (0..1 scale).
     const mirrorRes = http.post(
       `${BASE_URL}/onboarding/mirror`,
       JSON.stringify({
-        journeyStage: randomElement(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'REPEAT_ASPIRANT']),
+        journeyStage: randomElement([
+          'ABOUT_TO_START',
+          'ONE_YEAR_IN',
+          'PRELIMS_CLEARED',
+          'MAINS_WRITTEN',
+        ]),
         background: 'Load test background text.',
-        knowledge: { prelims: 'moderate', mains: 'weak', optionals: 'none' },
-        challenges: 'Time management.',
+        knowledge: { polity: 3, history: 2, geography: 4 },
+        challenges: ['Time management', 'Covering vast syllabus'],
       }),
       { headers: authHeaders(accessToken), ...tagParams('onboarding_mirror') },
     )

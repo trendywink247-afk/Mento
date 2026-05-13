@@ -63,3 +63,10 @@ apps/mobile/web-build/
 infra/caddy/data/
 infra/caddy/config/
 .claude/
+
+# k6 run output — large, machine-generated. Result files are artifacts, not source.
+# (Wave 15 found a 2.5 GB crash-output file in history at commit 9f645a1; future
+#  result files are ignored. Use `git filter-repo --invert-paths --path
+#  loadtest/results/02-mentor-discovery.txt` to clean history before pushing.)
+loadtest/results/*
+!loadtest/results/.gitkeep

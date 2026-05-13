@@ -23,7 +23,7 @@ Mento is an anonymous, peer-led UPSC mentorship platform connecting aspirants wi
 | **Chat-to-journal** | Long-press a message to save it directly to the aspirant's journal (PRO tier). |
 | **Tiered subscriptions** | FREE / BASIC / PRO / MAX. Placeholder prices ₹399 / ₹599 / ₹999 — validate during user testing. Real Razorpay HMAC-SHA256 webhooks. Dev simulate-success flow (no key needed locally). `TierGuard` enforces feature gates server-side. |
 | **1:1 session booking** | Availability grid + booking sheet UI. Simulated HOLD → CAPTURE → REFUND escrow wallet. Real Razorpay escrow deferred to v1.1 (August). |
-| **Journals** | 15 categories (Personal, 8 Prelims subjects, 6 Mains GS papers, Interview, Shared-with-mentor). Presence-gated shared editing. Full audit log (CREATE / EDIT / APPEND / DELETE / LOCK / UNLOCK). Auto-lock on archive. |
+| **Journals** | 17 categories: Personal, 8 Prelims subjects (Polity, History, Geography, Economy, Environment, Sci-Tech, CSAT, Current Affairs), 6 Mains papers (GS1-GS4, Essay, Optional), Interview, Shared-with-mentor. Presence-gated shared editing. Full audit log (CREATE / EDIT / APPEND / DELETE / LOCK / UNLOCK). Auto-lock on archive. |
 | **Moderation** | Report queue with 5-message author context. Actions: DISMISS / WARN / SUSPEND / BAN. BAN writes Aadhaar hash to denylist; SUSPEND/BAN revokes all refresh tokens and deletes push tokens. Banned users rejected at OTP-verify and Google sign-in. |
 | **Push notifications** | Expo Push batched at 100/request. Offline message alerts, chat request alerts, onboarding nudges. DeviceNotRegistered auto-cleanup. |
 | **Feature flags** | Server-driven flag system (schema + API + web + mobile). Admin toggle at `/admin/flags`. |
@@ -63,15 +63,15 @@ Mento is an anonymous, peer-led UPSC mentorship platform connecting aspirants wi
 
 ## Open items before paid launch
 
-The go/no-go audit (`docs/RELEASE_READINESS.md`) rates the platform **YELLOW** for a paid promotional launch. For a 50-person internal beta the blockers are manageable. Seven items must be resolved before a paid push:
+The go/no-go audit (`docs/RELEASE_READINESS.md`) now rates the platform **GREEN**. All seven Wave-8 code blockers have been resolved across Waves 9–15. What remains is operator-side credential provisioning before the first paid push:
 
-1. BANNED user OTP 15-minute window (M3)
-2. `listMentees` surfaces suspended/banned aspirants to mentors
-3. Privacy policy and Terms of Service pages (required by App Store / Play Store)
-4. WCAG nested-interactive a11y violation on all authenticated pages
-5. Chat tab count mismatch (3 rendered, 4 expected)
-6. Razorpay plan IDs documented in `.env.prod.example` and compose
-7. Dashboard empty-state copy fix ("admin will assign you" contradicts the 160-char request flow)
+1. **Razorpay live keys + plan IDs** — register on Razorpay dashboard, drop into `.env.prod`
+2. **MSG91 DLT** registration — 5–7 day lead time for the OTP template approval
+3. **Sentry DSN + auth token + org/project slug** — create the project at sentry.io
+4. **Google OAuth client ID + secret** — Google Cloud Console, add `https://api.mento.in/auth/google/callback` as a redirect URI
+5. **Cloudflare R2 bucket** + access keys for verification document uploads
+6. **EAS account** + Apple App Store Connect API key + Google Play service account JSON for mobile submissions
+7. **DNS** pointed at the prod server, then Caddy auto-issues TLS
 
 ---
 
@@ -109,4 +109,4 @@ The go/no-go audit (`docs/RELEASE_READINESS.md`) rates the platform **YELLOW** f
 | Reverse proxy | Caddy (auto-TLS, HSTS, gzip+zstd, HTTP/3 ready) |
 | Mobile CI | EAS build pipeline + EAS Update (OTA) |
 | Load testing | k6 (5 scenarios, SLO targets documented) |
-| Tests | Vitest (115 unit) + Playwright (API + browser e2e, axe a11y) |
+| Tests | Vitest (142 unit) + Playwright (40 API e2e, 66 browser e2e, axe a11y) + k6 (5 perf scenarios) |

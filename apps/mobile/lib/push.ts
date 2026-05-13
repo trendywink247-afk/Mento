@@ -16,14 +16,12 @@ export async function registerForPushNotifications(): Promise<void> {
   try {
     // Expo push tokens only work on physical devices.
     if (!Device.isDevice) {
-      console.log('[push] Skipping registration — not a physical device')
       return
     }
 
     // Ask for permissions (will no-op if already granted or denied).
     const { status } = await Notifications.requestPermissionsAsync()
     if (status !== 'granted') {
-      console.log('[push] Notifications permission not granted')
       return
     }
 

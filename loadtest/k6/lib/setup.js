@@ -228,3 +228,24 @@ export const JOURNAL_CATEGORIES = [
   'INTERVIEW',
   'GENERAL',
 ]
+
+// ---------------------------------------------------------------------------
+// Query string builder — Goja (k6's JS engine) does NOT have URLSearchParams.
+// Use this instead of `new URLSearchParams()`.
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds a URL query string from a plain object.
+ * Keys with null or undefined values are skipped.
+ *
+ * @param {Record<string, string | number | boolean | null | undefined>} params
+ * @returns {string} e.g. '?foo=bar&baz=qux' or '' if params is empty
+ */
+export function qs(params) {
+  const parts = []
+  for (const k in params) {
+    if (params[k] === undefined || params[k] === null) continue
+    parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(String(params[k])))
+  }
+  return parts.length ? '?' + parts.join('&') : ''
+}

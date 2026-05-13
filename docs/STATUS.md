@@ -6,7 +6,7 @@
 
 **71 commits on `main`. 100% of in-scope MVP is shipped.** Foundation (0-3) + spec alignment (A-D) + payments (E) + sessions (H) + Google OAuth (J) + moderation (G) + chat/journal polish (L) + production infra + test coverage + Waves 9-13 (env/build fixes, admin analytics + feature flags + beta invites, onboarding nudges, perf indexes, SEO/OG/sitemap, EAS mobile pipeline, full PostHog taxonomy). The only remaining items are spec-deferred to v1.1 (broadcast feed, real escrow, Coordinator dashboard).
 
-Latest commit: `da593bc fix: Wave 12 reviewer criticals — schedule dep, robots.txt route groups`.
+Latest commit: `145c3f2 security: per-phone OTP rate limits + brute-force lockout` (15 waves shipped, 142 unit tests).
 
 ## Wave history
 

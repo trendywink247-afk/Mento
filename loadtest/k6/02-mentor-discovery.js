@@ -32,7 +32,7 @@ import http from 'k6/http'
 import { check, sleep } from 'k6'
 import { Trend } from 'k6/metrics'
 import { tagParams } from './lib/thresholds.js'
-import { authHeaders, randomElement, LANGUAGES, OPTIONAL_SUBJECTS, GUIDANCE_CATEGORIES } from './lib/setup.js'
+import { authHeaders, randomElement, qs, LANGUAGES, OPTIONAL_SUBJECTS, GUIDANCE_CATEGORIES } from './lib/setup.js'
 
 // ---------------------------------------------------------------------------
 // Custom metrics
@@ -122,23 +122,22 @@ export function setup() {
 
 // ---------------------------------------------------------------------------
 // Filter combinations — randomly pick to simulate diverse queries
+// Note: URLSearchParams is NOT available in Goja (k6's JS engine). Use the
+// qs() helper from lib/setup.js instead.
 // ---------------------------------------------------------------------------
 function buildFilterQuery() {
-  const params = new URLSearchParams()
+  const rates = [500, 800, 1000, 1500, 2000]
+  const params = {}
 
   // 40% chance of each filter being applied
-  if (Math.random() < 0.4) params.set('language', randomElement(LANGUAGES))
-  if (Math.random() < 0.3) params.set('optionalSubject', randomElement(OPTIONAL_SUBJECTS))
-  if (Math.random() < 0.3) params.set('guidanceCategory', randomElement(GUIDANCE_CATEGORIES))
-  if (Math.random() < 0.2) params.set('prelimsCleared', 'true')
-  if (Math.random() < 0.2) params.set('isVerified', 'true')
-  if (Math.random() < 0.15) {
-    const rates = [500, 800, 1000, 1500, 2000]
-    params.set('maxRateInr', String(randomElement(rates)))
-  }
+  if (Math.random() < 0.4) params.language = randomElement(LANGUAGES)
+  if (Math.random() < 0.3) params.optionalSubject = randomElement(OPTIONAL_SUBJECTS)
+  if (Math.random() < 0.3) params.guidanceCategory = randomElement(GUIDANCE_CATEGORIES)
+  if (Math.random() < 0.2) params.prelimsCleared = 'true'
+  if (Math.random() < 0.2) params.isVerified = 'true'
+  if (Math.random() < 0.15) params.maxRateInr = String(randomElement(rates))
 
-  const qs = params.toString()
-  return qs ? `?${qs}` : ''
+  return qs(params)
 }
 
 // ---------------------------------------------------------------------------

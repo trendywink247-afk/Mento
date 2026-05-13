@@ -72,30 +72,33 @@ export const options = {
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:4000'
 
 // Mirror questionnaire payloads — sample a realistic range of answers.
+// journeyStage must match the JourneyStage Prisma enum exactly.
+// challenges must be string[] (ArrayMaxSize 12) — NOT a plain string.
+// knowledge values are numbers (the DTO accepts Record<string, number>).
 const MIRROR_PAYLOADS = [
   {
-    journeyStage: 'BEGINNER',
+    journeyStage: 'ABOUT_TO_START',
     background: 'Science graduate, started UPSC prep recently.',
-    knowledge: { prelims: 'weak', mains: 'none', optionals: 'none' },
-    challenges: 'Time management and covering the vast syllabus.',
+    knowledge: { polity: 1, history: 1, geography: 2 },
+    challenges: ['Time management', 'Covering the vast syllabus'],
   },
   {
-    journeyStage: 'INTERMEDIATE',
-    background: 'Engineering, 2 years of preparation.',
-    knowledge: { prelims: 'moderate', mains: 'weak', optionals: 'partial' },
-    challenges: 'Answer writing quality and GS Paper 4.',
+    journeyStage: 'ONE_YEAR_IN',
+    background: 'Engineering, 1 year of preparation.',
+    knowledge: { polity: 2, history: 2, geography: 3 },
+    challenges: ['Answer writing quality', 'GS Paper 4 ethics'],
   },
   {
-    journeyStage: 'ADVANCED',
-    background: 'Humanities, appeared in Mains twice.',
-    knowledge: { prelims: 'strong', mains: 'moderate', optionals: 'strong' },
-    challenges: 'Interview stage preparation and personality.',
+    journeyStage: 'PRELIMS_CLEARED',
+    background: 'Humanities, cleared Prelims, preparing for Mains.',
+    knowledge: { polity: 4, history: 3, geography: 4 },
+    challenges: ['Mains answer writing', 'Essay quality'],
   },
   {
-    journeyStage: 'REPEAT_ASPIRANT',
-    background: 'Commerce graduate, 3rd attempt.',
-    knowledge: { prelims: 'strong', mains: 'strong', optionals: 'strong' },
-    challenges: 'Consistency and staying motivated after previous attempts.',
+    journeyStage: 'MAINS_WRITTEN',
+    background: 'Commerce graduate, written Mains twice.',
+    knowledge: { polity: 4, history: 4, geography: 4 },
+    challenges: ['Interview preparation', 'Staying motivated'],
   },
 ]
 

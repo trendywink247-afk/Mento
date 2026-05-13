@@ -81,8 +81,7 @@ async function bootstrap() {
 
   const port = Number(process.env.API_PORT ?? 4000)
   await app.listen(port, '0.0.0.0')
-  // eslint-disable-next-line no-console
-  console.log(`[api] listening on http://localhost:${port}`)
+  app.get(Logger).log(`API listening on http://localhost:${port}`, 'Bootstrap')
 }
 
 bootstrap()
