@@ -74,8 +74,10 @@ export class OtpService {
       return { expiresIn: Math.floor(OTP_TTL_MS / 1000) }
     }
 
-    // Dev mode: print to console; return code in payload for easy testing.
-    this.logger.warn(`[DEV] OTP for ${phone} = ${code}`)
+    // Dev mode: the code is returned in the response payload (devCode) so testers
+    // can grab it without parsing logs. Do NOT log the raw phone or the code —
+    // logs ship to Sentry/Loki and PII must not land there.
+    this.logger.warn('[DEV] OTP issued (devCode returned in response)')
     return { expiresIn: Math.floor(OTP_TTL_MS / 1000), devCode: code }
   }
 

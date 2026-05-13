@@ -32,8 +32,11 @@ export class AuthController {
   @Post('otp/request')
   @HttpCode(200)
   async requestOtp(@Body() body: OtpRequestDto) {
+    // Anonymity: do NOT echo the phone in the response. Dev-mode receivers
+    // already know the phone from their own request; in prod the response
+    // body should never carry it.
     const result = await this.auth.requestOtp(body.phone)
-    return { phone: body.phone, ...result }
+    return result
   }
 
   /**
@@ -53,8 +56,8 @@ export class AuthController {
     return {
       user: {
         id: user.id,
-        phone: user.phone,
-        email: user.email,
+        // Anonymity: phone, email, and googleSub are admin-only.
+        // The frontend identifies the user by UUID; the display handle goes via profile.
         role: user.role,
         status: user.status,
         createdAt: user.createdAt.toISOString(),

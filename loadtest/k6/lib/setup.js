@@ -221,12 +221,22 @@ export const GUIDANCE_CATEGORIES = [
 // Journal category pool
 // ---------------------------------------------------------------------------
 
+// Valid values from the JournalCategory Prisma enum (apps/api/prisma/schema.prisma).
+// Sampling a few hot categories — full list isn't needed for load shape.
 export const JOURNAL_CATEGORIES = [
-  'PRELIMS',
-  'MAINS',
-  'OPTIONAL',
+  'PERSONAL',
+  'PRELIMS_POLITY',
+  'PRELIMS_HISTORY',
+  'PRELIMS_GEOGRAPHY',
+  'PRELIMS_ECONOMY',
+  'PRELIMS_CURRENT_AFFAIRS',
+  'MAINS_GS1',
+  'MAINS_GS2',
+  'MAINS_GS3',
+  'MAINS_GS4',
+  'MAINS_ESSAY',
+  'MAINS_OPTIONAL',
   'INTERVIEW',
-  'GENERAL',
 ]
 
 // ---------------------------------------------------------------------------
