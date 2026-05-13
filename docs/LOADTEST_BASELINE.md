@@ -310,3 +310,34 @@ Local single-VM baseline: read endpoints (mentors, conversations, journals) are 
 - `/root/Mento/loadtest/results/03-chat-list-final.txt`
 - `/root/Mento/loadtest/results/04-journal-final.txt`
 - `/root/Mento/loadtest/results/05-mixed-final.txt`
+
+---
+
+## Wave 19 — Journal entry script fix re-run
+
+After fixing the `type: 'MANUAL_TEXT'` field that the journal entry DTO required, scenarios 04 and 05 were re-run. The previously 100% HTTP 400 journal entry write path now succeeds.
+
+### Scenario 04 — Journal Upsert + Entry (80 VUs)
+
+| Endpoint | P95 | SLO | Status |
+|---|---|---|---|
+| `POST /journals` (upsert) | 14.35 ms | < 400 ms | GREEN |
+| `POST /journals/:id/entries` | **94.85 ms** | < 400 ms | **GREEN (was 100% failing)** |
+| `GET /journals` | 10.19 ms | < 200 ms | GREEN |
+
+### Scenario 05 — Mixed Realistic (500 VUs)
+
+| Endpoint | P95 | SLO | Status |
+|---|---|---|---|
+| `POST /journals/:id/entries` | 8.38 s | < 400 ms | RED (local-stack saturation) |
+| `POST /journals` (upsert) | 5.22 s | < 400 ms | RED (local-stack saturation) |
+| Other endpoints | various RED | — | All proportionally saturated |
+
+### Verdict for Wave 19
+
+**The journal-entry path is now SLO-compliant** when measured in isolation (94.85 ms P95 vs 400 ms SLO at 80 VUs — over 4× headroom). The 500-VU mixed scenario remains saturated at the local single-VM Postgres pool — that's expected and unblocks the PgBouncer-shipped → staging-validation path documented in SCALING_PLAYBOOK §3. All 5 scenarios now produce useful numbers; no more script-bug noise.
+
+### Raw result files (Wave 19)
+
+- `/root/Mento/loadtest/results/04-journal-final-v2.txt`
+- `/root/Mento/loadtest/results/05-mixed-final-v2.txt`

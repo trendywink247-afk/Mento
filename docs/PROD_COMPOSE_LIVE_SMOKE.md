@@ -1,10 +1,84 @@
 # Prod Compose Live Smoke — 2026-05-13
 
-## Headline
+---
 
-postgres and redis boot healthy; pgbouncer starts and routes connections correctly but its SHOW POOLS healthcheck is misconfigured and reports unhealthy — two bugs identified with fixes documented below.
+## Wave 20 — pg_isready healthcheck (2026-05-13)
 
-## Service-by-service results
+### Headline
+
+All three data-tier containers (postgres, redis, pgbouncer) boot healthy. The `pg_isready` healthcheck (4th iteration) is confirmed working. PgBouncer transitions to `healthy` on the **first poll — within 5 seconds of container start**, with zero failing streak.
+
+### Healthcheck poll log
+
+| Time (poll) | Status |
+|-------------|--------|
+| [5s] 20:05:21 | healthy |
+
+Container reached healthy on the very first check interval. No unhealthy transitions recorded.
+
+### Docker healthcheck inspect (raw)
+
+```json
+{
+    "Status": "healthy",
+    "FailingStreak": 0,
+    "Log": [
+        {
+            "Start": "2026-05-13T20:05:21.381166839Z",
+            "End": "2026-05-13T20:05:21.448625263Z",
+            "ExitCode": 0,
+            "Output": "localhost:6432 - accepting connections\n"
+        },
+        {
+            "Start": "2026-05-13T20:05:31.44937684Z",
+            "End": "2026-05-13T20:05:31.51404868Z",
+            "ExitCode": 0,
+            "Output": "localhost:6432 - accepting connections\n"
+        }
+    ]
+}
+```
+
+Both health runs return exit code 0 and output `localhost:6432 - accepting connections`. This is the canonical pg_isready success output — confirms PgBouncer is accepting the Postgres startup-packet handshake on its listen port.
+
+### pg_isready manual verification
+
+```bash
+docker exec mento-pgbouncer-prod sh -c "pg_isready -h localhost -p 6432 -U mento -d mento"
+# Output: localhost:6432 - accepting connections
+# Exit:   0
+```
+
+### PgBouncer logs during healthcheck
+
+```
+2026-05-13 20:05:16 UTC LOG process up: PgBouncer 1.25.1 ...
+2026-05-13 20:05:21 UTC LOG C-...: mento/mento@127.0.0.1:51430 login attempt: db=mento user=mento tls=no replication=no
+2026-05-13 20:05:31 UTC LOG C-...: mento/mento@127.0.0.1:55948 login attempt: db=mento user=mento tls=no replication=no
+```
+
+`pg_isready` sends a startup packet, PgBouncer accepts it and logs a login attempt, then the client disconnects cleanly (no full query round-trip needed — this is expected behavior). No `S-...: new connection to server` lines appear because `pg_isready` never sends a query, so PgBouncer correctly does not borrow a server-side connection.
+
+### Final verdict: HEALTHY
+
+The `pg_isready` approach is confirmed correct and sufficient. The 4th iteration resolves all prior failures:
+
+| Iteration | Approach | Failure mode |
+|-----------|----------|--------------|
+| Wave 17 | `nc -z localhost 6432` | Only proves TCP port bound, not auth/routing |
+| Wave 18 | `SHOW POOLS` via psql | Wrong DB (mento vs pgbouncer admin), mento not in admin_users |
+| Wave 19 | `SELECT 1` via psql | psql binary absent in edoburu/pgbouncer:latest Alpine image |
+| **Wave 20** | **`pg_isready -h localhost -p 6432 -U $DB_USER -d $DB_NAME`** | **PASSES — exit 0, healthy** |
+
+### Teardown
+
+All containers removed. Volumes `mento-prod_mento_pg_prod` removed with `down -v`. Network `mento-prod_mento_internal` removed. No orphaned resources.
+
+---
+
+## Wave 18/19 — Previous results (historical)
+
+### Service-by-service results
 
 | Service   | Boot? | Healthy? | Notes |
 |-----------|-------|----------|-------|

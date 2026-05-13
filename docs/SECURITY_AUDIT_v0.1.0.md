@@ -153,10 +153,10 @@ All are correctly marked `@Public()` for legitimate reasons.
 
 ## Closed in Wave 19 (2026-05-13)
 
-| Finding | Status | Commit |
+| Finding | Status | Commit SHA |
 |---------|--------|--------|
-| MINOR-2 — No `@Roles()` on list endpoints | CLOSED | `security: declarative role gates + push-token ownership` |
-| MINOR-3 — Push-token cross-user deletion | CLOSED | `security: declarative role gates + push-token ownership` |
+| MINOR-2 — No `@Roles()` on list endpoints | CLOSED | `dc7d498` |
+| MINOR-3 — Push-token cross-user deletion | CLOSED | `dc7d498` |
 
 Both fixes verified via TypeScript typecheck (`cd apps/api && pnpm typecheck`). PUSH-7 E2E spec added to confirm MINOR-3 ownership behaviour is regression-proof.
 
