@@ -2,6 +2,33 @@
 
 > Reverse-chronological commit history grouped by Wave/Phase. Each entry has the short SHA + a one-line summary. For the live phase board see `docs/STATUS.md`. Last updated 2026-05-13.
 
+## v0.1.0 — 2026-05-13
+
+First public release. The MVP described in `docs/Requirement.md` is feature-complete. Full notes in `docs/RELEASE_NOTES_v0.1.0.md`.
+
+High-level deliverables:
+
+- Anonymous identity layer (letter avatars, display handles, no real names / photos) enforced end-to-end across web + mobile + API
+- 12-screen Mirror onboarding (self-assessment) + mentor onboarding wizard with Aadhaar denylist
+- Mentor discovery (search / filters / sort / skeletons / illustrated empty) + 160-char chat-request flow
+- WhatsApp-style chat: archive tabs, in-thread search, swipe-to-archive on mobile, message report flow, Socket.IO with Redis adapter
+- Journals: 17 categories, Notion-style page index, presence-gated sharing, full audit log
+- Subscriptions: FREE / BASIC / PRO / MAX with Razorpay (HMAC-SHA256 webhook verify), dev simulate-success, tier-changed events
+- 1:1 session booking UI (simulated escrow; real escrow deferred to v1.1)
+- Push notifications via Expo Push for offline messages, chat requests, and 6h / 12h onboarding nudges
+- Admin surface: `/admin/moderation`, `/admin/analytics`, `/admin/flags`, `/admin/invites`, `/admin/users/[id]`
+- Auth: custom JWT (15m access + 30d refresh + rotation + theft detection), MSG91 OTP with per-phone rate limit + brute-force lockout, real Google OAuth
+- Production infra: Dockerfiles + Caddy + prod compose + PgBouncer + Postgres backup/restore scripts, GitHub Actions CI, Sentry sourcemap upload via BuildKit secret mount
+- Observability: Sentry + PostHog (40-event taxonomy) + Prometheus `/metrics`, alerting docs
+- Testing: 142 Vitest unit tests, 40 API e2e, 66 browser e2e (Playwright + axe-playwright a11y)
+- Load testing: k6 suite (5 scenarios) + `loadtest/SCALING_PLAYBOOK.md`; mentor list P95 = 7.5 ms
+- SEO: sitemap, robots.txt, per-route OG images, JSON-LD on landing
+- Theme: light + dark mode with system-preference auto-detect
+- i18n scaffold (next-intl, English-only at v0.1.0)
+- Legal: Privacy / Terms / Refund pages (pending counsel review)
+
+Version bumps: all 9 `package.json` files moved from `0.0.0` → `0.1.0`. Mobile `app.json` already at `expo.version = "0.1.0"`, `ios.buildNumber = "1"`, `android.versionCode = 1`.
+
 ## Wave 13 — EAS mobile + PostHog taxonomy + Wave 12 fixes (2026-05-13)
 
 - `da593bc` fix: Wave 12 reviewer criticals — `@nestjs/schedule` dep in `apps/api/package.json`, robots.txt switched from Next route-group names to real URL prefixes
