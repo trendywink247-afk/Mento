@@ -73,16 +73,16 @@ RUN PRISMA_DIR=$(find /workspace/node_modules/.pnpm -maxdepth 3 -name '.prisma' 
 # ── Stage 3: Runtime ──────────────────────────────────────────────────────────
 FROM node:22-alpine AS runtime
 
-# Add tini for proper PID 1 signal handling
-RUN apk add --no-cache tini
+# Add tini for proper PID 1 signal handling.
+# openssl + libssl3 are required so the Prisma CLI's libssl-detection heuristic
+# can identify OpenSSL 3 at install AND at migrate time. Without them, the CLI
+# falls back to looking for `schema-engine-linux-musl` (the openssl-1.1.x
+# variant) and migrate deploy fails with "Could not find schema-engine binary".
+RUN apk add --no-cache tini openssl libssl3 ca-certificates
 
 # Prisma CLI for `migrate deploy` at deploy time. The CLI is a devDependency
 # of @mento/api and gets stripped by `pnpm --prod deploy`, so we install it
 # globally here. Pinned to match @prisma/client.
-#
-# PRISMA_CLI_BINARY_TARGETS forces the OpenSSL-3 engine download (Alpine 3
-# ships OpenSSL 3 only; without this hint prisma's libssl detection falls
-# back to openssl-1.1.x which doesn't exist in the image).
 ENV PRISMA_CLI_BINARY_TARGETS="linux-musl-openssl-3.0.x"
 RUN npm install -g prisma@5.22.0 --omit=optional && \
     chown -R 1001:1001 /usr/local/lib/node_modules/prisma && \
