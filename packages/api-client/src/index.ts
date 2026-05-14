@@ -15,6 +15,17 @@ import type {
 export interface ApiClientOptions {
   baseUrl: string
   getAccessToken?: () => string | null | Promise<string | null>
+  /**
+   * Returns the persisted refresh token. When set together with
+   * onTokensRefreshed, the client will silently refresh on 401 and retry
+   * the original request once before surfacing the failure.
+   */
+  getRefreshToken?: () => string | null | Promise<string | null>
+  /**
+   * Called after a successful silent refresh so the caller can persist
+   * the new access + refresh tokens.
+   */
+  onTokensRefreshed?: (tokens: AuthTokens) => void | Promise<void>
   onUnauthorized?: () => void
   /** Called when a 402 Payment Required response is received. */
   onPaymentRequired?: (requiredTier: string, currentTier: string) => void
@@ -22,6 +33,7 @@ export interface ApiClientOptions {
 
 export class ApiClient {
   private readonly http: KyInstance
+  private refreshInFlight: Promise<string | null> | null = null
 
   constructor(private readonly opts: ApiClientOptions) {
     this.http = ky.create({
@@ -36,8 +48,26 @@ export class ApiClient {
           },
         ],
         afterResponse: [
-          async (_req, _opts, res) => {
+          async (req, _opts, res) => {
             if (res.status === 401) {
+              // Don't try to refresh the refresh endpoint itself — that's a real
+              // logout. Same for the auth endpoints; they take no bearer.
+              const path = new URL(req.url).pathname
+              if (
+                opts.getRefreshToken &&
+                !path.endsWith('/auth/refresh') &&
+                !path.endsWith('/auth/otp/verify') &&
+                !path.endsWith('/auth/google')
+              ) {
+                const newToken = await this.tryRefresh()
+                if (newToken) {
+                  const retried = new Request(req, {
+                    headers: new Headers(req.headers),
+                  })
+                  retried.headers.set('Authorization', `Bearer ${newToken}`)
+                  return fetch(retried)
+                }
+              }
               opts.onUnauthorized?.()
             } else if (res.status === 402) {
               try {
@@ -53,10 +83,37 @@ export class ApiClient {
                 opts.onPaymentRequired?.('BASIC', 'FREE')
               }
             }
+            return undefined
           },
         ],
       },
     })
+  }
+
+  /**
+   * Single-flight refresh so multiple parallel 401s don't all hammer
+   * /auth/refresh. Returns the new access token on success, null otherwise.
+   */
+  private async tryRefresh(): Promise<string | null> {
+    if (this.refreshInFlight) return this.refreshInFlight
+    this.refreshInFlight = (async () => {
+      try {
+        const rt = (await this.opts.getRefreshToken?.()) ?? null
+        if (!rt) return null
+        const tokens = await this.auth.refresh(rt)
+        await this.opts.onTokensRefreshed?.(tokens)
+        return tokens.accessToken
+      } catch {
+        return null
+      } finally {
+        // Release the in-flight slot on the next microtask so callers that
+        // awaited this same promise still observe the resolved value.
+        setTimeout(() => {
+          this.refreshInFlight = null
+        }, 0)
+      }
+    })()
+    return this.refreshInFlight
   }
 
   health(): Promise<{ status: 'ok'; uptime: number }> {
