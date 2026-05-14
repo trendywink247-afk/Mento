@@ -14,7 +14,15 @@ const MOBILE_ALLOWED = [
 // Allow search-engine crawlers through so SEO still works.
 const CRAWLER_UA = /Googlebot|Bingbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|Sogou|Exabot|facebot|ia_archiver/i
 
+// TEMPORARY: NEXT_PUBLIC_DISABLE_MOBILE_REDIRECT=1 bypasses the redirect so
+// the web app is reachable from mobile UAs (for preview / smoke testing).
+// The spec mandates a desktop-only web; re-enable for production launch.
+const DISABLE_MOBILE_REDIRECT =
+  process.env.NEXT_PUBLIC_DISABLE_MOBILE_REDIRECT === '1'
+
 export function middleware(req: NextRequest) {
+  if (DISABLE_MOBILE_REDIRECT) return NextResponse.next()
+
   const ua = req.headers.get('user-agent') ?? ''
   const path = req.nextUrl.pathname
 

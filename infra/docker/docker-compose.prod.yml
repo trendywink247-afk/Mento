@@ -222,6 +222,9 @@ services:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://api.geekspace.space}
         NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-https://api.geekspace.space}
         NEXT_PUBLIC_APP_ENV: production
+        # 1 = bypass the desktop-only mobile UA redirect (smoke testing).
+        # Unset / 0 to restore spec-required behaviour.
+        NEXT_PUBLIC_DISABLE_MOBILE_REDIRECT: ${NEXT_PUBLIC_DISABLE_MOBILE_REDIRECT:-0}
         SENTRY_ORG: ${SENTRY_ORG:-}
         SENTRY_PROJECT: ${SENTRY_PROJECT:-mento-web}
       secrets:
@@ -234,6 +237,7 @@ services:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://api.geekspace.space}
       NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-https://api.geekspace.space}
       NEXT_PUBLIC_APP_ENV: production
+      NEXT_PUBLIC_DISABLE_MOBILE_REDIRECT: ${NEXT_PUBLIC_DISABLE_MOBILE_REDIRECT:-0}
       NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
       NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
       NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-https://app.posthog.com}
