@@ -23,7 +23,7 @@
 ├── infra/docker/
 │   ├── docker-compose.local.yml   Postgres :5433 + Redis :6380
 │   ├── docker-compose.prod.yml    caddy + api + web + postgres + redis
-│   ├── Caddyfile                  TLS reverse proxy for mento.in + api.mento.in
+│   ├── Caddyfile                  TLS reverse proxy for agent.agentin.chat + api.agent.agentin.chat
 │   └── Dockerfile.{api,web}       3-stage prod builds
 ├── loadtest/        k6 load tests + scaling playbook
 ├── docs/

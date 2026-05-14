@@ -87,7 +87,7 @@ export default function PricingOgImage() {
             color: '#94a3b8',
           }}
         >
-          mento.in/pricing
+          agent.agentin.chat/pricing
         </div>
       </div>
     ),

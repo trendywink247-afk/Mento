@@ -40,7 +40,7 @@ Mento is an anonymous, peer-led UPSC mentorship platform connecting aspirants wi
 |---|---|
 | Docker images build clean (api + web) | Yes — 3-stage builds, non-root user, tini, healthcheck |
 | Prod compose validates | Yes — `docker compose config` passes with no errors |
-| Caddy reverse proxy | Configured — auto-TLS for `mento.in` + `api.mento.in`, HSTS, gzip+zstd |
+| Caddy reverse proxy | Configured — auto-TLS for `agent.agentin.chat` + `api.agent.agentin.chat`, HSTS, gzip+zstd |
 | Deploy workflow | Scaffolded — GitHub Actions CI builds + pushes to GHCR on `v*` tags; SSH deploy step documented |
 | Database migration strategy | `db push` for first prod deploy → `migrate resolve` to mark baseline → `migrate deploy` for all future releases |
 | k6 load test baseline | Measured — 5 scenarios (onboarding, mentor discovery, chat history, mixed realistic); SLO targets documented |
@@ -68,7 +68,7 @@ The go/no-go audit (`docs/RELEASE_READINESS.md`) now rates the platform **GREEN*
 1. **Razorpay live keys + plan IDs** — register on Razorpay dashboard, drop into `.env.prod`
 2. **MSG91 DLT** registration — 5–7 day lead time for the OTP template approval
 3. **Sentry DSN + auth token + org/project slug** — create the project at sentry.io
-4. **Google OAuth client ID + secret** — Google Cloud Console, add `https://api.mento.in/auth/google/callback` as a redirect URI
+4. **Google OAuth client ID + secret** — Google Cloud Console, add `https://api.agent.agentin.chat/auth/google/callback` as a redirect URI
 5. **Cloudflare R2 bucket** + access keys for verification document uploads
 6. **EAS account** + Apple App Store Connect API key + Google Play service account JSON for mobile submissions
 7. **DNS** pointed at the prod server, then Caddy auto-issues TLS
@@ -82,7 +82,7 @@ The go/no-go audit (`docs/RELEASE_READINESS.md`) now rates the platform **GREEN*
 3. Run `docker compose -f infra/docker/docker-compose.prod.yml --env-file .env.prod config` — must print clean YAML.
 4. First deploy: `db push` + `migrate resolve` (baseline), then `migrate deploy` for every update.
 5. Seed admin: `docker exec mento-api-prod node dist/prisma/seed.js` (needs `ADMIN_BOOTSTRAP_PHONE`).
-6. Verify: `curl https://api.mento.in/healthz` returns `{"status":"ok"}`.
+6. Verify: `curl https://api.agent.agentin.chat/healthz` returns `{"status":"ok"}`.
 7. Mobile: follow `docs/DEPLOY.md §9` for EAS account setup, secrets, and first store build.
 8. Read **[docs/RUNBOOK.md](./RUNBOOK.md)** for day-to-day ops, log access, and troubleshooting.
 9. Check **[docs/RELEASE_READINESS.md](./RELEASE_READINESS.md)** go/no-go matrix before any paid promotion.

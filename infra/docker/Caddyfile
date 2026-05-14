@@ -1,17 +1,19 @@
 # Mento — Production Caddyfile
-# Domains: api.mento.in → api:4000, mento.in / www.mento.in → web:3000
+# Domains:
+#   agent.agentin.chat → web:3000 (the user-facing app)
+#   api.agent.agentin.chat → api:4000 (the NestJS API)
 # Auto TLS via ACME (Let's Encrypt by default).
 # Security headers, long-cache for static assets, gzip + zstd.
 {
 	# Global options
 	admin off
-	email ops@mento.in
+	email ops@agentin.chat
 
 	# Prefer zstd, then gzip — Caddy handles negotiation automatically
 }
 
 # ── API ───────────────────────────────────────────────────────────────────────
-api.mento.in {
+api.agent.agentin.chat {
 	# Block /metrics from the public internet.
 	# Prometheus scrapes api:4000/metrics directly inside the docker network —
 	# it never goes through Caddy. This matcher ensures no external client can
@@ -50,12 +52,8 @@ api.mento.in {
 	}
 }
 
-# ── Web (apex + www) ──────────────────────────────────────────────────────────
-www.mento.in {
-	redir https://mento.in{uri} permanent
-}
-
-mento.in {
+# ── Web ───────────────────────────────────────────────────────────────────────
+agent.agentin.chat {
 	# Long cache for Next.js hashed static chunks
 	@static {
 		path /static/* /_next/static/*
