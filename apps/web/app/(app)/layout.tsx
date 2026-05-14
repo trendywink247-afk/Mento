@@ -58,11 +58,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!tokens) return
+    // Admin accounts have no subscription record; the endpoint is gated to
+    // ASPIRANT/MENTOR and would return 403 (and noisy logs). Skip it.
+    if (user?.role === 'ADMIN') {
+      setCurrentTier('—')
+      return
+    }
     getApiClient()
       .subscriptions.me()
       .then((sub) => setCurrentTier(sub.tier))
       .catch(() => setCurrentTier('FREE'))
-  }, [tokens])
+  }, [tokens, user?.role])
 
   // React to tier changes triggered by the upgrade page (dev simulate-success or prod webhook).
   useEffect(() => {
@@ -115,18 +121,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!tokens) return null
 
   const isMentor = user?.role === 'MENTOR'
+  const isAdminRole = user?.role === 'ADMIN'
 
-  const NAV_ITEMS_TRANSLATED = [
-    { href: '/dashboard', label: t('dashboard'), Icon: LayoutDashboard },
-    { href: '/journals', label: t('journals'), Icon: BookOpen },
-    { href: '/chat', label: t('chats'), Icon: MessageSquare },
-    { href: '/mentors', label: t('mentors'), Icon: Users },
-    { href: '/calls', label: t('calls'), Icon: Phone },
-    { href: '/wallet', label: t('wallet'), Icon: Wallet },
-    ...(isMentor ? [{ href: '/availability', label: 'Availability', Icon: Calendar }] : []),
-    ...(isMentor ? [{ href: '/mentees', label: 'My mentees', Icon: UserCheck }] : []),
-    { href: '/profile', label: t('profile'), Icon: User },
-  ]
+  // Admin users skip the aspirant/mentor nav (those routes 403 against the
+  // server's role-based guards anyway). They get Profile + Admin only.
+  const NAV_ITEMS_TRANSLATED = isAdminRole
+    ? [{ href: '/profile', label: t('profile'), Icon: User }]
+    : [
+        { href: '/dashboard', label: t('dashboard'), Icon: LayoutDashboard },
+        { href: '/journals', label: t('journals'), Icon: BookOpen },
+        { href: '/chat', label: t('chats'), Icon: MessageSquare },
+        { href: '/mentors', label: t('mentors'), Icon: Users },
+        { href: '/calls', label: t('calls'), Icon: Phone },
+        { href: '/wallet', label: t('wallet'), Icon: Wallet },
+        ...(isMentor ? [{ href: '/availability', label: 'Availability', Icon: Calendar }] : []),
+        ...(isMentor ? [{ href: '/mentees', label: 'My mentees', Icon: UserCheck }] : []),
+        { href: '/profile', label: t('profile'), Icon: User },
+      ]
 
   const PAGE_TITLES_TRANSLATED: Record<string, string> = {
     '/dashboard': t('dashboard'),
@@ -142,11 +153,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   const pageTitle = getPageTitle(pathname ?? '', PAGE_TITLES_TRANSLATED)
-  const isAdmin = user?.role === 'ADMIN'
 
   const navItems = [
     ...NAV_ITEMS_TRANSLATED,
-    ...(isAdmin ? [{ href: '/admin', label: t('admin'), Icon: Shield }] : []),
+    ...(isAdminRole ? [{ href: '/admin', label: t('admin'), Icon: Shield }] : []),
   ]
 
   return (
