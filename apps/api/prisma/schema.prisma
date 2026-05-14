@@ -5,7 +5,10 @@
 // moderation + ban policy with audit trail.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // native = whatever the build host is (macOS / linux-x64-glibc on local dev)
+  // linux-musl-openssl-3.0.x = node:22-alpine production runtime (OpenSSL 3)
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
