@@ -79,7 +79,13 @@ RUN apk add --no-cache tini
 # Prisma CLI for `migrate deploy` at deploy time. The CLI is a devDependency
 # of @mento/api and gets stripped by `pnpm --prod deploy`, so we install it
 # globally here. Pinned to match @prisma/client.
+#
+# PRISMA_CLI_BINARY_TARGETS forces the OpenSSL-3 engine download (Alpine 3
+# ships OpenSSL 3 only; without this hint prisma's libssl detection falls
+# back to openssl-1.1.x which doesn't exist in the image).
+ENV PRISMA_CLI_BINARY_TARGETS="linux-musl-openssl-3.0.x"
 RUN npm install -g prisma@5.22.0 --omit=optional && \
+    chown -R 1001:1001 /usr/local/lib/node_modules/prisma && \
     npm cache clean --force
 
 # Create non-root user
