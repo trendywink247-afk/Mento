@@ -1,22 +1,19 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Mento — Production deploy workflow (scaffold)
+# Mento — Production deploy workflow
 #
 # Triggers on version tags (v*). Builds Docker images, pushes to GHCR, then
-# SSHes into the server to pull + restart containers.
+# SSHes into the prod VPS to pull + restart containers.
 #
-# STATUS: SCAFFOLD — SSH deploy step is commented out until the server is
-#         provisioned. Enable it by filling the SSH_* secrets and uncommenting
-#         the "Deploy to server" step.
-#
-# Secrets required:
-#   GHCR_TOKEN         — GitHub PAT with write:packages scope
-#   SSH_HOST           — server IP or hostname (TODO: fill after provisioning)
-#   SSH_USER           — deploy user on server (e.g. ubuntu)
-#   SSH_PRIVATE_KEY    — private key for the deploy user
-#   SSH_PORT           — SSH port (default 22)
+# Required secrets (set via `gh secret set` or the repo settings UI):
+#   SSH_HOST           — prod VPS IP or hostname
+#   SSH_USER           — deploy user on the VPS (root for this MVP)
+#   SSH_PRIVATE_KEY    — private key (full PEM/OpenSSH format)
+#   SSH_PORT           — SSH port (defaults to 22 if unset)
 #   SENTRY_AUTH_TOKEN  — Sentry CLI auth token (optional)
 #   SENTRY_ORG         — Sentry org slug (optional)
 #   SENTRY_PROJECT     — Sentry project slug (optional)
+#
+# GHCR auth uses the auto-provisioned GITHUB_TOKEN — no extra secret needed.
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: Deploy
@@ -28,7 +25,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  # Must be lowercase. Set to the org or personal account that owns the repo.
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
 
 jobs:
@@ -53,7 +49,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # ── API image ──────────────────────────────────────────────────────────
       - name: Extract metadata for API image
@@ -109,9 +105,9 @@ jobs:
           secrets: |
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
 
-  # ── Job 2: Deploy to server ───────────────────────────────────────────────
+  # ── Job 2: Deploy to VPS over SSH ─────────────────────────────────────────
   deploy-to-server:
-    name: Deploy to server
+    name: Deploy to VPS
     runs-on: ubuntu-latest
     needs: build-and-push-images
     environment: production
@@ -120,51 +116,68 @@ jobs:
       - name: Checkout (for compose file)
         uses: actions/checkout@v4
 
-      # TODO: Uncomment and configure after the server is provisioned.
-      # Fill SSH_HOST, SSH_USER, SSH_PRIVATE_KEY, SSH_PORT in repo secrets.
-      #
-      # - name: Deploy via SSH
-      #   uses: appleboy/ssh-action@v1.2.0
-      #   with:
-      #     host: ${{ secrets.SSH_HOST }}
-      #     username: ${{ secrets.SSH_USER }}
-      #     key: ${{ secrets.SSH_PRIVATE_KEY }}
-      #     port: ${{ secrets.SSH_PORT || 22 }}
-      #     script: |
-      #       set -euo pipefail
-      #       cd /srv/mento
-      #
-      #       # Pull latest compose file from git
-      #       git pull --ff-only origin main
-      #
-      #       # Log in to GHCR on the server
-      #       echo "${{ secrets.GHCR_TOKEN }}" | \
-      #         docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      #
-      #       # Pull new images and restart services with zero-downtime rolling update
-      #       IMAGE_TAG=${{ github.ref_name }} \
-      #         docker compose \
-      #           -f infra/docker/docker-compose.prod.yml \
-      #           --env-file .env.prod \
-      #           pull
-      #
-      #       IMAGE_TAG=${{ github.ref_name }} \
-      #         docker compose \
-      #           -f infra/docker/docker-compose.prod.yml \
-      #           --env-file .env.prod \
-      #           up -d --remove-orphans
-      #
-      #       # Run any pending migrations
-      #       docker exec mento-api-prod \
-      #         node node_modules/.bin/prisma migrate deploy \
-      #           --schema prisma/schema.prisma
-      #
-      #       # Prune dangling images to free disk
-      #       docker image prune -f
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          # Inject one var for IMAGE_TAG so we don't have to interpolate inside the heredoc
+          envs: IMAGE_TAG,GITHUB_ACTOR,GITHUB_TOKEN
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd /srv/mento
 
-      - name: Deployment skipped — server not yet provisioned
-        run: |
-          echo "SSH deploy step is commented out. See docs/DEPLOY.md for manual first-deploy steps."
-          echo "Pushed images:"
-          echo "  ghcr.io/${{ github.repository_owner }}/mento-api:${{ github.ref_name }}"
-          echo "  ghcr.io/${{ github.repository_owner }}/mento-web:${{ github.ref_name }}"
+            # Pull latest compose file + scripts from git
+            git fetch --tags origin
+            git checkout "$IMAGE_TAG"
+
+            # Log in to GHCR on the VPS so it can pull the freshly-built images
+            echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+            # Pull new images + restart with rolling update
+            IMAGE_TAG="$IMAGE_TAG" \
+              docker compose \
+                -f infra/docker/docker-compose.prod.yml \
+                --env-file .env.prod \
+                pull
+
+            IMAGE_TAG="$IMAGE_TAG" \
+              docker compose \
+                -f infra/docker/docker-compose.prod.yml \
+                --env-file .env.prod \
+                up -d --remove-orphans
+
+            # Apply any pending Prisma migrations (bypasses PgBouncer per W63)
+            docker exec mento-api-prod sh -c \
+              'DATABASE_URL="$MIGRATIONS_DATABASE_URL" pnpm prisma migrate deploy'
+
+            # Free disk
+            docker image prune -f
+        env:
+          IMAGE_TAG: ${{ github.ref_name }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify health after deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            # Give the api container 30s to settle, then confirm healthz
+            for i in $(seq 1 12); do
+              if curl -sf http://localhost:4000/healthz > /dev/null; then
+                echo "API healthz OK"
+                exit 0
+              fi
+              sleep 5
+            done
+            echo "API did not become healthy within 60s" >&2
+            docker compose -f /srv/mento/infra/docker/docker-compose.prod.yml ps
+            exit 1
