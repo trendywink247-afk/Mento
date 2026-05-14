@@ -179,10 +179,12 @@ jobs:
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
             set -euo pipefail
-            # Give the api container 30s to settle, then confirm healthz
+            # Host Caddy proxies api.geekspace.space → 127.0.0.1:4100 (mento-api).
+            # Give the api container 60s to settle, then confirm healthz on the
+            # host-loopback bind.
             for i in $(seq 1 12); do
-              if curl -sf http://localhost:4000/healthz > /dev/null; then
-                echo "API healthz OK"
+              if curl -sf http://127.0.0.1:4100/healthz > /dev/null; then
+                echo "API healthz OK on 127.0.0.1:4100"
                 exit 0
               fi
               sleep 5

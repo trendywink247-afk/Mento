@@ -195,6 +195,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # Host Caddy (systemd) is the production reverse proxy on this VPS — it
+    # owns 80/443 and routes ai.geekspace.space + api.geekspace.space.
+    # Expose the api on the host loopback only; port 4000 is occupied by a
+    # legacy dev node on the host, so we map to 4100.
+    ports:
+      - "127.0.0.1:4100:4000"
     healthcheck:
       # 127.0.0.1 not localhost — Alpine's musl resolves localhost to IPv6
       # first but the api binds IPv4 only (0.0.0.0:4000). See 9e06661.
@@ -234,6 +240,11 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    # See api service comment — host Caddy proxies ai.geekspace.space to this.
+    # Loopback only; 127.0.0.1:3000 and :3100 are held by other containers,
+    # so we use 3300.
+    ports:
+      - "127.0.0.1:3300:3000"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
       interval: 15s
@@ -243,36 +254,19 @@ services:
     networks:
       - mento_internal
 
-  # ── Caddy reverse proxy ────────────────────────────────────────────────────
-  caddy:
-    image: caddy:2-alpine
-    container_name: mento-caddy-prod
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"    # HTTP/3 (QUIC)
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - mento_caddy_data:/data
-      - mento_caddy_config:/config
-    depends_on:
-      api:
-        condition: service_healthy
-      web:
-        condition: service_healthy
-    networks:
-      - mento_internal
+  # ── Reverse proxy ──────────────────────────────────────────────────────────
+  # Production reverse proxy lives on the HOST (systemd Caddy at
+  # /etc/caddy/Caddyfile) and serves multiple projects' domains. The Docker
+  # Caddy service was removed because it can't bind 80/443 alongside the
+  # host one. Routing config for ai.geekspace.space + api.geekspace.space
+  # is maintained in the host Caddyfile pointing at 127.0.0.1:3300 (web) and
+  # 127.0.0.1:4100 (api) — see infra/docker/Caddyfile for reference.
 
 # ── Volumes ────────────────────────────────────────────────────────────────
 volumes:
   mento_pg_prod:
     driver: local
   mento_redis_prod:
-    driver: local
-  mento_caddy_data:
-    driver: local
-  mento_caddy_config:
     driver: local
 
 # ── Secrets ────────────────────────────────────────────────────────────────
