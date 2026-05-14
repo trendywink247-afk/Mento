@@ -61,6 +61,15 @@ RUN cd apps/api && pnpm exec tsc \
 # Prune to production-only deps (eliminates devDependencies)
 RUN pnpm --filter @mento/api --prod deploy /prod/api
 
+# Carry the generated Prisma client into the pruned node_modules.
+# `prisma generate` writes to /workspace/node_modules/.pnpm/@prisma+client@*/
+# node_modules/.prisma, but `pnpm --prod deploy` flattens to a regular
+# node_modules layout that doesn't include this generated dir. Without it,
+# `require('.prisma/client/default')` inside @prisma/client/default.js fails
+# at app boot with MODULE_NOT_FOUND.
+RUN PRISMA_DIR=$(find /workspace/node_modules/.pnpm -maxdepth 3 -name '.prisma' -type d | head -1) && \
+    cp -r "$PRISMA_DIR" /prod/api/node_modules/.prisma
+
 # ── Stage 3: Runtime ──────────────────────────────────────────────────────────
 FROM node:22-alpine AS runtime
 
