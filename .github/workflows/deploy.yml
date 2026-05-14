@@ -134,17 +134,23 @@ jobs:
             git fetch --tags origin
             git checkout "$IMAGE_TAG"
 
+            # docker/metadata-action strips the leading v from semver tags
+            # (v0.1.0 → image tag 0.1.0). The compose file uses ${IMAGE_TAG}
+            # in the image: line, so we strip the v here to match what was
+            # actually pushed to GHCR.
+            IMAGE_TAG_NUM="${IMAGE_TAG#v}"
+
             # Log in to GHCR on the VPS so it can pull the freshly-built images
             echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
 
             # Pull new images + restart with rolling update
-            IMAGE_TAG="$IMAGE_TAG" \
+            IMAGE_TAG="$IMAGE_TAG_NUM" \
               docker compose \
                 -f infra/docker/docker-compose.prod.yml \
                 --env-file .env.prod \
                 pull
 
-            IMAGE_TAG="$IMAGE_TAG" \
+            IMAGE_TAG="$IMAGE_TAG_NUM" \
               docker compose \
                 -f infra/docker/docker-compose.prod.yml \
                 --env-file .env.prod \
