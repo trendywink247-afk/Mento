@@ -196,7 +196,9 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:4000/healthz"]
+      # 127.0.0.1 not localhost — Alpine's musl resolves localhost to IPv6
+      # first but the api binds IPv4 only (0.0.0.0:4000). See 9e06661.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/healthz"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -233,7 +235,7 @@ services:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
       interval: 15s
       timeout: 5s
       retries: 5
