@@ -105,7 +105,7 @@ EXPOSE 4000
 
 # Healthcheck — matches the path in main.ts (exclude 'readyz' path)
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
-  CMD wget -qO- http://localhost:4000/healthz || exit 1
+  CMD wget -qO- http://127.0.0.1:4000/healthz || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "dist/main.js"]

@@ -98,7 +98,7 @@ EXPOSE 3000
 
 # Healthcheck — root returns 200 for Next.js App Router
 HEALTHCHECK --interval=15s --timeout=5s --start-period=40s --retries=3 \
-  CMD wget -qO- http://localhost:3000/ || exit 1
+  CMD wget -qO- http://127.0.0.1:3000/ || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
 # The standalone server.js is at the root of the standalone output
