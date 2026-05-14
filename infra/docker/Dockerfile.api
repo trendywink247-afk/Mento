@@ -44,6 +44,18 @@ RUN pnpm --filter @mento/validation build || true
 # Build the api
 RUN cd apps/api && pnpm build
 
+# Compile the Prisma seed script into dist/prisma/seed.js so production
+# deploys can run `node dist/prisma/seed.js` (the db:seed npm script uses
+# tsx which is a devDependency and is stripped by `pnpm --prod deploy`).
+RUN cd apps/api && pnpm exec tsc \
+      --module commonjs \
+      --target es2022 \
+      --moduleResolution node \
+      --esModuleInterop \
+      --skipLibCheck \
+      --outDir dist \
+      prisma/seed.ts
+
 # Prune to production-only deps (eliminates devDependencies)
 RUN pnpm --filter @mento/api --prod deploy /prod/api
 
