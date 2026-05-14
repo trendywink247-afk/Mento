@@ -63,7 +63,6 @@ export default function MirrorPage() {
   const router = useRouter()
   const tokens = useAuthStore((s) => s.tokens)
   const hasHydrated = useAuthStore((s) => s.hasHydrated)
-  const clearSession = useAuthStore((s) => s.clear)
 
   const [stage, setStage] = useState<Stage>('intro')
   const [journeyStage, setJourneyStage] = useState<string>('')
@@ -126,7 +125,9 @@ export default function MirrorPage() {
           journeyStage: journeyStage || null,
         })
         .catch(() => {})
-      clearSession()
+      // Keep the session — Mirror only persists on full submit, but the user
+      // should stay signed in so they can resume from /dashboard (the
+      // onboarding gating will route them back here on next visit).
       router.replace('/')
     } catch {
       setSavingLater(false)
