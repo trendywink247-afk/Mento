@@ -47,13 +47,15 @@ RUN cd apps/api && pnpm build
 # Compile the Prisma seed script into dist/prisma/seed.js so production
 # deploys can run `node dist/prisma/seed.js` (the db:seed npm script uses
 # tsx which is a devDependency and is stripped by `pnpm --prod deploy`).
+# Output dir explicit: dist/prisma so the file lands at dist/prisma/seed.js.
 RUN cd apps/api && pnpm exec tsc \
       --module commonjs \
       --target es2022 \
       --moduleResolution node \
       --esModuleInterop \
       --skipLibCheck \
-      --outDir dist \
+      --outDir dist/prisma \
+      --rootDir prisma \
       prisma/seed.ts
 
 # Prune to production-only deps (eliminates devDependencies)
