@@ -136,6 +136,11 @@ services:
     environment:
       NODE_ENV: production
       API_PORT: "4000"
+      # Prisma engine picker — node:22-alpine ships OpenSSL 3 only. The
+      # default auto-detect can pick the OpenSSL-1.1 libquery_engine and crash
+      # at boot with "libssl.so.1.1: No such file or directory". Forcing the
+      # correct binary side-steps that detection.
+      PRISMA_QUERY_ENGINE_LIBRARY: /app/node_modules/.prisma/client/libquery_engine-linux-musl-openssl-3.0.x.so.node
       # Database — routed through PgBouncer (transaction-pool mode).
       # ?pgbouncer=true disables Prisma's prepared-statement caching, which is
       # required for PgBouncer transaction mode.
