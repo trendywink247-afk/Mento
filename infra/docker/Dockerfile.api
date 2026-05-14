@@ -76,6 +76,12 @@ FROM node:22-alpine AS runtime
 # Add tini for proper PID 1 signal handling
 RUN apk add --no-cache tini
 
+# Prisma CLI for `migrate deploy` at deploy time. The CLI is a devDependency
+# of @mento/api and gets stripped by `pnpm --prod deploy`, so we install it
+# globally here. Pinned to match @prisma/client.
+RUN npm install -g prisma@5.22.0 --omit=optional && \
+    npm cache clean --force
+
 # Create non-root user
 RUN addgroup -g 1001 node_group && \
     adduser  -u 1001 -G node_group -s /bin/sh -D appuser

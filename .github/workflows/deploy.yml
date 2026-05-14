@@ -159,9 +159,11 @@ jobs:
                 --env-file .env.prod \
                 up -d --remove-orphans
 
-            # Apply any pending Prisma migrations (bypasses PgBouncer per W63)
+            # Apply any pending Prisma migrations (bypasses PgBouncer per W63).
+            # `prisma` CLI is installed globally in the runtime stage (Dockerfile.api)
+            # because pnpm + devDeps are stripped from the production image.
             docker exec mento-api-prod sh -c \
-              'DATABASE_URL="$MIGRATIONS_DATABASE_URL" pnpm prisma migrate deploy'
+              'cd /app && DATABASE_URL="$MIGRATIONS_DATABASE_URL" prisma migrate deploy --schema=prisma/schema.prisma'
 
             # Free disk
             docker image prune -f
