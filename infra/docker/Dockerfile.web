@@ -14,7 +14,7 @@ RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
 WORKDIR /workspace
 
 # Manifests only — maximise layer cache
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/web/package.json            apps/web/package.json
 COPY apps/api/package.json            apps/api/package.json
 COPY packages/types/package.json      packages/types/package.json
