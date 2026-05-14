@@ -130,9 +130,12 @@ jobs:
             set -euo pipefail
             cd /srv/mento
 
-            # Pull latest compose file + scripts from git
-            git fetch --tags origin
-            git checkout "$IMAGE_TAG"
+            # Pull latest compose file + scripts from git.
+            # --force on tags handles tag re-creation (when we delete + re-tag
+            # at a different commit, e.g. after fixing a release branch bug).
+            git fetch --tags --force origin
+            # Ensure clean checkout (previous deploys may leave us detached)
+            git checkout --force "$IMAGE_TAG"
 
             # docker/metadata-action strips the leading v from semver tags
             # (v0.1.0 → image tag 0.1.0). The compose file uses ${IMAGE_TAG}
