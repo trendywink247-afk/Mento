@@ -101,8 +101,8 @@ jobs:
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
           build-args: |
-            NEXT_PUBLIC_API_BASE_URL=https://api.agent.agentin.chat
-            NEXT_PUBLIC_SOCKET_URL=https://api.agent.agentin.chat
+            NEXT_PUBLIC_API_BASE_URL=https://api.geekspace.space
+            NEXT_PUBLIC_SOCKET_URL=https://api.geekspace.space
             NEXT_PUBLIC_APP_ENV=production
             SENTRY_ORG=${{ secrets.SENTRY_ORG }}
             SENTRY_PROJECT=${{ secrets.SENTRY_PROJECT }}

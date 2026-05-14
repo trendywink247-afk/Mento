@@ -37,8 +37,8 @@ Point the following A records to the server IP before first deploy:
 
 | Hostname | Record |
 |---|---|
-| `agent.agentin.chat` | A → server IP |
-| `api.agent.agentin.chat` | A → server IP |
+| `ai.geekspace.space` | A → server IP |
+| `api.geekspace.space` | A → server IP |
 
 Caddy will provision TLS certificates automatically via Let's Encrypt once DNS resolves.
 
@@ -168,11 +168,11 @@ docker exec mento-api-prod node dist/prisma/seed.js
 
 ```bash
 # API health
-curl https://api.agent.agentin.chat/healthz
+curl https://api.geekspace.space/healthz
 # → {"status":"ok"}
 
 # Web
-curl -I https://agent.agentin.chat
+curl -I https://ai.geekspace.space
 # → HTTP/2 200
 ```
 
@@ -319,7 +319,7 @@ docker compose -f infra/docker/docker-compose.prod.yml logs -f caddy
 Caddy manages TLS automatically. Certificates are stored in the `mento_caddy_data` named volume and renewed automatically before expiry.
 
 If a certificate fails to provision (check `docker logs mento-caddy-prod`):
-- Confirm DNS is resolving correctly: `dig agent.agentin.chat @1.1.1.1`.
+- Confirm DNS is resolving correctly: `dig ai.geekspace.space @1.1.1.1`.
 - Confirm ports 80 and 443 are open in the firewall.
 - Caddy retries automatically; no manual intervention is usually needed.
 

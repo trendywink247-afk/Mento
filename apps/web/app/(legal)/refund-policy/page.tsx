@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-const base = process.env.NEXT_PUBLIC_WEB_BASE_URL ?? 'https://agent.agentin.chat'
+const base = process.env.NEXT_PUBLIC_WEB_BASE_URL ?? 'https://ai.geekspace.space'
 
 export const metadata: Metadata = {
   title: 'Refund Policy — Mento',

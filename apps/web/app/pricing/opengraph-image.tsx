@@ -87,7 +87,7 @@ export default function PricingOgImage() {
             color: '#94a3b8',
           }}
         >
-          agent.agentin.chat/pricing
+          ai.geekspace.space/pricing
         </div>
       </div>
     ),

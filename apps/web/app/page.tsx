@@ -11,7 +11,7 @@ import { FaqSection } from '@/components/landing/FaqSection'
 import { FinalCta } from '@/components/landing/FinalCta'
 import { LandingFooter } from '@/components/landing/LandingFooter'
 
-const webBase = process.env.NEXT_PUBLIC_WEB_BASE_URL ?? 'https://agent.agentin.chat'
+const webBase = process.env.NEXT_PUBLIC_WEB_BASE_URL ?? 'https://ai.geekspace.space'
 
 export const metadata: Metadata = {
   openGraph: {
@@ -37,7 +37,7 @@ const jsonLd = {
     {
       '@type': 'Organization',
       name: 'Mento',
-      url: 'https://agent.agentin.chat',
+      url: 'https://ai.geekspace.space',
       description:
         'Anonymous, peer-led UPSC mentorship platform. Walk the path with someone who has been there.',
       sameAs: [],
@@ -45,14 +45,14 @@ const jsonLd = {
     {
       '@type': 'WebSite',
       name: 'Mento',
-      url: 'https://agent.agentin.chat',
+      url: 'https://ai.geekspace.space',
       description:
         'Walk the UPSC path with someone who has been there. Anonymous, verified peer mentors.',
       potentialAction: {
         '@type': 'SearchAction',
         target: {
           '@type': 'EntryPoint',
-          urlTemplate: 'https://agent.agentin.chat/mentors?q={search_term_string}',
+          urlTemplate: 'https://ai.geekspace.space/mentors?q={search_term_string}',
         },
         'query-input': 'required name=search_term_string',
       },

@@ -23,7 +23,7 @@
 ├── infra/docker/
 │   ├── docker-compose.local.yml   Postgres :5433 + Redis :6380
 │   ├── docker-compose.prod.yml    caddy + api + web + postgres + redis
-│   ├── Caddyfile                  TLS reverse proxy for agent.agentin.chat + api.agent.agentin.chat
+│   ├── Caddyfile                  TLS reverse proxy for ai.geekspace.space + api.geekspace.space
 │   └── Dockerfile.{api,web}       3-stage prod builds
 ├── loadtest/        k6 load tests + scaling playbook
 ├── docs/

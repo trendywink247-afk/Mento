@@ -60,7 +60,7 @@ These are NOT code defects — they are credentials and one-time ops actions a r
 - [ ] Mobile assets directory populated (`apps/mobile/assets/` + `store-screenshots/`) per `apps/mobile/STORE.md`
 - [ ] Google OAuth client ID created: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`
 - [ ] `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` (`openssl rand -hex 64` each); `POSTGRES_PASSWORD` + `REDIS_PASSWORD` set to strong randoms
-- [ ] DNS A records: `agent.agentin.chat`, `api.agent.agentin.chat` → server IP
+- [ ] DNS A records: `ai.geekspace.space`, `api.geekspace.space` → server IP
 - [ ] DB baseline: `prisma migrate resolve --applied 20260510181133_init` + `20260513000000_catch_up_phases_a_through_g` + `20260513010000_perf_indexes_analytics` on the prod DB (see `docs/DEPLOY.md`)
 - [ ] Admin promotion: set `ADMIN_BOOTSTRAP_PHONE`, run `docker exec mento-api-prod node dist/prisma/seed.js`
 - [ ] Feature flags seeded: `POST /admin/flags/seed` with admin token
@@ -70,8 +70,8 @@ These are NOT code defects — they are credentials and one-time ops actions a r
 
 - [ ] `docker compose ... config` exits 0 (no missing-var warnings)
 - [ ] All 5 containers report healthy after `up -d`
-- [ ] `https://api.agent.agentin.chat/healthz` → `{"status":"ok"}`
-- [ ] `https://agent.agentin.chat` returns HTTP 200; legal pages at `/privacy`, `/terms`, `/refund-policy` render
+- [ ] `https://api.geekspace.space/healthz` → `{"status":"ok"}`
+- [ ] `https://ai.geekspace.space` returns HTTP 200; legal pages at `/privacy`, `/terms`, `/refund-policy` render
 - [ ] OTP flow end-to-end on a real device (MSG91 delivery, not dev console)
 - [ ] Admin login → `/admin` → `/admin/analytics`, `/admin/flags`, `/admin/invites`, `/admin/moderation` all return data
 - [ ] Razorpay checkout opens (live key) and `subscription.activated` webhook test succeeds via dashboard
@@ -82,9 +82,9 @@ These are NOT code defects — they are credentials and one-time ops actions a r
 
 ### Legal / policy
 
-- [ ] `https://agent.agentin.chat/privacy` reachable + linked from Play Store / App Store listings
-- [ ] `https://agent.agentin.chat/terms` reachable
-- [ ] `https://agent.agentin.chat/refund-policy` reachable (Razorpay live key approval requires this)
+- [ ] `https://ai.geekspace.space/privacy` reachable + linked from Play Store / App Store listings
+- [ ] `https://ai.geekspace.space/terms` reachable
+- [ ] `https://ai.geekspace.space/refund-policy` reachable (Razorpay live key approval requires this)
 - [ ] Footer links to Privacy / Terms / Refund / Contact on landing page (already shipped)
 
 ### Content / mentor supply

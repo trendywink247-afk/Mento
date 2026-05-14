@@ -64,7 +64,7 @@ export default function LegalOgImage() {
             color: '#94a3b8',
           }}
         >
-          agent.agentin.chat
+          ai.geekspace.space
         </div>
       </div>
     ),
